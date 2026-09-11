@@ -22,6 +22,7 @@ export default async function handler(req: any, res: any) {
       email: session.email,
     },
     superviseeEmail: session.superviseeEmail,
+    reviewEntry: session.reviewEntry || null,
     expiresAt: new Date(session.exp * 1000).toISOString(),
   });
 }
