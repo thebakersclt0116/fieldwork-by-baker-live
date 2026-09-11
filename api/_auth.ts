@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { BAKER_RUNTIME_SECRET } from './_runtime-secret';
 
 export type BakerRole = 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
 
@@ -44,7 +45,11 @@ function fromBase64Url(input: string): string {
 }
 
 function sessionSecret(): string | null {
-  return process.env.BAKER_SESSION_SECRET || process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || null;
+  return process.env.BAKER_SESSION_SECRET || BAKER_RUNTIME_SECRET || null;
+}
+
+export function hasSessionSigningSecret(): boolean {
+  return Boolean(sessionSecret());
 }
 
 function signatureFor(encodedPayload: string): string | null {
@@ -54,10 +59,7 @@ function signatureFor(encodedPayload: string): string | null {
 }
 
 export function signSession(payload: Omit<BakerSession, 'exp'>, ttlSeconds = 60 * 60 * 12): string | null {
-  const session: BakerSession = {
-    ...payload,
-    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
-  };
+  const session: BakerSession = { ...payload, exp: Math.floor(Date.now() / 1000) + ttlSeconds };
   const encoded = base64Url(JSON.stringify(session));
   const signature = signatureFor(encoded);
   return signature ? `${encoded}.${signature}` : null;
@@ -108,14 +110,7 @@ export function verifyBetaCredentials(email: string, password: string): Omit<Bak
   );
   if (!validPassword) return null;
 
-  if (normalized === OWNER_EMAIL) {
-    return {
-      email: OWNER_EMAIL,
-      name: 'Justin Baker',
-      role: 'owner',
-    };
-  }
-
+  if (normalized === OWNER_EMAIL) return { email: OWNER_EMAIL, name: 'Justin Baker', role: 'owner' };
   if (normalized === EMILY_EMAIL) {
     return {
       email: EMILY_EMAIL,
@@ -124,7 +119,6 @@ export function verifyBetaCredentials(email: string, password: string): Omit<Bak
       subscription: 'professional',
     };
   }
-
   return null;
 }
 
