@@ -7,19 +7,25 @@ on:
     paths:
       - .github/workflows/runtime-smoke.yml
 
-# Runtime smoke after dynamic import diagnostic promotion.
+# End-to-end production verification. The temporary probe is removed after this passes.
 jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify production Baker AI runtime
+      - name: Verify production Baker AI runtime and model call
         shell: bash
         run: |
           set -euo pipefail
           BASE="https://fieldwork-by-baker-testing.vercel.app"
           echo "Checking $BASE/api/health"
-          HEALTH="$(curl --silent --show-error --retry 4 --retry-delay 2 "$BASE/api/health")"
+          HEALTH="$(curl --fail --silent --show-error --retry 12 --retry-delay 3 --retry-all-errors "$BASE/api/health")"
           echo "$HEALTH" | jq .
+          echo "$HEALTH" | jq -e '.aiGatewayAuthAvailable == true and .secureSessionSigningAvailable == true'
           echo "Checking $BASE/api/baker-ai"
-          AI="$(curl --silent --show-error --retry 4 --retry-delay 2 "$BASE/api/baker-ai")"
-          echo "$AI" | jq . || true
+          AI="$(curl --fail --silent --show-error --retry 12 --retry-delay 3 --retry-all-errors "$BASE/api/baker-ai")"
+          echo "$AI" | jq .
+          echo "$AI" | jq -e '.service == "Baker AI" and .status == "ready" and .gatewayAuthAvailable == true'
+          echo "Calling real model probe"
+          PROBE="$(curl --fail --silent --show-error --retry 12 --retry-delay 3 --retry-all-errors "$BASE/api/ai-probe")"
+          echo "$PROBE" | jq .
+          echo "$PROBE" | jq -e '.ok == true and .gatewayStatus == 200 and .returnedExpectedMarker == true'
