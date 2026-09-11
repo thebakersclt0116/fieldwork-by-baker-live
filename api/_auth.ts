@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, scryptSync, timingSafeEqual } from 'node:crypto';
 import { BAKER_RUNTIME_SECRET } from './_runtime-secret.js';
 
 export type BakerRole = 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
@@ -34,7 +34,13 @@ export interface BakerSession {
 
 const OWNER_EMAIL = 'justin@bakerholdings.co';
 const EMILY_EMAIL = 'ayalaemily52@gmail.com';
-const BETA_PASSWORD_HASH = 'a2382d6202a69228c36f59db10c71e09bd9e826153b784b65cc13068cc19123b';
+
+// Legacy owner credential kept unchanged for the private beta.
+const OWNER_PASSWORD_HASH = 'a2382d6202a69228c36f59db10c71e09bd9e826153b784b65cc13068cc19123b';
+
+// Emily uses a salted scrypt verifier so her password is never stored in source control.
+const EMILY_PASSWORD_SALT_B64 = 'MTQtXqMueoKDuGssOKm1xg==';
+const EMILY_PASSWORD_SCRYPT_B64 = 'QZkFFYAumiLaVGcEmXf9Vr9D+0jKiq6Qvp/Vw4ov0HfKu39o7Wee3U5RfODbNfOkbF8SZ4wiOwM66fM4elOcpA==';
 
 function base64Url(input: string): string {
   return Buffer.from(input, 'utf8').toString('base64url');
@@ -101,17 +107,35 @@ export function requireSession(
   return session;
 }
 
+function matchesLegacyOwnerPassword(password: string): boolean {
+  const suppliedHash = createHash('sha256').update(password).digest('hex');
+  return suppliedHash.length === OWNER_PASSWORD_HASH.length && timingSafeEqual(
+    Buffer.from(suppliedHash),
+    Buffer.from(OWNER_PASSWORD_HASH)
+  );
+}
+
+function matchesEmilyPassword(password: string): boolean {
+  const expected = Buffer.from(EMILY_PASSWORD_SCRYPT_B64, 'base64');
+  const supplied = scryptSync(
+    password,
+    Buffer.from(EMILY_PASSWORD_SALT_B64, 'base64'),
+    expected.length,
+    { N: 1 << 14, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }
+  );
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
 export function verifyBetaCredentials(email: string, password: string): Omit<BakerSession, 'exp'> | null {
   const normalized = email.trim().toLowerCase();
-  const suppliedHash = createHash('sha256').update(password).digest('hex');
-  const validPassword = suppliedHash.length === BETA_PASSWORD_HASH.length && timingSafeEqual(
-    Buffer.from(suppliedHash),
-    Buffer.from(BETA_PASSWORD_HASH)
-  );
-  if (!validPassword) return null;
 
-  if (normalized === OWNER_EMAIL) return { email: OWNER_EMAIL, name: 'Justin Baker', role: 'owner' };
+  if (normalized === OWNER_EMAIL) {
+    if (!matchesLegacyOwnerPassword(password)) return null;
+    return { email: OWNER_EMAIL, name: 'Justin Baker', role: 'owner' };
+  }
+
   if (normalized === EMILY_EMAIL) {
+    if (!matchesEmilyPassword(password)) return null;
     return {
       email: EMILY_EMAIL,
       name: 'Emily Ayala',
@@ -119,6 +143,7 @@ export function verifyBetaCredentials(email: string, password: string): Omit<Bak
       subscription: 'professional',
     };
   }
+
   return null;
 }
 
