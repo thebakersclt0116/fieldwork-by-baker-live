@@ -134,8 +134,8 @@ const responseSchema = {
   additionalProperties: false,
   properties: {
     detectedSource: { type: 'string' },
-    entries: { type: 'array', maxItems: 200, items: entrySchema },
-    warnings: { type: 'array', maxItems: 30, items: { type: 'string' } },
+    entries: { type: 'array', items: entrySchema },
+    warnings: { type: 'array', items: { type: 'string' } },
   },
   required: ['detectedSource', 'entries', 'warnings'],
 };
@@ -176,7 +176,6 @@ export default async function handler(req: any, res: any) {
 
   const rawText = String(req.body?.rawText || '');
   const fileName = String(req.body?.fileName || 'fieldwork-records').trim().slice(0, 180);
-  const mimeType = String(req.body?.mimeType || 'application/octet-stream').trim().slice(0, 120);
   const fileData = String(req.body?.fileData || '');
   const sourceHint = String(req.body?.sourceHint || '').trim().slice(0, 120);
 
@@ -225,7 +224,7 @@ export default async function handler(req: any, res: any) {
     const payload = await response.json();
     const parsed = JSON.parse(extractOutputText(payload) || '{}');
     const entries = Array.isArray(parsed.entries)
-      ? parsed.entries.map(sanitizeEntry).filter((entry: ProposedEntry | null): entry is ProposedEntry => Boolean(entry))
+      ? parsed.entries.slice(0, 200).map(sanitizeEntry).filter((entry: ProposedEntry | null): entry is ProposedEntry => Boolean(entry))
       : [];
 
     return send(res, 200, {
