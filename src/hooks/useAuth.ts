@@ -132,6 +132,7 @@ export function useAuth() {
   const isOwner = user?.role === 'owner';
   const isProfessional = user?.role === 'professional';
   const isFree = user?.role === 'free';
+  const isDemo = false;
   const subscription = user?.subscription || 'none';
   const isPaid = user?.role === 'paid' || ['individual', 'professional', 'enterprise'].includes(subscription);
   const hasPaidFeatures = Boolean(isOwner || isProfessional || isPaid);
@@ -149,6 +150,7 @@ export function useAuth() {
     isOwner,
     isProfessional,
     isFree,
+    isDemo,
     isPaid,
     hasPaidFeatures,
     hasSupervisorFeatures,
