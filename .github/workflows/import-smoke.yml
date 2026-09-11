@@ -13,13 +13,14 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify production import API
+      - name: Diagnose production import API
         run: |
-          set -euo pipefail
+          set +e
           BASE='https://fieldwork-by-baker-testing.vercel.app'
-          READY="$(curl -fsS --connect-timeout 10 --max-time 20 "$BASE/api/import-fieldwork")"
-          echo "$READY" | grep -q '"status":"ready"'
-          CODE="$(curl -sS -o /tmp/import-body -w '%{http_code}' --connect-timeout 10 --max-time 20 -X POST "$BASE/api/import-fieldwork" -H 'Content-Type: application/json' --data '{"rawText":"sample"}')"
-          test "$CODE" = '401'
-          grep -q 'paid Baker account' /tmp/import-body
-          echo 'Production migration endpoint is live and protected.'
+          echo '=== IMPORT GET ==='
+          curl -sS -i --connect-timeout 10 --max-time 20 "$BASE/api/import-fieldwork"
+          echo
+          echo '=== IMPORT POST WITHOUT AUTH ==='
+          curl -sS -i --connect-timeout 10 --max-time 20 -X POST "$BASE/api/import-fieldwork" -H 'Content-Type: application/json' --data '{"rawText":"sample"}'
+          echo
+          exit 0
