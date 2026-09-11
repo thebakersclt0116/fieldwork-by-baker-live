@@ -32,6 +32,16 @@ export interface HourEntry {
   status: EntryStatus;
   createdAt: string;
   updatedAt: string;
+  supervisionMinutes?: number;
+  observationMinutes?: number;
+  individualSupervisionMinutes?: number;
+  clientInitials?: string;
+  supervisorNote?: string;
+  supervisorMessage?: string;
+  aiGenerated?: boolean;
+  aiConfidence?: number;
+  aiRationale?: string;
+  aiSourceText?: string;
 }
 
 export interface User {
