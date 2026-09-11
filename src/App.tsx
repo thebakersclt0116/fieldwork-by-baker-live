@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router';
 import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Features from './pages/Features';
 import Pricing from './pages/Pricing';
@@ -11,18 +12,16 @@ import Contact from './pages/Contact';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Import from './pages/Import';
 import EmilyDashboard from './pages/EmilyDashboard';
 import EmilyImport from './pages/EmilyImport';
+import BakerAI from './pages/BakerAI';
 import SupervisorView from './pages/SupervisorView';
-import { isEmilyAccount } from './lib/fieldworkStore';
+import ApplySupervisorFeedback from './pages/ApplySupervisorFeedback';
+import { useAuth } from './hooks/useAuth';
 
 function AccountDashboard() {
-  return isEmilyAccount() ? <EmilyDashboard /> : <Dashboard />;
-}
-
-function AccountImport() {
-  return isEmilyAccount() ? <EmilyImport /> : <Import />;
+  const { isOwner } = useAuth();
+  return isOwner ? <Dashboard /> : <EmilyDashboard />;
 }
 
 export default function App() {
@@ -39,9 +38,11 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<AccountDashboard />} />
-        <Route path="/import" element={<AccountImport />} />
+        <Route path="/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
+        <Route path="/import" element={<ProtectedRoute><EmilyImport /></ProtectedRoute>} />
+        <Route path="/baker-ai" element={<ProtectedRoute><BakerAI /></ProtectedRoute>} />
         <Route path="/supervisor/:token" element={<SupervisorView />} />
+        <Route path="/feedback/:token" element={<ApplySupervisorFeedback />} />
       </Routes>
     </Layout>
   );
