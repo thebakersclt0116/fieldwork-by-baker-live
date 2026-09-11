@@ -1,0 +1,25 @@
+name: Production Import Smoke
+
+on:
+  push:
+    branches: [smart-import]
+    paths:
+      - '.github/workflows/import-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify production import API
+        run: |
+          set -euo pipefail
+          BASE='https://fieldwork-by-baker-testing.vercel.app'
+          READY="$(curl -fsS --connect-timeout 10 --max-time 20 "$BASE/api/import-fieldwork")"
+          echo "$READY" | grep -q '"status":"ready"'
+          CODE="$(curl -sS -o /tmp/import-body -w '%{http_code}' --connect-timeout 10 --max-time 20 -X POST "$BASE/api/import-fieldwork" -H 'Content-Type: application/json' --data '{"rawText":"sample"}')"
+          test "$CODE" = '401'
+          grep -q 'paid Baker account' /tmp/import-body
+          echo 'Production migration endpoint is live and protected.'
