@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
-export type BakerRole = 'owner' | 'paid' | 'professional' | 'supervisor';
+export type BakerRole = 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
 
 export interface ReviewEntrySnapshot {
   id: string;
@@ -24,6 +24,7 @@ export interface BakerSession {
   name: string;
   role: BakerRole;
   subscription?: 'individual' | 'professional' | 'enterprise';
+  exportPass?: boolean;
   superviseeEmail?: string;
   reviewEntry?: ReviewEntrySnapshot;
   feedback?: SupervisorFeedbackPayload;
@@ -91,7 +92,7 @@ export function getBearerToken(req: { headers?: Record<string, string | string[]
 
 export function requireSession(
   req: { headers?: Record<string, string | string[] | undefined> },
-  roles: BakerRole[] = ['owner', 'paid', 'professional', 'supervisor']
+  roles: BakerRole[] = ['owner', 'free', 'paid', 'professional', 'supervisor']
 ): BakerSession | null {
   const session = verifySession(getBearerToken(req));
   if (!session || !roles.includes(session.role)) return null;
@@ -125,6 +126,14 @@ export function verifyBetaCredentials(email: string, password: string): Omit<Bak
   }
 
   return null;
+}
+
+export function canUsePaidTools(session: BakerSession): boolean {
+  return session.role === 'owner' || session.role === 'paid' || session.role === 'professional';
+}
+
+export function canExportOfficialForms(session: BakerSession): boolean {
+  return canUsePaidTools(session) || Boolean(session.exportPass);
 }
 
 export const BAKER_OWNER_EMAIL = OWNER_EMAIL;
