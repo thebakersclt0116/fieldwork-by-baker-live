@@ -6,10 +6,11 @@ export type BillingCycle = 'monthly' | 'annual';
 export interface AuthUser {
   name: string;
   email: string;
-  role: 'owner' | 'admin' | 'supervisee' | 'supervisor' | 'demo' | 'professional' | 'paid';
+  role: 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
   initials: string;
   subscription?: SubscriptionTier;
   billingCycle?: BillingCycle;
+  exportPass?: boolean;
 }
 
 const USER_KEY = 'authUser';
@@ -24,12 +25,30 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+function storeSession(user: AuthUser, token: string): void {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
 export function getStoredAccessToken(): string | null {
   try {
     return localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
+}
+
+export function getStoredAuthUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) as AuthUser : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveUpgradedSession(user: AuthUser, token: string): void {
+  storeSession(user, token);
 }
 
 export function useAuth() {
@@ -68,6 +87,7 @@ export function useAuth() {
           email?: string;
           role?: 'owner' | 'professional' | 'paid';
           subscription?: SubscriptionTier;
+          exportPass?: boolean;
         };
         token?: string;
       };
@@ -79,46 +99,63 @@ export function useAuth() {
         role: payload.user.role,
         initials: getInitials(payload.user.name),
         subscription: payload.user.subscription,
+        exportPass: payload.user.exportPass,
         billingCycle: payload.user.email.toLowerCase() === 'ayalaemily52@gmail.com' ? 'annual' : undefined,
       };
 
       setUser(nextUser);
-      localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
-      localStorage.setItem(TOKEN_KEY, payload.token);
+      storeSession(nextUser, payload.token);
       return true;
     } catch {
       return false;
     }
   }, []);
 
-  const loginAsDemo = useCallback(() => {
-    const demoUser: AuthUser = {
-      name: 'Sarah Chen',
-      email: 'sarah.chen@email.com',
-      role: 'demo',
-      initials: 'SC',
-      subscription: 'none',
-    };
-    setUser(demoUser);
-    localStorage.setItem(USER_KEY, JSON.stringify(demoUser));
-    localStorage.removeItem(TOKEN_KEY);
+  const registerFree = useCallback(async (name: string, email: string, password: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/free-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const payload = await response.json() as {
+        user?: { name?: string; email?: string; role?: 'free' };
+        token?: string;
+      };
+      if (!response.ok || !payload.user?.name || !payload.user.email || !payload.token) return false;
+
+      const nextUser: AuthUser = {
+        name: payload.user.name,
+        email: payload.user.email,
+        role: 'free',
+        initials: getInitials(payload.user.name),
+        subscription: 'none',
+        exportPass: false,
+      };
+      setUser(nextUser);
+      storeSession(nextUser, payload.token);
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('demoMode');
     window.location.href = '/';
   }, []);
 
   const accessToken = getStoredAccessToken();
   const isOwner = user?.role === 'owner';
-  const isDemo = user?.role === 'demo';
   const isProfessional = user?.role === 'professional';
+  const isFree = user?.role === 'free';
   const isPaid = user?.role === 'paid' || ['individual', 'professional', 'enterprise'].includes(user?.subscription || 'none');
+  const hasPaidFeatures = Boolean(isOwner || isProfessional || isPaid);
+  const canExportOfficialForms = Boolean(hasPaidFeatures || user?.exportPass);
   const isAuthenticated = !!user && !!accessToken;
-  const hasAppAccess = !!user && !!accessToken && (isOwner || isPaid || user.role === 'supervisor');
+  const hasAppAccess = !!user && !!accessToken && ['owner', 'free', 'paid', 'professional', 'supervisor'].includes(user.role);
 
   return {
     user,
@@ -127,11 +164,13 @@ export function useAuth() {
     hasAppAccess,
     accessToken,
     isOwner,
-    isDemo,
     isProfessional,
+    isFree,
     isPaid,
+    hasPaidFeatures,
+    canExportOfficialForms,
     login,
-    loginAsDemo,
+    registerFree,
     logout,
   };
 }
