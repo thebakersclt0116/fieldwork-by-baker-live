@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import PaidFeatureRoute from './components/PaidFeatureRoute';
 import Home from './pages/Home';
 import Features from './pages/Features';
 import Pricing from './pages/Pricing';
@@ -12,16 +13,19 @@ import Contact from './pages/Contact';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import EmilyDashboard from './pages/EmilyDashboard';
+import UserDashboard from './pages/UserDashboard';
 import EmilyImport from './pages/EmilyImport';
 import BakerAI from './pages/BakerAI';
+import Upgrade from './pages/Upgrade';
+import UpgradeSuccess from './pages/UpgradeSuccess';
+import ExportCenter from './pages/ExportCenter';
 import SupervisorView from './pages/SupervisorView';
 import ApplySupervisorFeedback from './pages/ApplySupervisorFeedback';
 import { useAuth } from './hooks/useAuth';
 
 function AccountDashboard() {
   const { isOwner } = useAuth();
-  return isOwner ? <Dashboard /> : <EmilyDashboard />;
+  return isOwner ? <Dashboard /> : <UserDashboard />;
 }
 
 export default function App() {
@@ -39,8 +43,11 @@ export default function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
-        <Route path="/import" element={<ProtectedRoute><EmilyImport /></ProtectedRoute>} />
-        <Route path="/baker-ai" element={<ProtectedRoute><BakerAI /></ProtectedRoute>} />
+        <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
+        <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
+        <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
+        <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><EmilyImport /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/supervisor/:token" element={<SupervisorView />} />
         <Route path="/feedback/:token" element={<ApplySupervisorFeedback />} />
       </Routes>
