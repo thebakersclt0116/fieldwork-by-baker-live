@@ -12,7 +12,18 @@ import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Import from './pages/Import';
+import EmilyDashboard from './pages/EmilyDashboard';
+import EmilyImport from './pages/EmilyImport';
 import SupervisorView from './pages/SupervisorView';
+import { isEmilyAccount } from './lib/fieldworkStore';
+
+function AccountDashboard() {
+  return isEmilyAccount() ? <EmilyDashboard /> : <Dashboard />;
+}
+
+function AccountImport() {
+  return isEmilyAccount() ? <EmilyImport /> : <Import />;
+}
 
 export default function App() {
   return (
@@ -28,8 +39,8 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/import" element={<Import />} />
+        <Route path="/dashboard" element={<AccountDashboard />} />
+        <Route path="/import" element={<AccountImport />} />
         <Route path="/supervisor/:token" element={<SupervisorView />} />
       </Routes>
     </Layout>
