@@ -1,4 +1,5 @@
 import { requireSession } from './_auth';
+import { getAiGatewayToken } from './_gateway';
 
 const MODEL = 'openai/gpt-5.6-sol';
 
@@ -15,7 +16,7 @@ function fallback(session: ReturnType<typeof requireSession>, requestText: strin
   if (entry && !entry.supervisionMinutes) concerns.push('No supervision minutes are recorded for this entry. Confirm whether supervision occurred.');
 
   return {
-    recommendedStatus: concerns.length > 0 ? 'PENDING' : 'PENDING',
+    recommendedStatus: 'PENDING',
     note: concerns.length > 0
       ? `Please clarify: ${concerns.join(' ')}`
       : 'Entry reviewed. Confirm that the activity classification and supervision details accurately reflect the work completed.',
@@ -53,7 +54,7 @@ export default async function handler(req: any, res: any) {
   }
 
   const requestText = String(req.body?.request || '').trim().slice(0, 3000);
-  const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
+  const gatewayToken = await getAiGatewayToken();
   if (!gatewayToken) return send(res, 200, fallback(session, requestText));
 
   const schema = {
@@ -86,14 +87,7 @@ export default async function handler(req: any, res: any) {
         instructions,
         input: `Supervisee: ${session.superviseeEmail}\nShared entry: ${JSON.stringify(session.reviewEntry)}\nSupervisor request: ${requestText || 'Review this entry and draft a useful note and message.'}`,
         reasoning: { effort: 'low' },
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'baker_supervisor_review',
-            strict: true,
-            schema,
-          },
-        },
+        text: { format: { type: 'json_schema', name: 'baker_supervisor_review', strict: true, schema } },
       }),
     });
 
