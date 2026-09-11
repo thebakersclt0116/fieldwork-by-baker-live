@@ -13,7 +13,7 @@ import Contact from './pages/Contact';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import UserDashboard from './pages/UserDashboard';
+import MemberDashboard from './pages/MemberDashboard';
 import EmilyImport from './pages/EmilyImport';
 import BakerAI from './pages/BakerAI';
 import Upgrade from './pages/Upgrade';
@@ -25,7 +25,7 @@ import { useAuth } from './hooks/useAuth';
 
 function AccountDashboard() {
   const { isOwner } = useAuth();
-  return isOwner ? <Dashboard /> : <UserDashboard />;
+  return isOwner ? <Dashboard /> : <MemberDashboard />;
 }
 
 export default function App() {
