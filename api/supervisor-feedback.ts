@@ -1,4 +1,4 @@
-import { requireSession, signSession } from './_auth';
+import { requireSession, signSession } from './_auth.js';
 
 function send(res: any, status: number, body: unknown) {
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));

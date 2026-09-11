@@ -1,4 +1,4 @@
-import { requireSession, signSession } from './_auth';
+import { requireSession, signSession } from './_auth.js';
 
 type StripeSession = {
   id?: string;

@@ -1,5 +1,5 @@
-import { requireSession } from './_auth';
-import { getAiGatewayToken } from './_gateway';
+import { requireSession } from './_auth.js';
+import { getAiGatewayToken } from './_gateway.js';
 
 const MODEL = 'openai/gpt-5.6-sol';
 

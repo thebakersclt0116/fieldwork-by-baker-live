@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { BAKER_RUNTIME_SECRET } from './_runtime-secret';
+import { BAKER_RUNTIME_SECRET } from './_runtime-secret.js';
 
 export type BakerRole = 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
 

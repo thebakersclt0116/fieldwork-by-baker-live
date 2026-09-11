@@ -10,14 +10,14 @@ export default async function handler(req: any, res: any) {
   let gatewayModuleError = '';
 
   try {
-    const auth = await import('./_auth');
+    const auth = await import('./_auth.js');
     secureSessionSigningAvailable = Boolean(auth.hasSessionSigningSecret());
   } catch (error) {
     authModuleError = error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 240) : 'Unknown auth module error';
   }
 
   try {
-    const gateway = await import('./_gateway');
+    const gateway = await import('./_gateway.js');
     aiGatewayAuthAvailable = Boolean(await gateway.getAiGatewayToken());
   } catch (error) {
     gatewayModuleError = error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 240) : 'Unknown gateway module error';

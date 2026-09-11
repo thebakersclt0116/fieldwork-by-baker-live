@@ -1,4 +1,4 @@
-import { getAiGatewayToken } from './_gateway';
+import { getAiGatewayToken } from './_gateway.js';
 
 const MODEL = 'openai/gpt-5.6-sol';
 

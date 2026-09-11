@@ -1,4 +1,4 @@
-import { requireSession } from './_auth';
+import { requireSession } from './_auth.js';
 
 type PlanId = 'export_pass' | 'individual_monthly' | 'professional_monthly' | 'professional_annual';
 
