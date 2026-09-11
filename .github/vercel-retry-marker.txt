@@ -1,1 +1,0 @@
-Verified ESM serverless fix build passed in GitHub Actions on 2026-09-11.
