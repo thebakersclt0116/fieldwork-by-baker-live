@@ -2,12 +2,31 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 export type BakerRole = 'owner' | 'paid' | 'professional' | 'supervisor';
 
+export interface ReviewEntrySnapshot {
+  id: string;
+  date: string;
+  duration: number;
+  activityCategory: 'RESTRICTED' | 'UNRESTRICTED';
+  narrative: string;
+  supervisorName?: string;
+  supervisionMinutes?: number;
+}
+
+export interface SupervisorFeedbackPayload {
+  entryId: string;
+  status: 'VERIFIED' | 'PENDING' | 'REJECTED';
+  note: string;
+  message: string;
+}
+
 export interface BakerSession {
   email: string;
   name: string;
   role: BakerRole;
   subscription?: 'individual' | 'professional' | 'enterprise';
   superviseeEmail?: string;
+  reviewEntry?: ReviewEntrySnapshot;
+  feedback?: SupervisorFeedbackPayload;
   exp: number;
 }
 
