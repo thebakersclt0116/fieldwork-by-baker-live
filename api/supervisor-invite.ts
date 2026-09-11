@@ -1,7 +1,26 @@
-import { requireSession, signSession } from './_auth';
+import { requireSession, signSession, type ReviewEntrySnapshot } from './_auth';
 
 function send(res: any, status: number, body: unknown) {
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
+}
+
+function sanitizeReviewEntry(value: any): ReviewEntrySnapshot | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const id = String(value.id || '').trim();
+  const date = String(value.date || '').trim();
+  const duration = Number(value.duration || 0);
+  const activityCategory = value.activityCategory === 'RESTRICTED' ? 'RESTRICTED' : 'UNRESTRICTED';
+  const narrative = String(value.narrative || value.notes || '').trim().slice(0, 1600);
+  if (!id || !date || !(duration > 0)) return undefined;
+  return {
+    id,
+    date,
+    duration,
+    activityCategory,
+    narrative,
+    supervisorName: String(value.supervisorName || '').trim().slice(0, 120) || undefined,
+    supervisionMinutes: Math.max(0, Number(value.supervisionMinutes || 0)) || undefined,
+  };
 }
 
 export default async function handler(req: any, res: any) {
@@ -17,6 +36,7 @@ export default async function handler(req: any, res: any) {
   const supervisorEmail = String(req.body?.supervisorEmail || '').trim().toLowerCase();
   const requestedSupervisee = String(req.body?.superviseeEmail || session.email).trim().toLowerCase();
   const superviseeEmail = session.role === 'owner' ? requestedSupervisee : session.email.toLowerCase();
+  const reviewEntry = sanitizeReviewEntry(req.body?.reviewEntry);
 
   if (!supervisorName || !/^\S+@\S+\.\S+$/.test(supervisorEmail)) {
     return send(res, 400, { error: 'Supervisor name and a valid email are required.' });
@@ -28,6 +48,7 @@ export default async function handler(req: any, res: any) {
       name: supervisorName,
       role: 'supervisor',
       superviseeEmail,
+      reviewEntry,
     },
     60 * 60 * 24 * 14
   );
@@ -39,6 +60,7 @@ export default async function handler(req: any, res: any) {
     expiresInDays: 14,
     superviseeEmail,
     supervisorEmail,
+    reviewEntry: reviewEntry || null,
     path: `/supervisor/${encodeURIComponent(token)}`,
   });
 }
