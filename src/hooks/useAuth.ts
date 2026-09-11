@@ -17,12 +17,7 @@ const USER_KEY = 'authUser';
 const TOKEN_KEY = 'bakerSessionToken';
 
 function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  return name.split(' ').map((part) => part[0]).join('').toUpperCase().slice(0, 2);
 }
 
 function storeSession(user: AuthUser, token: string): void {
@@ -31,20 +26,14 @@ function storeSession(user: AuthUser, token: string): void {
 }
 
 export function getStoredAccessToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
 }
 
 export function getStoredAuthUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) as AuthUser : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export function saveUpgradedSession(user: AuthUser, token: string): void {
@@ -59,9 +48,8 @@ export function useAuth() {
     try {
       const storedUser = localStorage.getItem(USER_KEY);
       const storedToken = localStorage.getItem(TOKEN_KEY);
-      if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser) as AuthUser);
-      } else {
+      if (storedUser && storedToken) setUser(JSON.parse(storedUser) as AuthUser);
+      else {
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(TOKEN_KEY);
       }
@@ -80,7 +68,6 @@ export function useAuth() {
         body: JSON.stringify({ email, password }),
       });
       if (!response.ok) return false;
-
       const payload = await response.json() as {
         user?: {
           name?: string;
@@ -102,13 +89,10 @@ export function useAuth() {
         exportPass: payload.user.exportPass,
         billingCycle: payload.user.email.toLowerCase() === 'ayalaemily52@gmail.com' ? 'annual' : undefined,
       };
-
       setUser(nextUser);
       storeSession(nextUser, payload.token);
       return true;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }, []);
 
   const registerFree = useCallback(async (name: string, email: string, password: string): Promise<boolean> => {
@@ -123,7 +107,6 @@ export function useAuth() {
         token?: string;
       };
       if (!response.ok || !payload.user?.name || !payload.user.email || !payload.token) return false;
-
       const nextUser: AuthUser = {
         name: payload.user.name,
         email: payload.user.email,
@@ -135,9 +118,7 @@ export function useAuth() {
       setUser(nextUser);
       storeSession(nextUser, payload.token);
       return true;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }, []);
 
   const logout = useCallback(() => {
@@ -151,8 +132,10 @@ export function useAuth() {
   const isOwner = user?.role === 'owner';
   const isProfessional = user?.role === 'professional';
   const isFree = user?.role === 'free';
-  const isPaid = user?.role === 'paid' || ['individual', 'professional', 'enterprise'].includes(user?.subscription || 'none');
+  const subscription = user?.subscription || 'none';
+  const isPaid = user?.role === 'paid' || ['individual', 'professional', 'enterprise'].includes(subscription);
   const hasPaidFeatures = Boolean(isOwner || isProfessional || isPaid);
+  const hasSupervisorFeatures = Boolean(isOwner || isProfessional || subscription === 'professional' || subscription === 'enterprise');
   const canExportOfficialForms = Boolean(hasPaidFeatures || user?.exportPass);
   const isAuthenticated = !!user && !!accessToken;
   const hasAppAccess = !!user && !!accessToken && ['owner', 'free', 'paid', 'professional', 'supervisor'].includes(user.role);
@@ -168,6 +151,7 @@ export function useAuth() {
     isFree,
     isPaid,
     hasPaidFeatures,
+    hasSupervisorFeatures,
     canExportOfficialForms,
     login,
     registerFree,
