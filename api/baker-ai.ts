@@ -1,4 +1,5 @@
 import { requireSession } from './_auth';
+import { getAiGatewayToken } from './_gateway';
 
 const MODEL = 'openai/gpt-5.6-sol';
 
@@ -64,11 +65,12 @@ function extractOutputText(payload: any): string {
 
 export default async function handler(req: any, res: any) {
   if (req.method === 'GET') {
+    const gatewayToken = await getAiGatewayToken();
     return send(res, 200, {
       service: 'Baker AI',
       status: 'ready',
       model: MODEL,
-      gatewayAuthAvailable: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
+      gatewayAuthAvailable: Boolean(gatewayToken),
     });
   }
 
@@ -86,7 +88,7 @@ export default async function handler(req: any, res: any) {
   if (text.length < 3) return send(res, 400, { error: 'Tell Baker what happened during the session.' });
   if (text.length > 8000) return send(res, 400, { error: 'Entry text is too long for this beta.' });
 
-  const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
+  const gatewayToken = await getAiGatewayToken();
   if (!gatewayToken) {
     return send(res, 200, { result: fallbackParse(text, date), provider: 'deterministic-fallback' });
   }
@@ -126,22 +128,9 @@ export default async function handler(req: any, res: any) {
       needsSupervisorReview: { type: 'boolean' },
     },
     required: [
-      'date',
-      'duration',
-      'fieldworkType',
-      'activityCategory',
-      'activityType',
-      'supervisorName',
-      'supervisionMinutes',
-      'observationMinutes',
-      'individualSupervisionMinutes',
-      'clientInitials',
-      'suggestedSetting',
-      'narrative',
-      'confidence',
-      'rationale',
-      'flags',
-      'needsSupervisorReview',
+      'date', 'duration', 'fieldworkType', 'activityCategory', 'activityType', 'supervisorName',
+      'supervisionMinutes', 'observationMinutes', 'individualSupervisionMinutes', 'clientInitials',
+      'suggestedSetting', 'narrative', 'confidence', 'rationale', 'flags', 'needsSupervisorReview',
     ],
   };
 
@@ -159,14 +148,7 @@ export default async function handler(req: any, res: any) {
         instructions,
         input: `Default date: ${date}\nCurrent compliance context: ${JSON.stringify(context).slice(0, 4000)}\nTrainee recap: ${text}`,
         reasoning: { effort: 'low' },
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'baker_fieldwork_entry',
-            strict: true,
-            schema,
-          },
-        },
+        text: { format: { type: 'json_schema', name: 'baker_fieldwork_entry', strict: true, schema } },
       }),
     });
 
@@ -189,7 +171,6 @@ export default async function handler(req: any, res: any) {
     result.supervisionMinutes = Math.max(0, Number(result.supervisionMinutes) || 0);
     result.observationMinutes = Math.max(0, Number(result.observationMinutes) || 0);
     result.individualSupervisionMinutes = Math.max(0, Number(result.individualSupervisionMinutes) || 0);
-
     return send(res, 200, { result, provider: MODEL });
   } catch (error) {
     console.error('Baker AI request failed', error);
