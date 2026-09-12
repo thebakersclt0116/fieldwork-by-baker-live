@@ -15,7 +15,9 @@ export interface AuthUser {
 
 const USER_KEY = 'authUser';
 const TOKEN_KEY = 'bakerSessionToken';
+const SESSION_UPGRADE_KEY = 'bakerSessionUpgradeRequired';
 const EMILY_EMAIL = 'ayalaemily52@gmail.com';
+const OWNER_EMAIL = 'justin@bakerholdings.co';
 
 function getInitials(name: string): string {
   return name.split(' ').map((part) => part[0]).join('').toUpperCase().slice(0, 2);
@@ -35,10 +37,20 @@ function normalizeUser(user: AuthUser): AuthUser {
   };
 }
 
+function isStableBetaToken(token: string): boolean {
+  return token.startsWith('b2.');
+}
+
+function isReservedBetaEmail(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  return normalized === EMILY_EMAIL || normalized === OWNER_EMAIL;
+}
+
 function storeSession(user: AuthUser, token: string): void {
   const normalized = normalizeUser(user);
   localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.removeItem(SESSION_UPGRADE_KEY);
 }
 
 export function getStoredAccessToken(): string | null {
@@ -66,8 +78,15 @@ export function useAuth() {
       const storedToken = localStorage.getItem(TOKEN_KEY);
       if (storedUser && storedToken) {
         const normalized = normalizeUser(JSON.parse(storedUser) as AuthUser);
-        setUser(normalized);
-        localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+        if (isReservedBetaEmail(normalized.email) && !isStableBetaToken(storedToken)) {
+          localStorage.removeItem(USER_KEY);
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.setItem(SESSION_UPGRADE_KEY, '1');
+          setUser(null);
+        } else {
+          setUser(normalized);
+          localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+        }
       } else {
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(TOKEN_KEY);
