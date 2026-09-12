@@ -1,0 +1,20 @@
+name: Bridge Production Smoke
+on:
+  push:
+    branches: [ripley-loading-fix]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify live Baker Bridge package and APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://fieldwork-by-baker-testing.vercel.app'
+          MANIFEST="$(curl -fsS --connect-timeout 10 --max-time 20 "$BASE/baker-bridge/manifest.json")"
+          echo "$MANIFEST" | grep -q '"name": "Fieldwork by Baker Bridge"'
+          echo "$MANIFEST" | grep -q '"permissions": \["tabs", "scripting"\]'
+          curl -fsS --connect-timeout 10 --max-time 20 "$BASE/baker-bridge/background.js" | grep -q 'START_RIPLEY_TRANSFER'
+          curl -fsS --connect-timeout 10 --max-time 20 "$BASE/baker-bridge/baker-content.js" | grep -q 'BAKER_BRIDGE_EXTENSION_READY'
+          curl -fsS --connect-timeout 10 --max-time 20 "$BASE/api/import-fieldwork" | grep -q '"status":"ready"'
+          echo 'Production Baker Bridge package and migration API are live.'
