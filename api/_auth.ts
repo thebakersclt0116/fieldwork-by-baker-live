@@ -117,13 +117,26 @@ export function verifyBetaCredentials(email: string, password: string): Omit<Bak
       name: 'Emily Ayala',
       role: 'professional',
       subscription: 'professional',
+      exportPass: true,
     };
   }
   return null;
 }
 
+export function isEmilyBetaAccount(session: Pick<BakerSession, 'email'>): boolean {
+  return session.email.trim().toLowerCase() === EMILY_EMAIL;
+}
+
+export function isEmilySupervisor(session: Pick<BakerSession, 'role' | 'superviseeEmail'>): boolean {
+  return session.role === 'supervisor' && session.superviseeEmail?.trim().toLowerCase() === EMILY_EMAIL;
+}
+
 export function canUsePaidTools(session: BakerSession): boolean {
-  return session.role === 'owner' || session.role === 'paid' || session.role === 'professional';
+  return isEmilyBetaAccount(session) || session.role === 'owner' || session.role === 'paid' || session.role === 'professional';
+}
+
+export function canUseSupervisorTools(session: BakerSession): boolean {
+  return isEmilyBetaAccount(session) || isEmilySupervisor(session) || session.role === 'owner' || session.role === 'professional' || session.subscription === 'professional' || session.subscription === 'enterprise';
 }
 
 export function canExportOfficialForms(session: BakerSession): boolean {
