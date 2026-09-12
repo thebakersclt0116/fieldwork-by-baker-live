@@ -1,4 +1,4 @@
-import { requireSession, signSession, type ReviewEntrySnapshot } from './_auth.js';
+import { canUseSupervisorTools, requireSession, signSession, type ReviewEntrySnapshot } from './_auth.js';
 
 function send(res: any, status: number, body: unknown) {
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
@@ -29,8 +29,10 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req, ['owner', 'paid', 'professional']);
-  if (!session) return send(res, 401, { error: 'Authorized supervisee or owner access is required.' });
+  const session = requireSession(req);
+  if (!session || !canUseSupervisorTools(session)) {
+    return send(res, 401, { error: 'Professional supervisor workflow access is required.' });
+  }
 
   const supervisorName = String(req.body?.supervisorName || '').trim();
   const supervisorEmail = String(req.body?.supervisorEmail || '').trim().toLowerCase();
