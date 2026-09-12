@@ -1,4 +1,4 @@
-import { signSession } from './_auth.js';
+import { BAKER_EMILY_EMAIL, BAKER_OWNER_EMAIL, signSession } from './_auth.js';
 
 function send(res: any, status: number, body: unknown) {
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
@@ -17,6 +17,9 @@ export default async function handler(req: any, res: any) {
   if (name.length < 2) return send(res, 400, { error: 'Enter your name.' });
   if (!/^\S+@\S+\.\S+$/.test(email)) return send(res, 400, { error: 'Enter a valid email.' });
   if (password.length < 8) return send(res, 400, { error: 'Use a password with at least 8 characters.' });
+  if (email === BAKER_EMILY_EMAIL || email === BAKER_OWNER_EMAIL) {
+    return send(res, 409, { error: 'This beta account already exists. Use Sign In instead.' });
+  }
 
   const user = {
     email,
