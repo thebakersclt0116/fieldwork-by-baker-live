@@ -1,0 +1,23 @@
+name: Session Gate Production Smoke
+on:
+  push:
+    branches: [stable-beta-session-fix]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify production migration distinguishes session from plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY_FILE=$(mktemp)
+          STATUS=$(curl -sS -o "$BODY_FILE" -w "%{http_code}" -X POST \
+            -H 'Content-Type: application/json' \
+            --data '{"rawText":"test","fileName":"test.txt"}' \
+            https://fieldwork-by-baker-testing.vercel.app/api/import-fieldwork)
+          cat "$BODY_FILE"
+          test "$STATUS" = "401"
+          grep -q 'SESSION_REFRESH_REQUIRED' "$BODY_FILE"
+          grep -q 'secure Baker session needs to be refreshed' "$BODY_FILE"
