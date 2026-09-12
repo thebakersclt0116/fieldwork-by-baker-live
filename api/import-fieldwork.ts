@@ -1,4 +1,4 @@
-import { requireSession } from './_auth.js';
+import { canUsePaidTools, requireSession } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
 
 const MODEL = 'openai/gpt-5.6-sol';
@@ -171,8 +171,10 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req, ['owner', 'paid', 'professional']);
-  if (!session) return send(res, 401, { error: 'A paid Baker account is required for AI migration.' });
+  const session = requireSession(req);
+  if (!session || !canUsePaidTools(session)) {
+    return send(res, 401, { error: 'A paid Baker account is required for AI migration.' });
+  }
 
   const rawText = String(req.body?.rawText || '');
   const fileName = String(req.body?.fileName || 'fieldwork-records').trim().slice(0, 180);
