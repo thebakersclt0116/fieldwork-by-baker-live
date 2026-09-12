@@ -1,0 +1,33 @@
+name: Final Production AI Smoke
+
+on:
+  push:
+    branches: [emily-full-access]
+    paths:
+      - '.github/workflows/final-ai-live-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify production AI endpoints
+        run: |
+          set -euo pipefail
+          BASE='https://fieldwork-by-baker-testing.vercel.app'
+          HEALTH="$(curl -fsS --connect-timeout 10 --max-time 20 "$BASE/api/health")"
+          echo "$HEALTH" | grep -q '"bakerAI":"configured"'
+          echo "$HEALTH" | grep -q '"aiGatewayAuthAvailable":true'
+          echo "$HEALTH" | grep -q '"secureSessionSigningAvailable":true'
+          BAKER="$(curl -fsS --connect-timeout 10 --max-time 20 "$BASE/api/baker-ai")"
+          echo "$BAKER" | grep -q '"status":"ready"'
+          echo "$BAKER" | grep -q '"gatewayAuthAvailable":true'
+          IMPORT="$(curl -fsS --connect-timeout 10 --max-time 20 "$BASE/api/import-fieldwork")"
+          echo "$IMPORT" | grep -q '"status":"ready"'
+          AI_CODE="$(curl -sS -o /tmp/ai-body -w '%{http_code}' --connect-timeout 10 --max-time 20 -X POST "$BASE/api/baker-ai" -H 'Content-Type: application/json' --data '{"text":"test entry"}')"
+          test "$AI_CODE" = '401'
+          IMPORT_CODE="$(curl -sS -o /tmp/import-body -w '%{http_code}' --connect-timeout 10 --max-time 20 -X POST "$BASE/api/import-fieldwork" -H 'Content-Type: application/json' --data '{"rawText":"sample"}')"
+          test "$IMPORT_CODE" = '401'
+          echo 'Production Baker AI and migration AI are live and protected.'
