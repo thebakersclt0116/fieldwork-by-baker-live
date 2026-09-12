@@ -1,4 +1,13 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  createPrivateKey,
+  createPublicKey,
+  sign as signDetached,
+  timingSafeEqual,
+  verify as verifyDetached,
+  type KeyObject,
+} from 'node:crypto';
 import { BAKER_RUNTIME_SECRET } from './_runtime-secret.js';
 
 export type BakerRole = 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
@@ -34,7 +43,15 @@ export interface BakerSession {
 
 const OWNER_EMAIL = 'justin@bakerholdings.co';
 const EMILY_EMAIL = 'ayalaemily52@gmail.com';
-const BETA_PASSWORD_HASH = 'a2382d6202a69228c36f59db10c71e09bd9e826153b784b65cc13068cc19123b';
+
+// Public verification keys only. Beta private signing material is derived transiently
+// from the password supplied at login and is never stored in source control.
+const BETA_PUBLIC_KEYS: Record<string, string> = {
+  [EMILY_EMAIL]: 'MCowBQYDK2VwAyEA3mxdQfx0eHqbYKff7KO5J3Ecu8E23MJlKdriCp2SCbM=',
+  [OWNER_EMAIL]: 'MCowBQYDK2VwAyEASvSw2YHydkRdsXdZnrz328w4flO7rZvONuF1VW7DQYE=',
+};
+
+const ED25519_PKCS8_SEED_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
 
 function base64Url(input: string): string {
   return Buffer.from(input, 'utf8').toString('base64url');
@@ -58,6 +75,68 @@ function signatureFor(encodedPayload: string): string | null {
   return createHmac('sha256', secret).update(encodedPayload).digest('base64url');
 }
 
+function betaUserForEmail(email: string): Omit<BakerSession, 'exp'> | null {
+  const normalized = email.trim().toLowerCase();
+  if (normalized === OWNER_EMAIL) return { email: OWNER_EMAIL, name: 'Justin Baker', role: 'owner' };
+  if (normalized === EMILY_EMAIL) {
+    return {
+      email: EMILY_EMAIL,
+      name: 'Emily Ayala',
+      role: 'professional',
+      subscription: 'professional',
+      exportPass: true,
+    };
+  }
+  return null;
+}
+
+function deriveBetaPrivateKey(email: string, password: string): KeyObject {
+  const normalized = email.trim().toLowerCase();
+  const seed = createHash('sha256')
+    .update(`fieldwork-by-baker:beta:v2:${normalized}:${password}`)
+    .digest();
+  return createPrivateKey({
+    key: Buffer.concat([ED25519_PKCS8_SEED_PREFIX, seed]),
+    format: 'der',
+    type: 'pkcs8',
+  });
+}
+
+function betaCredentialMatches(email: string, password: string): KeyObject | null {
+  const normalized = email.trim().toLowerCase();
+  const expectedBase64 = BETA_PUBLIC_KEYS[normalized];
+  if (!expectedBase64 || !password) return null;
+
+  try {
+    const privateKey = deriveBetaPrivateKey(normalized, password);
+    const derived = createPublicKey(privateKey).export({ format: 'der', type: 'spki' }) as Buffer;
+    const expected = Buffer.from(expectedBase64, 'base64');
+    if (derived.length !== expected.length || !timingSafeEqual(derived, expected)) return null;
+    return privateKey;
+  } catch {
+    return null;
+  }
+}
+
+export function issueBetaSessionFromCredentials(
+  email: string,
+  password: string,
+  ttlSeconds = 60 * 60 * 24 * 365
+): { user: Omit<BakerSession, 'exp'>; token: string } | null {
+  const normalized = email.trim().toLowerCase();
+  const user = betaUserForEmail(normalized);
+  const privateKey = betaCredentialMatches(normalized, password);
+  if (!user || !privateKey) return null;
+
+  const session: BakerSession = {
+    ...user,
+    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
+  };
+  const encoded = base64Url(JSON.stringify(session));
+  const signature = signDetached(null, Buffer.from(encoded, 'utf8'), privateKey).toString('base64url');
+  return { user, token: `b2.${encoded}.${signature}` };
+}
+
 export function signSession(payload: Omit<BakerSession, 'exp'>, ttlSeconds = 60 * 60 * 12): string | null {
   const session: BakerSession = { ...payload, exp: Math.floor(Date.now() / 1000) + ttlSeconds };
   const encoded = base64Url(JSON.stringify(session));
@@ -65,8 +144,43 @@ export function signSession(payload: Omit<BakerSession, 'exp'>, ttlSeconds = 60 
   return signature ? `${encoded}.${signature}` : null;
 }
 
+function verifyStableBetaSession(token: string): BakerSession | null {
+  const [version, encoded, suppliedSignature] = token.split('.');
+  if (version !== 'b2' || !encoded || !suppliedSignature) return null;
+
+  try {
+    const parsed = JSON.parse(fromBase64Url(encoded)) as BakerSession;
+    const normalized = parsed.email?.trim().toLowerCase();
+    if (!normalized || !parsed.role || !parsed.exp) return null;
+    if (parsed.exp <= Math.floor(Date.now() / 1000)) return null;
+
+    const publicKeyBase64 = BETA_PUBLIC_KEYS[normalized];
+    if (!publicKeyBase64) return null;
+    const publicKey = createPublicKey({
+      key: Buffer.from(publicKeyBase64, 'base64'),
+      format: 'der',
+      type: 'spki',
+    });
+    const valid = verifyDetached(
+      null,
+      Buffer.from(encoded, 'utf8'),
+      publicKey,
+      Buffer.from(suppliedSignature, 'base64url')
+    );
+    if (!valid) return null;
+
+    const canonicalUser = betaUserForEmail(normalized);
+    if (!canonicalUser) return null;
+    return { ...parsed, ...canonicalUser, exp: parsed.exp };
+  } catch {
+    return null;
+  }
+}
+
 export function verifySession(token: string | undefined | null): BakerSession | null {
   if (!token) return null;
+  if (token.startsWith('b2.')) return verifyStableBetaSession(token);
+
   const [encoded, suppliedSignature] = token.split('.');
   if (!encoded || !suppliedSignature) return null;
   const expectedSignature = signatureFor(encoded);
@@ -103,24 +217,8 @@ export function requireSession(
 
 export function verifyBetaCredentials(email: string, password: string): Omit<BakerSession, 'exp'> | null {
   const normalized = email.trim().toLowerCase();
-  const suppliedHash = createHash('sha256').update(password).digest('hex');
-  const validPassword = suppliedHash.length === BETA_PASSWORD_HASH.length && timingSafeEqual(
-    Buffer.from(suppliedHash),
-    Buffer.from(BETA_PASSWORD_HASH)
-  );
-  if (!validPassword) return null;
-
-  if (normalized === OWNER_EMAIL) return { email: OWNER_EMAIL, name: 'Justin Baker', role: 'owner' };
-  if (normalized === EMILY_EMAIL) {
-    return {
-      email: EMILY_EMAIL,
-      name: 'Emily Ayala',
-      role: 'professional',
-      subscription: 'professional',
-      exportPass: true,
-    };
-  }
-  return null;
+  if (!betaCredentialMatches(normalized, password)) return null;
+  return betaUserForEmail(normalized);
 }
 
 export function isEmilyBetaAccount(session: Pick<BakerSession, 'email'>): boolean {
