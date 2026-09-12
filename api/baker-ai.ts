@@ -1,4 +1,4 @@
-import { requireSession } from './_auth.js';
+import { canUsePaidTools, requireSession } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
 
 const MODEL = 'openai/gpt-5.6-sol';
@@ -79,8 +79,9 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req, ['owner', 'paid', 'professional', 'supervisor']);
-  if (!session) return send(res, 401, { error: 'A paid or authorized Baker session is required.' });
+  const session = requireSession(req);
+  const authorized = Boolean(session && (session.role === 'supervisor' || canUsePaidTools(session)));
+  if (!session || !authorized) return send(res, 401, { error: 'A paid or authorized Baker session is required.' });
 
   const text = String(req.body?.text || '').trim();
   const date = String(req.body?.date || new Date().toISOString().slice(0, 10));
