@@ -15,13 +15,29 @@ export interface AuthUser {
 
 const USER_KEY = 'authUser';
 const TOKEN_KEY = 'bakerSessionToken';
+const EMILY_EMAIL = 'ayalaemily52@gmail.com';
 
 function getInitials(name: string): string {
   return name.split(' ').map((part) => part[0]).join('').toUpperCase().slice(0, 2);
 }
 
+function normalizeUser(user: AuthUser): AuthUser {
+  if (user.email.trim().toLowerCase() !== EMILY_EMAIL) return user;
+  return {
+    ...user,
+    name: 'Emily Ayala',
+    email: EMILY_EMAIL,
+    role: 'professional',
+    subscription: 'professional',
+    billingCycle: 'annual',
+    exportPass: true,
+    initials: 'EA',
+  };
+}
+
 function storeSession(user: AuthUser, token: string): void {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  const normalized = normalizeUser(user);
+  localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   localStorage.setItem(TOKEN_KEY, token);
 }
 
@@ -32,7 +48,7 @@ export function getStoredAccessToken(): string | null {
 export function getStoredAuthUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) as AuthUser : null;
+    return raw ? normalizeUser(JSON.parse(raw) as AuthUser) : null;
   } catch { return null; }
 }
 
@@ -48,8 +64,11 @@ export function useAuth() {
     try {
       const storedUser = localStorage.getItem(USER_KEY);
       const storedToken = localStorage.getItem(TOKEN_KEY);
-      if (storedUser && storedToken) setUser(JSON.parse(storedUser) as AuthUser);
-      else {
+      if (storedUser && storedToken) {
+        const normalized = normalizeUser(JSON.parse(storedUser) as AuthUser);
+        setUser(normalized);
+        localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+      } else {
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(TOKEN_KEY);
       }
@@ -80,15 +99,15 @@ export function useAuth() {
       };
       if (!payload.user?.email || !payload.user.name || !payload.user.role || !payload.token) return false;
 
-      const nextUser: AuthUser = {
+      const nextUser = normalizeUser({
         name: payload.user.name,
         email: payload.user.email,
         role: payload.user.role,
         initials: getInitials(payload.user.name),
         subscription: payload.user.subscription,
         exportPass: payload.user.exportPass,
-        billingCycle: payload.user.email.toLowerCase() === 'ayalaemily52@gmail.com' ? 'annual' : undefined,
-      };
+        billingCycle: payload.user.email.toLowerCase() === EMILY_EMAIL ? 'annual' : undefined,
+      });
       setUser(nextUser);
       storeSession(nextUser, payload.token);
       return true;
@@ -107,14 +126,14 @@ export function useAuth() {
         token?: string;
       };
       if (!response.ok || !payload.user?.name || !payload.user.email || !payload.token) return false;
-      const nextUser: AuthUser = {
+      const nextUser = normalizeUser({
         name: payload.user.name,
         email: payload.user.email,
         role: 'free',
         initials: getInitials(payload.user.name),
         subscription: 'none',
         exportPass: false,
-      };
+      });
       setUser(nextUser);
       storeSession(nextUser, payload.token);
       return true;
@@ -129,15 +148,16 @@ export function useAuth() {
   }, []);
 
   const accessToken = getStoredAccessToken();
+  const isEmilyBeta = user?.email.trim().toLowerCase() === EMILY_EMAIL;
   const isOwner = user?.role === 'owner';
-  const isProfessional = user?.role === 'professional';
-  const isFree = user?.role === 'free';
+  const isProfessional = user?.role === 'professional' || isEmilyBeta;
+  const isFree = user?.role === 'free' && !isEmilyBeta;
   const isDemo = false;
-  const subscription = user?.subscription || 'none';
-  const isPaid = user?.role === 'paid' || ['individual', 'professional', 'enterprise'].includes(subscription);
-  const hasPaidFeatures = Boolean(isOwner || isProfessional || isPaid);
-  const hasSupervisorFeatures = Boolean(isOwner || isProfessional || subscription === 'professional' || subscription === 'enterprise');
-  const canExportOfficialForms = Boolean(hasPaidFeatures || user?.exportPass);
+  const subscription = isEmilyBeta ? 'professional' : (user?.subscription || 'none');
+  const isPaid = Boolean(isEmilyBeta || user?.role === 'paid' || ['individual', 'professional', 'enterprise'].includes(subscription));
+  const hasPaidFeatures = Boolean(isEmilyBeta || isOwner || isProfessional || isPaid);
+  const hasSupervisorFeatures = Boolean(isEmilyBeta || isOwner || isProfessional || subscription === 'professional' || subscription === 'enterprise');
+  const canExportOfficialForms = Boolean(isEmilyBeta || hasPaidFeatures || user?.exportPass);
   const isAuthenticated = !!user && !!accessToken;
   const hasAppAccess = !!user && !!accessToken && ['owner', 'free', 'paid', 'professional', 'supervisor'].includes(user.role);
 
