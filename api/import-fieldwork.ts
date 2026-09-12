@@ -172,8 +172,17 @@ export default async function handler(req: any, res: any) {
   }
 
   const session = requireSession(req);
-  if (!session || !canUsePaidTools(session)) {
-    return send(res, 401, { error: 'A paid Baker account is required for AI migration.' });
+  if (!session) {
+    return send(res, 401, {
+      code: 'SESSION_REFRESH_REQUIRED',
+      error: 'Your secure Baker session needs to be refreshed. Sign in again, then retry this import.',
+    });
+  }
+  if (!canUsePaidTools(session)) {
+    return send(res, 403, {
+      code: 'PAID_REQUIRED',
+      error: 'A paid Baker account is required for AI migration.',
+    });
   }
 
   const rawText = String(req.body?.rawText || '');
