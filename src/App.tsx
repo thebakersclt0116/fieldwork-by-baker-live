@@ -14,7 +14,7 @@ import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import MemberDashboard from './pages/MemberDashboard';
-import SmartImport from './pages/SmartImport';
+import SmartImportBridge from './pages/SmartImportBridge';
 import BakerAI from './pages/BakerAI';
 import Upgrade from './pages/Upgrade';
 import UpgradeSuccess from './pages/UpgradeSuccess';
@@ -46,7 +46,7 @@ export default function App() {
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
-        <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><SmartImport /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><SmartImportBridge /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/supervisor/:token" element={<SupervisorView />} />
         <Route path="/feedback/:token" element={<ApplySupervisorFeedback />} />
