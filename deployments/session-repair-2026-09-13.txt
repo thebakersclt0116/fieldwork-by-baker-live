@@ -1,0 +1,1 @@
+Canonical production session repair: stale migration sessions are intercepted, users return directly to Import after secure re-login, and the Vercel project URL redirects to www.fieldworkbybaker.com.
