@@ -1,13 +1,24 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 
+function safeReturnPath(value: string | null): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
+  return value;
+}
+
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const params = new URLSearchParams(location.search);
+  const returnTo = safeReturnPath(params.get('return'));
+  const sessionRefresh = params.get('reason') === 'session-refresh';
+  const [email, setEmail] = useState(() => {
+    try { return window.sessionStorage.getItem('bakerRefreshEmail') || ''; } catch { return ''; }
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +39,14 @@ export default function Login() {
       setError('Access denied. This private beta is limited to authorized Baker accounts.');
       return;
     }
-    navigate('/dashboard');
+
+    try {
+      window.sessionStorage.removeItem('bakerRefreshEmail');
+      window.sessionStorage.removeItem('bakerReturnAfterLogin');
+    } catch {
+      // Navigation still proceeds when storage is unavailable.
+    }
+    navigate(returnTo, { replace: true });
   };
 
   return (
@@ -63,7 +81,13 @@ export default function Login() {
               <span className="text-xs uppercase tracking-[0.18em] font-semibold">Authorized access</span>
             </div>
             <h2 className="font-serif text-3xl font-semibold text-[#332C28] mb-2">Welcome back</h2>
-            <p className="text-sm text-[#A8998E] mb-8">Sign in to your approved Fieldwork by Baker account.</p>
+            <p className="text-sm text-[#A8998E] mb-6">Sign in to your approved Fieldwork by Baker account.</p>
+
+            {sessionRefresh && (
+              <div className="mb-5 rounded-xl bg-[#F4F7FF] border border-[#CFD8F7] px-4 py-3 text-sm leading-relaxed text-[#4B5EA8]">
+                <strong>Your Baker access is still active.</strong> We detected an older browser session and cleared it automatically. Sign in once and you&apos;ll return directly to Import with your full beta access restored.
+              </div>
+            )}
 
             {error && (
               <div className="mb-5 rounded-xl bg-[#FFF5F7] border border-[#FFC1CC] px-4 py-3 text-sm text-[#C9445A]">
@@ -115,7 +139,7 @@ export default function Login() {
                 disabled={isLoggingIn}
                 className="btn-primary w-full py-3 rounded-xl disabled:opacity-60"
               >
-                {isLoggingIn ? 'Verifying access…' : 'Sign In'}
+                {isLoggingIn ? 'Refreshing secure access…' : sessionRefresh ? 'Refresh Access & Return to Import' : 'Sign In'}
                 {!isLoggingIn && <ArrowRight size={16} />}
               </button>
             </form>
