@@ -31,11 +31,12 @@ function storedReservedBetaEmail(): string | null {
   }
 }
 
-function clearBrokenSessionAndReturnToImport(): void {
+function clearBrokenSessionAndReturnToImport(email: string | null): void {
   try {
+    if (email) window.sessionStorage.setItem('bakerRefreshEmail', email)
+    window.sessionStorage.setItem('bakerReturnAfterLogin', '/import')
     window.localStorage.removeItem(USER_KEY)
     window.localStorage.removeItem(TOKEN_KEY)
-    window.sessionStorage.setItem('bakerReturnAfterLogin', '/import')
   } catch {
     // Navigation below still gives the user a clean authentication path.
   }
@@ -70,7 +71,7 @@ function installMigrationSessionGuard(): void {
       )
 
       if (staleSession || misleadingLegacyPaywall) {
-        window.setTimeout(clearBrokenSessionAndReturnToImport, 0)
+        window.setTimeout(() => clearBrokenSessionAndReturnToImport(betaEmail), 0)
       }
     } catch {
       // Preserve the original API response if it was not JSON.
