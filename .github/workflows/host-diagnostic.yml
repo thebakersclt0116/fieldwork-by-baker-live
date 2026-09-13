@@ -1,0 +1,27 @@
+name: Host Diagnostic
+on:
+  push:
+    branches: [stable-beta-session-fix]
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare live migration hosts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for HOST in \
+            https://fieldwork-by-baker-testing.vercel.app \
+            https://fieldworkbybaker.com \
+            https://www.fieldworkbybaker.com
+          do
+            echo "=== $HOST ==="
+            echo "GET:"
+            curl -sS -i "$HOST/api/import-fieldwork" | sed -n '1,20p'
+            echo
+            echo "POST without auth:"
+            curl -sS -i -X POST -H 'Content-Type: application/json' --data '{"rawText":"test","fileName":"test.txt"}' "$HOST/api/import-fieldwork" | sed -n '1,24p'
+            echo
+          done
