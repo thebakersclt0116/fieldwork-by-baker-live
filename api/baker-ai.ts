@@ -1,5 +1,6 @@
 import { canUsePaidTools, requireSession } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
+import { runBakerBrain } from '../server/baker-brain-safe.js';
 
 const MODEL = 'openai/gpt-5.6-sol';
 
@@ -121,11 +122,12 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'GET') {
     const gatewayToken = await getAiGatewayToken();
     return send(res, 200, {
-      service: 'Baker AI',
+      service: 'Baker AI + Baker Brain',
       status: 'ready',
       model: MODEL,
-      version: 'emily-fieldwork-v2-2026-09-14',
+      version: 'baker-brain-v1-2026-09-14',
       gatewayAuthAvailable: Boolean(gatewayToken),
+      modes: ['fieldwork-entry', 'bcba-brain'],
       entryStructure: ['organization', 'supervisor', 'time-range', 'independent-supervised', 'restricted-unrestricted', 'individual-group', 'client-observation'],
     });
   }
@@ -138,6 +140,28 @@ export default async function handler(req: any, res: any) {
   const session = requireSession(req);
   const authorized = Boolean(session && (session.role === 'supervisor' || canUsePaidTools(session)));
   if (!session || !authorized) return send(res, 401, { error: 'A paid or authorized Baker session is required.' });
+
+  const mode = String(req.body?.mode || 'fieldwork-entry');
+  if (mode === 'bcba-brain') {
+    const message = String(req.body?.message || '').trim();
+    if (message.length < 2) return send(res, 400, { error: 'Ask Baker Brain a BCBA question.' });
+    if (message.length > 12000) return send(res, 400, { error: 'That message is too long for one Baker Brain turn.' });
+    const gatewayToken = await getAiGatewayToken();
+    if (!gatewayToken) return send(res, 503, { error: 'Baker Brain AI is temporarily unavailable.' });
+    try {
+      const result = await runBakerBrain({
+        message,
+        context: req.body?.context && typeof req.body.context === 'object' ? req.body.context : {},
+        history: Array.isArray(req.body?.history) ? req.body.history : [],
+        gatewayToken,
+        userEmail: session.email,
+      });
+      return send(res, 200, result);
+    } catch (error) {
+      console.error('Baker Brain request failed', error);
+      return send(res, 502, { error: 'Baker Brain could not complete that turn. Try again.' });
+    }
+  }
 
   const text = String(req.body?.text || '').trim();
   const date = String(req.body?.date || new Date().toISOString().slice(0, 10));
