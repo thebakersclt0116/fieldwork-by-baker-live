@@ -19,7 +19,7 @@ function loadState(): State { try { return JSON.parse(localStorage.getItem(KEY) 
 
 export default function BCBARoadmap() {
   const [state, setState] = useState<State>(() => loadState());
-  const [selected, setSelected] = useState(steps[0][0]);
+  const [selected, setSelected] = useState<string>(steps[0][0]);
   const current = steps.find(([id]) => id === selected) || steps[0];
   const completed = useMemo(() => steps.filter(([id]) => state[id]?.complete).length, [state]);
   const update = (id: string, patch: State[string]) => { const next = { ...state, [id]: { ...state[id], ...patch } }; setState(next); localStorage.setItem(KEY, JSON.stringify(next)); };
@@ -33,7 +33,7 @@ export default function BCBARoadmap() {
 
         <div className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
           <section className="space-y-2">
-            {steps.map(([id, title], index) => <button key={id} onClick={() => setSelected(id)} className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition ${selected === id ? 'border-[#F0C0CA] bg-[#FFF4F6] dark:border-[#E85D70]/40 dark:bg-[#E85D70]/10' : 'border-[#F2EDEA] bg-white hover:border-[#E8DCD6] dark:border-white/10 dark:bg-[#211D1A]'}`}><button onClick={(e) => { e.stopPropagation(); update(id, { complete: !state[id]?.complete }); }} className="shrink-0 text-[#5FA37E]" aria-label={`Toggle ${title}`}>{state[id]?.complete ? <CheckCircle2 size={22} /> : <Circle size={22} className="text-[#CFC5BF]" />}</button><div><div className="text-xs font-bold text-[#A8998E]">STEP {index + 1}</div><div className="font-semibold text-[#332C28] dark:text-white">{title}</div></div></button>)}
+            {steps.map(([id, title], index) => <div key={id} role="button" tabIndex={0} onClick={() => setSelected(id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelected(id); }} className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left transition ${selected === id ? 'border-[#F0C0CA] bg-[#FFF4F6] dark:border-[#E85D70]/40 dark:bg-[#E85D70]/10' : 'border-[#F2EDEA] bg-white hover:border-[#E8DCD6] dark:border-white/10 dark:bg-[#211D1A]'}`}><button type="button" onClick={(e) => { e.stopPropagation(); update(id, { complete: !state[id]?.complete }); }} className="shrink-0 text-[#5FA37E]" aria-label={`Toggle ${title}`}>{state[id]?.complete ? <CheckCircle2 size={22} /> : <Circle size={22} className="text-[#CFC5BF]" />}</button><div><div className="text-xs font-bold text-[#A8998E]">STEP {index + 1}</div><div className="font-semibold text-[#332C28] dark:text-white">{title}</div></div></div>)}
           </section>
 
           <section className="rounded-[30px] border border-[#F2EDEA] bg-white p-7 dark:border-white/10 dark:bg-[#211D1A]">
