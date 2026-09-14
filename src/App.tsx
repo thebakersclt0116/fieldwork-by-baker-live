@@ -17,7 +17,7 @@ import MemberDashboard from './pages/MemberDashboard';
 import SmartImportBridge from './pages/SmartImportBridge';
 import BakerAI from './pages/BakerAI';
 import BakerBrainHub from './pages/BakerBrainHub';
-import MyPath from './pages/MyPath';
+import MyPathV2 from './pages/MyPathV2';
 import BCBARoadmap from './pages/BCBARoadmap';
 import BakerCommons from './pages/BakerCommons';
 import ExamLab from './pages/ExamLab';
@@ -50,7 +50,7 @@ export default function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
 
-        <Route path="/my-path" element={<ProtectedRoute><MyPath /></ProtectedRoute>} />
+        <Route path="/my-path" element={<ProtectedRoute><MyPathV2 /></ProtectedRoute>} />
         <Route path="/roadmap" element={<BCBARoadmap />} />
         <Route path="/commons" element={<ProtectedRoute><BakerCommons /></ProtectedRoute>} />
         <Route path="/baker-brain" element={<ProtectedRoute><BakerBrainHub /></ProtectedRoute>} />
