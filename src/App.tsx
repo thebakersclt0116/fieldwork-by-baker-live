@@ -21,6 +21,7 @@ import UpgradeSuccess from './pages/UpgradeSuccess';
 import ExportCenter from './pages/ExportCenter';
 import SupervisorView from './pages/SupervisorView';
 import ApplySupervisorFeedback from './pages/ApplySupervisorFeedback';
+import AdminSupervisorPreview from './pages/AdminSupervisorPreview';
 import { useAuth } from './hooks/useAuth';
 
 function AccountDashboard() {
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
         <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><SmartImportBridge /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/admin/supervisor-preview" element={<ProtectedRoute><AdminSupervisorPreview /></ProtectedRoute>} />
         <Route path="/supervisor/:token" element={<SupervisorView />} />
         <Route path="/feedback/:token" element={<ApplySupervisorFeedback />} />
       </Routes>
