@@ -117,6 +117,113 @@ async function extractPdfSourceText(fileData: string): Promise<string> {
   }
 }
 
+const MONTH_NUMBER: Record<string, string> = {
+  january: '01', february: '02', march: '03', april: '04', may: '05', june: '06',
+  july: '07', august: '08', september: '09', october: '10', november: '11', december: '12',
+};
+
+function minutesFromMatch(match: RegExpMatchArray | null): number | null {
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function formatHoursMinutes(totalMinutes: number): string {
+  const safeMinutes = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const minutes = safeMinutes % 60;
+  return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+}
+
+function parseBacbMonthlyVerification(text: string, fileName: string): { entry: ProposedEntry; warnings: string[] } | null {
+  const normalized = text.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!/Monthly Fieldwork Verification Form/i.test(normalized) && !/MONTHLY\s*\|\s*FIELDWORK VERIFICATION FORM/i.test(normalized)) {
+    return null;
+  }
+
+  const monthMatch = normalized.match(/Month\/Year:\s*([A-Za-z]+)\s+(20\d{2})/i);
+  const totalMatch = normalized.match(/Total Fieldwork Hours\s*(\d{1,3})\s*hh\s*(\d{1,2})\s*mm/i);
+  if (!monthMatch || !totalMatch) return null;
+
+  const monthNumber = MONTH_NUMBER[String(monthMatch[1]).toLowerCase()];
+  if (!monthNumber) return null;
+
+  const totalMinutes = minutesFromMatch(totalMatch);
+  if (totalMinutes === null || totalMinutes <= 0) return null;
+
+  const independentMatch = normalized.match(/A\. Independent Hours \(supervisor not present\):\s*(\d{1,3})\s*hh\s*(\d{1,2})\s*mm/i);
+  const directSupervisedMatch = normalized.match(/B\. Supervised Hours \(supervisor present\):\s*(\d{1,3})\s*hh\s*(\d{1,2})\s*mm/i);
+  const preLabelSupervisedMatch = normalized.match(/A\. Independent Hours \(supervisor not present\):\s*\d{1,3}\s*hh\s*\d{1,2}\s*mm\s+(\d{1,3})\s*hh\s*(\d{1,2})\s*mm\s+B\. Supervised Hours \(supervisor present\):/i);
+  const observationMatch = normalized.match(/These fieldwork hours include\s*(\d{1,3})\s*hh\s*(\d{1,2})\s*mm\s*of observation/i);
+  const supervisorMatch = normalized.match(/(?:Responsible )?Supervisor Name:\s*(.*?)\s*Certification # or BACB ID #:/i);
+  const percentageMatch = normalized.match(/Percentage of Hours Supervised\s*([0-9]+(?:\.[0-9]+)?)%/i);
+
+  const independentMinutes = minutesFromMatch(independentMatch);
+  let supervisedMinutes = minutesFromMatch(directSupervisedMatch) ?? minutesFromMatch(preLabelSupervisedMatch);
+  if (supervisedMinutes === null && independentMinutes !== null) {
+    supervisedMinutes = Math.max(0, totalMinutes - independentMinutes);
+  }
+  const observationMinutes = minutesFromMatch(observationMatch) ?? 0;
+  const supervisorName = String(supervisorMatch?.[1] || 'Not specified').trim().slice(0, 120);
+  const fieldworkType: ProposedEntry['fieldworkType'] = /Concentrated Supervised Fieldwork/i.test(normalized)
+    ? 'CONCENTRATED'
+    : 'SUPERVISED';
+  const monthLabel = `${monthMatch[1]} ${monthMatch[2]}`;
+  const date = `${monthMatch[2]}-${monthNumber}-01`;
+  const warnings: string[] = [
+    `${fileName}: this monthly verification form documents aggregate monthly hours, not session-level restricted/unrestricted activities. Baker did not invent a category breakdown; verify category compliance against your detailed Ripley history.`,
+    `${fileName}: signature completion cannot be reliably established from the PDF text layer, so the monthly aggregate is kept Pending for review.`,
+  ];
+
+  if (fieldworkType === 'SUPERVISED' && !/Supervised Fieldwork|Concentrated Supervised Fieldwork/i.test(normalized)) {
+    warnings.push(`${fileName}: the PDF does not explicitly identify standard versus concentrated fieldwork. Baker used Supervised Fieldwork as the conservative default.`);
+  }
+
+  if (independentMinutes !== null && supervisedMinutes !== null) {
+    const componentTotal = independentMinutes + supervisedMinutes;
+    if (Math.abs(componentTotal - totalMinutes) >= 1) {
+      warnings.push(`${fileName}: the form's stated independent + supervisor-present minutes differ from its stated total by ${Math.abs(componentTotal - totalMinutes)} minute(s). Baker preserved the stated total and supervisor-present values exactly.`);
+    }
+  }
+
+  const sourcePercent = percentageMatch ? Number(percentageMatch[1]) : null;
+  const notes = [
+    'Monthly aggregate imported from source document — not an individual session date.',
+    `Source month: ${monthLabel}.`,
+    `Total fieldwork: ${formatHoursMinutes(totalMinutes)}.`,
+    independentMinutes !== null ? `Independent: ${formatHoursMinutes(independentMinutes)}.` : '',
+    supervisedMinutes !== null ? `Supervisor present: ${formatHoursMinutes(supervisedMinutes)}.` : '',
+    `Observation: ${formatHoursMinutes(observationMinutes)}.`,
+    sourcePercent !== null ? `Source supervision percentage: ${sourcePercent}%.` : '',
+    'Restricted/unrestricted activity breakdown is not stated on this monthly verification form.',
+  ].filter(Boolean).join(' ');
+
+  return {
+    entry: {
+      date,
+      startTime: '00:00',
+      endTime: '00:00',
+      duration: totalMinutes / 60,
+      fieldworkType,
+      activityCategory: 'UNRESTRICTED',
+      activityType: 'UNRESTRICTED_OTHER',
+      supervisorName,
+      setting: '',
+      notes,
+      status: 'PENDING',
+      supervisionMinutes: supervisedMinutes ?? 0,
+      observationMinutes,
+      individualSupervisionMinutes: 0,
+      confidence: 0.99,
+      sourceLabel: 'BACB Monthly Fieldwork Verification Form (Ripley PDF)',
+      summaryDerived: true,
+    },
+    warnings,
+  };
+}
+
 function sanitizeEntry(value: any): ProposedEntry | null {
   if (!value || typeof value !== 'object') return null;
   const date = String(value.date || '').trim();
@@ -274,6 +381,17 @@ export default async function handler(req: any, res: any) {
       if (extracted.length >= 40) {
         effectiveText = extracted;
         pdfTextExtracted = true;
+
+        const monthlyVerification = parseBacbMonthlyVerification(extracted, fileName);
+        if (monthlyVerification) {
+          return send(res, 200, {
+            detectedSource: 'BACB Monthly Fieldwork Verification Form (Ripley PDF)',
+            entries: [monthlyVerification.entry],
+            warnings: monthlyVerification.warnings,
+            provider: 'baker-deterministic-form-parser',
+            ingestion: 'pdf-text-monthly-verification',
+          });
+        }
       } else {
         console.warn('Baker PDF text extraction returned too little text', { fileName, chars: extracted.length });
       }
