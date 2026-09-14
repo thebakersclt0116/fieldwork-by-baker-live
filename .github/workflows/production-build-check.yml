@@ -20,5 +20,15 @@ jobs:
           cache-dependency-path: package.json
       - name: Install dependencies
         run: npm install
-      - name: Build production bundle
+      - name: Build production frontend
         run: npm run build
+      - name: Bundle production API routes
+        run: |
+          mkdir -p /tmp/baker-api-check
+          for route in api/*.ts; do
+            case "$route" in
+              api/_*) continue ;;
+            esac
+            name="$(basename "$route" .ts)"
+            ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/baker-api-check/$name.mjs"
+          done
