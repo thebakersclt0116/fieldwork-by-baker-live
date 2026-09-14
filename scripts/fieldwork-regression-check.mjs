@@ -37,6 +37,42 @@ for (const required of [
   assert(dashboard.includes(required), `Member dashboard missing required workflow text: ${required}`);
 }
 
+const editor = read('src/components/TrackedHoursEditor.tsx');
+for (const required of [
+  'Edit tracked hours',
+  'Why did you change this approved entry?',
+  'Save & require re-approval',
+  "revised.status = 'PENDING'",
+  'requiresReapproval = true',
+  "notificationMode: 'revision'",
+  'revisionHistory',
+  'Because this entry had not been approved yet, no supervisor notification was sent.',
+]) {
+  assert(editor.includes(required), `Tracked-hours revision workflow missing: ${required}`);
+}
+
+const feedback = read('src/pages/ApplySupervisorFeedback.tsx');
+for (const required of [
+  'current.requiresReapproval && reviewedRevision === null',
+  'reviewedRevision !== currentRevision',
+  'lastApprovalRevision',
+  'supervisorEmail: session.supervisor.email',
+]) {
+  assert(feedback.includes(required), `Stale-approval protection missing: ${required}`);
+}
+
+const supervisorInvite = read('server/supervisor-invite-safe.ts');
+for (const required of [
+  'fieldwork.entry.reapproval_required',
+  'notificationDeliveryConfigured',
+  'RESEND_API_KEY',
+  'BAKER_NOTIFICATION_WEBHOOK_URL',
+  'changeReason',
+  'revision:',
+]) {
+  assert(supervisorInvite.includes(required), `Supervisor revision notification support missing: ${required}`);
+}
+
 const bakerUi = read('src/components/BakerAIEntryAssistant.tsx');
 for (const required of ['organizationName', 'workPresence', 'supervisionFormat', 'observationMinutes', 'observationMode', 'missingFields']) {
   assert(bakerUi.includes(required), `Baker AI UI missing field: ${required}`);
@@ -67,4 +103,4 @@ assert(darkCss.includes('.dark body'), 'Dark mode does not style the document bo
 assert(darkCss.includes('.dark input'), 'Dark mode does not style form controls');
 assert(darkCss.includes('.dark .bg-white'), 'Dark mode does not cover legacy white cards');
 
-console.log('Fieldwork regression checks passed: Emily workflow, decimal time conversion, deletion controls, compliance flags, Baker AI schema, and true dark mode.');
+console.log('Fieldwork regression checks passed: Emily workflow, decimal time conversion, deletion, editable tracked hours, revision/reapproval protection, notification handoff, compliance flags, Baker AI schema, and true dark mode.');
