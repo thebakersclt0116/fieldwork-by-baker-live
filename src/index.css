@@ -35,7 +35,6 @@
     --sidebar-border: 20 14% 91%;
     --sidebar-ring: 350 77% 63%;
 
-    /* Custom Fieldwork Design Tokens */
     --rose-50: #FFF5F7;
     --rose-100: #FFE0E6;
     --rose-200: #FFC1CC;
@@ -74,14 +73,12 @@
     --gold-light: #FBF3EB;
     --platinum: #B8C4CE;
 
-    /* Gradients */
     --gradient-hero: linear-gradient(135deg, #FFF5F7 0%, #FFFCF9 40%, #FFF8F3 70%, #FBF3EB 100%);
     --gradient-rose-glow: radial-gradient(ellipse at 30% 20%, rgba(233,93,112,0.12) 0%, transparent 60%);
     --gradient-dark-hero: linear-gradient(135deg, #1A1518 0%, #231E21 50%, #2C2529 100%);
     --gradient-cta: linear-gradient(135deg, #E85D70 0%, #F97B8A 100%);
     --gradient-enterprise: linear-gradient(135deg, #D4A574 0%, #E8C9A0 100%);
 
-    /* Typography */
     --font-serif: 'Playfair Display', Georgia, serif;
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -116,14 +113,15 @@
     --sidebar-border: 340 8% 22%;
     --sidebar-ring: 350 77% 63%;
 
-    --dark-bg: #1A1518;
-    --dark-surface: #231E21;
-    --dark-elevated: #2C2529;
-    --dark-border: #3A3236;
-    --dark-text: #F0EAE6;
-    --dark-text-secondary: #A8998E;
-    --dark-rose: #F97B8A;
-    --dark-rose-soft: #3D2830;
+    --dark-bg: #121013;
+    --dark-surface: #1B171A;
+    --dark-elevated: #242025;
+    --dark-border: #3A3238;
+    --dark-text: #F5EFEB;
+    --dark-text-secondary: #B7AAA2;
+    --dark-rose: #FF8A9A;
+    --dark-rose-soft: #3A222A;
+    color-scheme: dark;
   }
 
   html {
@@ -138,9 +136,18 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  .dark body {
+    color: var(--dark-text);
+    background: var(--dark-bg);
+  }
+
   h1, h2, h3 {
     font-family: var(--font-serif);
     color: var(--warm-gray-900);
+  }
+
+  .dark h1, .dark h2, .dark h3 {
+    color: var(--dark-text);
   }
 
   * {
@@ -150,6 +157,11 @@
   ::selection {
     background-color: rgba(233, 93, 112, 0.2);
     color: var(--warm-gray-900);
+  }
+
+  .dark ::selection {
+    background-color: rgba(249, 123, 138, 0.35);
+    color: #fff;
   }
 }
 
@@ -197,6 +209,10 @@
     border-color: var(--rose-500);
   }
 
+  .dark .btn-secondary:hover {
+    background-color: var(--dark-rose-soft);
+  }
+
   .section-overline {
     font-family: var(--font-sans);
     font-size: 12px;
@@ -210,6 +226,10 @@
     background: var(--gradient-hero);
   }
 
+  .dark .gradient-hero-bg {
+    background: var(--gradient-dark-hero);
+  }
+
   .gradient-cta-bg {
     background: var(--gradient-cta);
   }
@@ -221,7 +241,7 @@
   }
 
   .dark .glass-navbar {
-    background: rgba(26, 21, 24, 0.92);
+    background: rgba(18, 16, 19, 0.94);
   }
 }
 
@@ -339,5 +359,73 @@
       padding-left: 24px;
       padding-right: 24px;
     }
+  }
+
+  /* Site-wide dark mode compatibility for legacy hard-coded utility colors. */
+  .dark [class~="bg-white"],
+  .dark [class~="bg-[#FFFCF9]"] {
+    background-color: var(--dark-surface) !important;
+  }
+
+  .dark [class~="bg-[#FAF8F6]"],
+  .dark [class~="bg-[#FFF8F3]"],
+  .dark [class~="bg-[#FFF5F7]"] {
+    background-color: var(--dark-elevated) !important;
+  }
+
+  .dark [class*="from-[#FFF5F7]"],
+  .dark [class*="via-white"],
+  .dark [class*="to-[#FFF8F3]"] {
+    --tw-gradient-from: #241C20 var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: rgb(36 28 32 / 0) var(--tw-gradient-to-position) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), #1B171A var(--tw-gradient-via-position), #211A1D var(--tw-gradient-to-position) !important;
+  }
+
+  .dark [class~="border-[#F2EDEA]"],
+  .dark [class~="border-[#E2DAD5]"],
+  .dark [class~="border-[#F0D5DA]"],
+  .dark [class~="border-[#EED4DA]"] {
+    border-color: var(--dark-border) !important;
+  }
+
+  .dark [class~="text-[#332C28]"],
+  .dark [class~="text-[#4D423C]"],
+  .dark [class~="text-[#1E1A18]"] {
+    color: var(--dark-text) !important;
+  }
+
+  .dark [class~="text-[#6B5D54]"],
+  .dark [class~="text-[#7B6B62]"],
+  .dark [class~="text-[#8C7A70]"],
+  .dark [class~="text-[#A8998E]"] {
+    color: var(--dark-text-secondary) !important;
+  }
+
+  .dark input,
+  .dark textarea,
+  .dark select {
+    color: var(--dark-text) !important;
+    background-color: #171316 !important;
+    border-color: var(--dark-border) !important;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #83767E !important;
+  }
+
+  .dark option {
+    background: #171316;
+    color: var(--dark-text);
+  }
+
+  .dark [class~="shadow-sm"],
+  .dark [class*="shadow-["] {
+    --tw-shadow-color: rgb(0 0 0 / 0.4) !important;
+  }
+
+  .dark footer,
+  .dark main {
+    background-color: var(--dark-bg);
   }
 }
