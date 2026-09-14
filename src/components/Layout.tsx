@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import PlatformNavbar from './PlatformNavbar';
 import Footer from './Footer';
 import TrackedHoursEditor from './TrackedHoursEditor';
+import RipleyQuickLog from './RipleyQuickLog';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(() => {
@@ -36,6 +37,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className={`min-h-[100dvh] flex flex-col ${isDark ? 'dark' : ''}`}>
       <PlatformNavbar isDark={isDark} onToggleDark={toggleDark} />
       <main className="flex-1 pt-[72px]" key={`${location.pathname}:${fieldworkVersion}`}>{children}</main>
+      <RipleyQuickLog />
       <TrackedHoursEditor />
       <Footer />
     </div>
