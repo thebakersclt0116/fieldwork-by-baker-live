@@ -1,9 +1,12 @@
+import { extractText, getDocumentProxy } from 'unpdf';
 import { canUsePaidTools, requireSession } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
 
 const MODEL = 'openai/gpt-5.6-sol';
 const MAX_BASE64_LENGTH = 3_150_000; // ~2.3 MB binary, safely below Vercel's JSON request limit.
 const MAX_TEXT_LENGTH = 120_000;
+const MAX_PDF_PAGES = 25;
+const PDF_TEXT_TIMEOUT_MS = 10_000;
 
 type ProposedEntry = {
   date: string;
@@ -63,9 +66,55 @@ function inferMimeType(fileName: string, providedMimeType: string): string {
   return 'application/octet-stream';
 }
 
+function rawBase64(fileData: string): string {
+  const trimmed = fileData.trim();
+  if (trimmed.startsWith('data:')) {
+    const comma = trimmed.indexOf(',');
+    return (comma >= 0 ? trimmed.slice(comma + 1) : '').replace(/\s+/g, '');
+  }
+  return trimmed.replace(/\s+/g, '');
+}
+
 function normalizeFileData(fileData: string, mimeType: string): string {
   if (fileData.startsWith('data:')) return fileData;
-  return `data:${mimeType};base64,${fileData.replace(/\s+/g, '')}`;
+  return `data:${mimeType};base64,${rawBase64(fileData)}`;
+}
+
+async function extractPdfSourceText(fileData: string): Promise<string> {
+  const base64 = rawBase64(fileData);
+  const bytes = Buffer.from(base64, 'base64');
+  if (bytes.length < 5 || bytes.subarray(0, 5).toString('ascii') !== '%PDF-') {
+    throw new Error('INVALID_PDF');
+  }
+
+  const pdf = await getDocumentProxy(new Uint8Array(bytes), {
+    maxImageSize: 16_777_216,
+  });
+
+  try {
+    if (pdf.numPages > MAX_PDF_PAGES) throw new Error('PDF_PAGE_LIMIT');
+
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => reject(new Error('PDF_TEXT_TIMEOUT')), PDF_TEXT_TIMEOUT_MS);
+    });
+
+    const result = await Promise.race([
+      extractText(pdf, { mergePages: true }),
+      timeoutPromise,
+    ]).finally(() => {
+      if (timeout) clearTimeout(timeout);
+    });
+
+    const text = typeof result.text === 'string' ? result.text : result.text.join('\n\n');
+    return text.replace(/\u0000/g, '').trim().slice(0, MAX_TEXT_LENGTH);
+  } finally {
+    try {
+      await pdf.destroy();
+    } catch {
+      // Best-effort cleanup only.
+    }
+  }
 }
 
 function sanitizeEntry(value: any): ProposedEntry | null {
@@ -215,6 +264,27 @@ export default async function handler(req: any, res: any) {
   if (rawText.length > MAX_TEXT_LENGTH) return send(res, 413, { code: 'TEXT_TOO_LARGE', error: 'This text batch is too large. Baker will import it in smaller batches.' });
   if (fileData.length > MAX_BASE64_LENGTH) return send(res, 413, { code: 'FILE_TOO_LARGE', error: 'This file is too large for direct AI upload. Split the PDF into smaller files and retry.' });
 
+  let effectiveText = rawText;
+  let pdfTextExtracted = false;
+  const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
+
+  if (!effectiveText && fileData && isPdf) {
+    try {
+      const extracted = await extractPdfSourceText(fileData);
+      if (extracted.length >= 40) {
+        effectiveText = extracted;
+        pdfTextExtracted = true;
+      } else {
+        console.warn('Baker PDF text extraction returned too little text', { fileName, chars: extracted.length });
+      }
+    } catch (error) {
+      console.warn('Baker PDF text extraction failed; falling back to AI file input', {
+        fileName,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
+  }
+
   const gatewayToken = await getAiGatewayToken();
   if (!gatewayToken) return send(res, 503, { code: 'AI_GATEWAY_UNAVAILABLE', error: 'Baker AI migration is temporarily unavailable.' });
 
@@ -223,8 +293,11 @@ export default async function handler(req: any, res: any) {
     text: `Source hint: ${sourceHint || 'unknown fieldwork tracker/document'}\nFilename: ${fileName}\nExtract all explicit fieldwork records from the attached or supplied source.`,
   }];
 
-  if (rawText) {
-    content.push({ type: 'input_text', text: `BEGIN UNTRUSTED FIELDWORK SOURCE\n${rawText}\nEND UNTRUSTED FIELDWORK SOURCE` });
+  if (effectiveText) {
+    content.push({
+      type: 'input_text',
+      text: `BEGIN UNTRUSTED FIELDWORK SOURCE\n${effectiveText}\nEND UNTRUSTED FIELDWORK SOURCE`,
+    });
   } else {
     content.push({
       type: 'input_file',
@@ -259,7 +332,9 @@ export default async function handler(req: any, res: any) {
         code,
         error: response.status === 413
           ? 'This document is too large for Baker AI to read in one request.'
-          : 'Baker AI could not read this document. The file was received, but the AI document reader rejected it.',
+          : pdfTextExtracted
+            ? 'Baker extracted the PDF text, but AI migration could not structure the fieldwork data.'
+            : 'Baker AI could not read this document. The file was received, but the AI document reader rejected it.',
       });
     }
 
@@ -280,6 +355,7 @@ export default async function handler(req: any, res: any) {
       entries,
       warnings: Array.isArray(parsed.warnings) ? parsed.warnings.map((value: unknown) => String(value).slice(0, 500)).slice(0, 30) : [],
       provider: MODEL,
+      ingestion: pdfTextExtracted ? 'pdf-text' : effectiveText ? 'text' : 'file',
     });
   } catch (error) {
     console.error('Baker migration request failed', error);
