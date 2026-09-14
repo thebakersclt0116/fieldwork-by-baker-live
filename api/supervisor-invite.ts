@@ -1,1 +1,1 @@
-export { default } from './supervisor-invite-v2.js';
+export { default } from '../server/supervisor-invite-safe.js';
