@@ -11,10 +11,37 @@ export type ActivityType =
 
 export type ActivityCategory = 'RESTRICTED' | 'UNRESTRICTED' | 'UNKNOWN';
 export type EntryStatus = 'DRAFT' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+export type WorkPresence = 'INDEPENDENT' | 'SUPERVISED';
+export type SupervisionFormat = 'INDIVIDUAL' | 'GROUP';
+export type ObservationMode = 'IN_PERSON' | 'ONLINE' | 'PHONE';
 
 export type UserRole = 'SUPERVISEE' | 'SUPERVISOR' | 'ADMIN' | 'ORGANIZATION';
 
 export type SubscriptionTier = 'INDIVIDUAL' | 'PROFESSIONAL' | 'ENTERPRISE';
+
+export interface HourEntryRevision {
+  revision: number;
+  changedAt: string;
+  reason?: string;
+  previousStatus: EntryStatus;
+  snapshot: {
+    date: string;
+    startTime: string;
+    endTime: string;
+    duration: number;
+    activityCategory: ActivityCategory;
+    supervisorName: string;
+    organizationName?: string;
+    workPresence?: WorkPresence;
+    supervisionFormat?: SupervisionFormat;
+    supervisionMinutes?: number;
+    observationMinutes?: number;
+    observationMode?: ObservationMode;
+    clientInitials?: string;
+    setting: string;
+    notes?: string;
+  };
+}
 
 export interface HourEntry {
   id: string;
@@ -28,6 +55,11 @@ export interface HourEntry {
   activityCategory: ActivityCategory;
   supervisorId: string;
   supervisorName: string;
+  supervisorEmail?: string;
+  organizationName?: string;
+  workPresence?: WorkPresence;
+  supervisionFormat?: SupervisionFormat;
+  observationMode?: ObservationMode;
   setting: string;
   notes?: string;
   status: EntryStatus;
@@ -43,6 +75,12 @@ export interface HourEntry {
   aiConfidence?: number;
   aiRationale?: string;
   aiSourceText?: string;
+  revision?: number;
+  revisionReason?: string;
+  requiresReapproval?: boolean;
+  lastApprovedAt?: string;
+  lastApprovalRevision?: number;
+  revisionHistory?: HourEntryRevision[];
 }
 
 export interface User {
