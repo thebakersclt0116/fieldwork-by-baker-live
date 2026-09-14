@@ -19,6 +19,7 @@ jobs:
       - name: Install dependencies from official npm registry
         run: |
           npm config set registry https://registry.npmjs.org/
+          rm -f package-lock.json
           npm install --registry=https://registry.npmjs.org/
       - name: Build production frontend
         run: npm run build
