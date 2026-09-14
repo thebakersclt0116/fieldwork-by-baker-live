@@ -111,6 +111,8 @@ function sanitizeReviewEntry(value: any) {
       : 'UNRESTRICTED';
   const narrative = String(value.narrative || value.notes || '').trim().slice(0, 2400);
   if (!id || !date || !(duration > 0)) return undefined;
+  const rawRevision = value.revision;
+  const hasRevision = rawRevision !== undefined && rawRevision !== null && rawRevision !== '' && Number.isFinite(Number(rawRevision));
   return {
     id,
     date,
@@ -119,7 +121,7 @@ function sanitizeReviewEntry(value: any) {
     narrative,
     supervisorName: String(value.supervisorName || '').trim().slice(0, 120) || undefined,
     supervisionMinutes: Math.max(0, Number(value.supervisionMinutes || 0)) || undefined,
-    revision: Math.max(0, Math.floor(Number(value.revision || 0))),
+    ...(hasRevision ? { revision: Math.max(0, Math.floor(Number(rawRevision))) } : {}),
     changeReason: String(value.changeReason || '').trim().slice(0, 1000) || undefined,
   };
 }
