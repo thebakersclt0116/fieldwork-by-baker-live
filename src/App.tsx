@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PaidFeatureRoute from './components/PaidFeatureRoute';
-import Home from './pages/Home';
+import PlatformHome from './pages/PlatformHome';
 import Features from './pages/Features';
 import Pricing from './pages/Pricing';
 import Enterprise from './pages/Enterprise';
@@ -16,6 +16,12 @@ import Dashboard from './pages/Dashboard';
 import MemberDashboard from './pages/MemberDashboard';
 import SmartImportBridge from './pages/SmartImportBridge';
 import BakerAI from './pages/BakerAI';
+import BakerBrainHub from './pages/BakerBrainHub';
+import MyPath from './pages/MyPath';
+import BCBARoadmap from './pages/BCBARoadmap';
+import BakerCommons from './pages/BakerCommons';
+import ExamLab from './pages/ExamLab';
+import ResourceVault from './pages/ResourceVault';
 import Upgrade from './pages/Upgrade';
 import UpgradeSuccess from './pages/UpgradeSuccess';
 import ExportCenter from './pages/ExportCenter';
@@ -33,7 +39,7 @@ export default function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<PlatformHome />} />
         <Route path="/features" element={<Features />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/enterprise" element={<Enterprise />} />
@@ -43,6 +49,14 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
+
+        <Route path="/my-path" element={<ProtectedRoute><MyPath /></ProtectedRoute>} />
+        <Route path="/roadmap" element={<BCBARoadmap />} />
+        <Route path="/commons" element={<ProtectedRoute><BakerCommons /></ProtectedRoute>} />
+        <Route path="/baker-brain" element={<ProtectedRoute><BakerBrainHub /></ProtectedRoute>} />
+        <Route path="/exam-lab" element={<ExamLab />} />
+        <Route path="/resources" element={<ResourceVault />} />
+
         <Route path="/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
