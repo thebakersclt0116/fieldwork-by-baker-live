@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import './index.css'
+import './dark-mode.css'
 import App from './App.tsx'
 
 const CANONICAL_HOST = 'www.fieldworkbybaker.com'
@@ -9,6 +10,16 @@ const EMILY_EMAIL = 'ayalaemily52@gmail.com'
 const OWNER_EMAIL = 'justin@bakerholdings.co'
 const USER_KEY = 'authUser'
 const TOKEN_KEY = 'bakerSessionToken'
+
+function installInitialTheme(): void {
+  try {
+    const stored = window.localStorage.getItem('theme')
+    const dark = stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    document.documentElement.classList.toggle('dark', dark)
+  } catch {
+    document.documentElement.classList.toggle('dark', window.matchMedia('(prefers-color-scheme: dark)').matches)
+  }
+}
 
 function redirectToCanonicalHost(): boolean {
   if (window.location.hostname !== VERCEL_HOST) return false
@@ -80,6 +91,8 @@ function installMigrationSessionGuard(): void {
     return response
   }
 }
+
+installInitialTheme()
 
 if (!redirectToCanonicalHost()) {
   installMigrationSessionGuard()
