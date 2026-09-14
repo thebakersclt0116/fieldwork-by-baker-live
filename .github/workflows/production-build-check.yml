@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,10 +16,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package.json
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies from official npm registry
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm install --registry=https://registry.npmjs.org/
       - name: Build production frontend
         run: npm run build
       - name: Bundle production API routes
