@@ -37,6 +37,19 @@ for (const required of [
   assert(dashboard.includes(required), `Member dashboard missing required workflow text: ${required}`);
 }
 
+const quickLog = read('src/components/RipleyQuickLog.tsx');
+for (const required of [
+  'Ripley-style Quick Log',
+  'Start time',
+  'End time',
+  'Exact decimal hours',
+  "setCategory('UNRESTRICTED')",
+  "setCategory('RESTRICTED')",
+  'Quick Log Hours',
+]) {
+  assert(quickLog.includes(required), `Ripley-style quick logging missing: ${required}`);
+}
+
 const editor = read('src/components/TrackedHoursEditor.tsx');
 for (const required of [
   'Edit tracked hours',
@@ -79,9 +92,59 @@ for (const required of ['organizationName', 'workPresence', 'supervisionFormat',
 }
 
 const bakerApi = read('api/baker-ai.ts');
-for (const required of ['openai/gpt-5.6-sol', 'organizationName', 'workPresence', 'supervisionFormat', 'observationMode', 'missingFields']) {
-  assert(bakerApi.includes(required), `Baker AI API missing field/model: ${required}`);
+for (const required of ['openai/gpt-5.6-sol', 'organizationName', 'workPresence', 'supervisionFormat', 'observationMode', 'missingFields', "mode === 'bcba-brain'", 'runBakerBrain']) {
+  assert(bakerApi.includes(required), `Baker AI API missing field/model/mode: ${required}`);
 }
+
+const brainEngine = read('server/baker-brain-safe.ts');
+for (const required of [
+  'specialized BCBA/behavior-analysis professor',
+  'STRICT DOMAIN',
+  'PLATFORM NAVIGATION',
+  'OFFICIAL SOURCES',
+  'create study material',
+  'original and unofficial',
+]) {
+  assert(brainEngine.includes(required), `Baker Brain engine missing: ${required}`);
+}
+
+const brainUi = read('src/pages/BakerBrainHub.tsx');
+for (const required of [
+  'BCBA INTELLIGENCE CORE',
+  '24/7 BCBA professor',
+  'Live learner context',
+  'Weak-area radar',
+  'Save to Resource Vault',
+  "mode: 'bcba-brain'",
+]) {
+  assert(brainUi.includes(required), `Immersive Baker Brain UI missing: ${required}`);
+}
+
+const examData = read('src/data/bcbaExam.ts');
+for (const required of [
+  'BCBA_EXAM_TOTAL_QUESTIONS = 185',
+  'BCBA_EXAM_SCORED_QUESTIONS = 175',
+  'BCBA_EXAM_UNSCORED_QUESTIONS = 10',
+  'BCBA_EXAM_MINUTES = 240',
+  'Behaviorism and Philosophical Foundations',
+  'Personnel Supervision and Management',
+  'buildWeakAreaPlan',
+]) {
+  assert(examData.includes(required), `Full BCBA exam blueprint missing: ${required}`);
+}
+const examLab = read('src/pages/ExamLab.tsx');
+for (const required of [
+  'Start full BCBA simulation',
+  '185 original multiple-choice practice questions',
+  'Build my weak-area plan',
+  'Personalized seven-day repair cycle',
+  'Teach this to me in Baker Brain',
+]) {
+  assert(examLab.includes(required), `Exam Lab full-simulation feature missing: ${required}`);
+}
+
+const vault = read('src/pages/ResourceVault.tsx');
+assert(vault.includes('fieldworkByBaker:brainResources:v1'), 'Resource Vault does not load Baker Brain-created resources');
 
 const compliance = read('src/lib/compliance2027-safe.ts');
 for (const rule of [
@@ -129,4 +192,4 @@ assert(darkCss.includes('.dark body'), 'Dark mode does not style the document bo
 assert(darkCss.includes('.dark input'), 'Dark mode does not style form controls');
 assert(darkCss.includes('.dark .bg-white'), 'Dark mode does not cover legacy white cards');
 
-console.log('Fieldwork regression checks passed: Emily workflow, editable tracked hours, supervisor reapproval protection, Baker AI schema, true dark mode, and the six-part BCBA platform navigation are all present.');
+console.log('Fieldwork regression checks passed: Emily workflow, Ripley-style decimal quick logging, editable tracked hours, supervisor reapproval protection, full 185-question Exam Lab, personalized weak-area plans, immersive BCBA-only Baker Brain, Resource Vault handoff, dark mode, and core BCBA navigation are all present.');
