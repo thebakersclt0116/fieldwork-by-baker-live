@@ -1,0 +1,174 @@
+/* Site-wide dark theme for legacy hard-coded palette utilities.
+   The app already toggles html.dark; these rules make every major surface,
+   field, panel, modal, and dashboard honor that preference consistently. */
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background: #141114;
+  color: #f3ece8;
+}
+
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: #f6f0ec;
+}
+
+.dark .bg-white {
+  background-color: #211c20 !important;
+}
+
+.dark [class*="bg-[#FFFCF9]"] {
+  background-color: #141114 !important;
+}
+
+.dark [class*="bg-[#FAF8F6]"] {
+  background-color: #292329 !important;
+}
+
+.dark [class*="bg-[#F2EDEA]"] {
+  background-color: #30292e !important;
+}
+
+.dark [class*="bg-[#FFF5F7]"] {
+  background-color: #33232a !important;
+}
+
+.dark [class*="bg-[#FFF8F3]"] {
+  background-color: #2d2522 !important;
+}
+
+.dark [class*="bg-[#E8F5EE]"] {
+  background-color: #183127 !important;
+}
+
+.dark [class*="bg-[#FFF3E0]"] {
+  background-color: #382b18 !important;
+}
+
+.dark [class*="bg-[#FDE8E9]"] {
+  background-color: #3b2025 !important;
+}
+
+.dark [class*="bg-[#F4FBF7]"] {
+  background-color: #172b23 !important;
+}
+
+.dark [class*="text-[#332C28]"] {
+  color: #f4eeea !important;
+}
+
+.dark [class*="text-[#4D423C]"] {
+  color: #ddd3cd !important;
+}
+
+.dark [class*="text-[#6B5D54]"] {
+  color: #c5b7af !important;
+}
+
+.dark [class*="text-[#7B6B62]"] {
+  color: #bcada5 !important;
+}
+
+.dark [class*="text-[#8C7A70]"] {
+  color: #b7a79f !important;
+}
+
+.dark [class*="text-[#A8998E]"] {
+  color: #a99b93 !important;
+}
+
+.dark [class*="text-[#C9BDB5]"] {
+  color: #8f837c !important;
+}
+
+.dark [class*="border-[#F2EDEA]"] {
+  border-color: #3b3338 !important;
+}
+
+.dark [class*="border-[#E2DAD5]"] {
+  border-color: #493f45 !important;
+}
+
+.dark [class*="border-[#F0D5DA]"] {
+  border-color: #583941 !important;
+}
+
+.dark [class*="border-[#EED4DA]"] {
+  border-color: #583941 !important;
+}
+
+.dark [class*="border-[#F1D1C0]"] {
+  border-color: #604336 !important;
+}
+
+.dark [class*="border-[#CFE7D9]"] {
+  border-color: #315642 !important;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #201b1f !important;
+  color: #f4eeea !important;
+  border-color: #493f45 !important;
+  caret-color: #f97b8a;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #81746d !important;
+}
+
+.dark option {
+  background-color: #201b1f;
+  color: #f4eeea;
+}
+
+.dark input[type="checkbox"] {
+  accent-color: #e85d70;
+}
+
+.dark .bg-gradient-to-br {
+  background-image: linear-gradient(to bottom right, #312129, #211c20 52%, #2a221f) !important;
+}
+
+.dark .shadow-sm,
+.dark [class*="shadow-["] {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24) !important;
+}
+
+.dark .hover\:bg-\[\#FFF5F7\]:hover,
+.dark .hover\:bg-rose-50:hover {
+  background-color: #33232a !important;
+}
+
+.dark a,
+.dark button,
+.dark input,
+.dark textarea,
+.dark select {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+}
+
+.dark :focus-visible {
+  outline: 2px solid #f97b8a;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark *,
+  .dark *::before,
+  .dark *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
