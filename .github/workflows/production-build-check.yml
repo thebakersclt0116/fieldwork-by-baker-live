@@ -21,6 +21,8 @@ jobs:
           npm config set registry https://registry.npmjs.org/
           rm -f package-lock.json
           npm install --registry=https://registry.npmjs.org/
+      - name: Run Emily fieldwork regression checks
+        run: node scripts/fieldwork-regression-check.mjs
       - name: Build production frontend
         run: npm run build
       - name: Bundle production API routes
