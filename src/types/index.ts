@@ -9,6 +9,7 @@ export type ActivityType =
   | 'UNRESTRICTED_TRAINING'
   | 'UNRESTRICTED_OTHER';
 
+export type ActivityCategory = 'RESTRICTED' | 'UNRESTRICTED' | 'UNKNOWN';
 export type EntryStatus = 'DRAFT' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 export type UserRole = 'SUPERVISEE' | 'SUPERVISOR' | 'ADMIN' | 'ORGANIZATION';
@@ -24,7 +25,7 @@ export interface HourEntry {
   duration: number;
   fieldworkType: FieldworkType;
   activityType: ActivityType;
-  activityCategory: 'RESTRICTED' | 'UNRESTRICTED';
+  activityCategory: ActivityCategory;
   supervisorId: string;
   supervisorName: string;
   setting: string;
