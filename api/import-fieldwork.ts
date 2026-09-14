@@ -48,6 +48,26 @@ function extractOutputText(payload: any): string {
   return '';
 }
 
+function inferMimeType(fileName: string, providedMimeType: string): string {
+  const provided = providedMimeType.trim().toLowerCase().split(';')[0];
+  if (/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(provided)) return provided;
+
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (lower.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (lower.endsWith('.xls')) return 'application/vnd.ms-excel';
+  if (lower.endsWith('.json')) return 'application/json';
+  if (lower.endsWith('.txt')) return 'text/plain';
+  if (lower.endsWith('.csv')) return 'text/csv';
+  return 'application/octet-stream';
+}
+
+function normalizeFileData(fileData: string, mimeType: string): string {
+  if (fileData.startsWith('data:')) return fileData;
+  return `data:${mimeType};base64,${fileData.replace(/\s+/g, '')}`;
+}
+
 function sanitizeEntry(value: any): ProposedEntry | null {
   if (!value || typeof value !== 'object') return null;
   const date = String(value.date || '').trim();
@@ -188,14 +208,15 @@ export default async function handler(req: any, res: any) {
   const rawText = String(req.body?.rawText || '');
   const fileName = String(req.body?.fileName || 'fieldwork-records').trim().slice(0, 180);
   const fileData = String(req.body?.fileData || '');
+  const mimeType = inferMimeType(fileName, String(req.body?.mimeType || ''));
   const sourceHint = String(req.body?.sourceHint || '').trim().slice(0, 120);
 
-  if (!rawText && !fileData) return send(res, 400, { error: 'Provide fieldwork text or a supported document.' });
-  if (rawText.length > MAX_TEXT_LENGTH) return send(res, 413, { error: 'This text batch is too large. Baker will import it in smaller batches.' });
-  if (fileData.length > MAX_BASE64_LENGTH) return send(res, 413, { error: 'This file is too large for direct AI upload. Split the PDF into smaller files and retry.' });
+  if (!rawText && !fileData) return send(res, 400, { code: 'SOURCE_REQUIRED', error: 'Provide fieldwork text or a supported document.' });
+  if (rawText.length > MAX_TEXT_LENGTH) return send(res, 413, { code: 'TEXT_TOO_LARGE', error: 'This text batch is too large. Baker will import it in smaller batches.' });
+  if (fileData.length > MAX_BASE64_LENGTH) return send(res, 413, { code: 'FILE_TOO_LARGE', error: 'This file is too large for direct AI upload. Split the PDF into smaller files and retry.' });
 
   const gatewayToken = await getAiGatewayToken();
-  if (!gatewayToken) return send(res, 503, { error: 'Baker AI migration is temporarily unavailable.' });
+  if (!gatewayToken) return send(res, 503, { code: 'AI_GATEWAY_UNAVAILABLE', error: 'Baker AI migration is temporarily unavailable.' });
 
   const content: any[] = [{
     type: 'input_text',
@@ -205,7 +226,11 @@ export default async function handler(req: any, res: any) {
   if (rawText) {
     content.push({ type: 'input_text', text: `BEGIN UNTRUSTED FIELDWORK SOURCE\n${rawText}\nEND UNTRUSTED FIELDWORK SOURCE` });
   } else {
-    content.push({ type: 'input_file', filename: fileName, file_data: fileData });
+    content.push({
+      type: 'input_file',
+      filename: fileName,
+      file_data: normalizeFileData(fileData, mimeType),
+    });
   }
 
   try {
@@ -229,11 +254,23 @@ export default async function handler(req: any, res: any) {
     if (!response.ok) {
       const detail = (await response.text()).slice(0, 500);
       console.error('Baker migration gateway error', response.status, detail);
-      return send(res, 502, { error: 'Baker AI could not read this document. Try another export or a smaller PDF.' });
+      const code = response.status === 413 ? 'AI_GATEWAY_FILE_TOO_LARGE' : 'AI_GATEWAY_FILE_REJECTED';
+      return send(res, 502, {
+        code,
+        error: response.status === 413
+          ? 'This document is too large for Baker AI to read in one request.'
+          : 'Baker AI could not read this document. The file was received, but the AI document reader rejected it.',
+      });
     }
 
     const payload = await response.json();
-    const parsed = JSON.parse(extractOutputText(payload) || '{}');
+    const outputText = extractOutputText(payload);
+    if (!outputText) {
+      console.error('Baker migration returned no structured output', JSON.stringify(payload).slice(0, 500));
+      return send(res, 502, { code: 'AI_EMPTY_RESPONSE', error: 'Baker AI read the document but returned no importable fieldwork data.' });
+    }
+
+    const parsed = JSON.parse(outputText || '{}');
     const entries = Array.isArray(parsed.entries)
       ? parsed.entries.slice(0, 200).map(sanitizeEntry).filter((entry: ProposedEntry | null): entry is ProposedEntry => Boolean(entry))
       : [];
@@ -246,6 +283,6 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error) {
     console.error('Baker migration request failed', error);
-    return send(res, 502, { error: 'Baker AI could not process this migration batch.' });
+    return send(res, 502, { code: 'AI_MIGRATION_FAILED', error: 'Baker AI could not process this migration batch.' });
   }
 }
