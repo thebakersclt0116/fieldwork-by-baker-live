@@ -28,6 +28,7 @@ import ExportCenter from './pages/ExportCenter';
 import SupervisorView from './pages/SupervisorView';
 import ApplySupervisorFeedback from './pages/ApplySupervisorFeedback';
 import AdminSupervisorPreview from './pages/AdminSupervisorPreview';
+import AdminLaunchCheck from './pages/AdminLaunchCheck';
 import Legal from './pages/Legal';
 import NotFound from './pages/NotFound';
 import { useAuth } from './hooks/useAuth';
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><SmartImportBridge /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/admin/supervisor-preview" element={<ProtectedRoute><AdminSupervisorPreview /></ProtectedRoute>} />
+        <Route path="/admin/launch-check" element={<ProtectedRoute><AdminLaunchCheck /></ProtectedRoute>} />
         <Route path="/supervisor/:token" element={<SupervisorView />} />
         <Route path="/feedback/:token" element={<ApplySupervisorFeedback />} />
         <Route path="*" element={<NotFound />} />
