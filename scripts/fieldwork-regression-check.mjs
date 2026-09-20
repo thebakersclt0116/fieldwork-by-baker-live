@@ -78,6 +78,12 @@ assert(launchCheck.includes("mode: 'bcba-brain'"), 'Owner launch diagnostics doe
 assert(launchCheck.includes('stripeCheckoutConfigured'), 'Owner launch diagnostics does not inspect Stripe status');
 assert(read('src/App.tsx').includes('path="/admin/launch-check"'), 'Owner launch diagnostics route is missing');
 
+const upgradePage = read('src/pages/Upgrade.tsx');
+assert(upgradePage.includes("stripeMode === 'test'"), 'Billing page does not disclose Stripe test mode');
+const stripeComponent = read('src/components/StripeCheckout.tsx');
+assert(stripeComponent.includes('/api/create-checkout-session'), 'Stripe UI is not wired to the real checkout endpoint');
+assert(!stripeComponent.includes('setTimeout'), 'Stripe UI still simulates checkout success');
+
 const health = read('api/health.ts');
 assert(health.includes('stripeCheckoutConfigured'), 'Health endpoint does not expose safe Stripe readiness');
 
