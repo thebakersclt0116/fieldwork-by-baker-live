@@ -78,6 +78,12 @@ assert(launchCheck.includes("mode: 'bcba-brain'"), 'Owner launch diagnostics doe
 assert(launchCheck.includes('stripeCheckoutConfigured'), 'Owner launch diagnostics does not inspect Stripe status');
 assert(read('src/App.tsx').includes('path="/admin/launch-check"'), 'Owner launch diagnostics route is missing');
 
+const resourceVault = read('src/pages/ResourceVault.tsx');
+assert(resourceVault.includes('openResource(resource)'), 'Resource cards are not wired to open');
+assert(resourceVault.includes('downloadResource(selected)'), 'Resource modal is missing download action');
+assert(resourceVault.includes("title: 'Measurement Flashcard Pack'"), 'Built-in Resource Vault content is missing');
+assert(resourceVault.includes("heading: 'Quick discrimination'"), 'Built-in resource bodies are not populated');
+
 const upgradePage = read('src/pages/Upgrade.tsx');
 assert(upgradePage.includes("stripeMode === 'test'"), 'Billing page does not disclose Stripe test mode');
 const stripeComponent = read('src/components/StripeCheckout.tsx');
