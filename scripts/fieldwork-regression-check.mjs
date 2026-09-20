@@ -42,7 +42,7 @@ for (const required of [
   'A familiar Ripley-style workflow',
   'Start time',
   'End time',
-  'Exact decimal hours',
+  'Decimal hours',
   "setCategory('UNRESTRICTED')",
   "setCategory('RESTRICTED')",
   'Quick Log Hours',
