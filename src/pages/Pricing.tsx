@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { ArrowRight, Check, FileDown, ShieldCheck, Sparkles, Upload, UserCheck } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const tiers = [
   {
@@ -29,6 +30,8 @@ const tiers = [
 ];
 
 export default function Pricing() {
+  const { isAuthenticated } = useAuth();
+  const paidHref = isAuthenticated ? '/upgrade' : '/signup?return=/upgrade';
   return (
     <div className="bg-[#FFFCF9] min-h-[100dvh]">
       <section className="px-4 pt-16 pb-12 text-center">
@@ -42,7 +45,7 @@ export default function Pricing() {
 
       <section className="px-4 pb-16">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-          {tiers.map((tier) => <div key={tier.name} className={`relative bg-white rounded-3xl p-6 border shadow-sm flex flex-col ${tier.highlight ? 'border-[#E85D70]' : 'border-[#F2EDEA]'}`}>{tier.highlight && <div className="absolute -top-3 left-5 rounded-full bg-[#E85D70] text-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider">Most popular</div>}<h2 className="font-serif text-2xl font-semibold text-[#332C28] mb-2">{tier.name}</h2><div className="flex items-baseline gap-1 mb-3"><span className="font-mono text-3xl text-[#E85D70]">{tier.price}</span><span className="text-sm text-[#A8998E]">{tier.cadence}</span></div><p className="text-sm text-[#6B5D54] leading-relaxed mb-5">{tier.description}</p><ul className="space-y-2 mb-5 flex-1">{tier.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-[#4D423C]"><Check size={15} className="text-[#5FA37E] mt-0.5 shrink-0" />{feature}</li>)}</ul><p className="text-xs text-[#A8998E] mb-5">{tier.note}</p><Link to="/signup" className={`w-full text-center rounded-xl py-3 text-sm font-semibold ${tier.highlight ? 'bg-[#E85D70] text-white' : 'bg-[#332C28] text-white'}`}>Start Free First</Link></div>)}
+          {tiers.map((tier) => <div key={tier.name} className={`relative bg-white rounded-3xl p-6 border shadow-sm flex flex-col ${tier.highlight ? 'border-[#E85D70]' : 'border-[#F2EDEA]'}`}>{tier.highlight && <div className="absolute -top-3 left-5 rounded-full bg-[#E85D70] text-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider">Most popular</div>}<h2 className="font-serif text-2xl font-semibold text-[#332C28] mb-2">{tier.name}</h2><div className="flex items-baseline gap-1 mb-3"><span className="font-mono text-3xl text-[#E85D70]">{tier.price}</span><span className="text-sm text-[#A8998E]">{tier.cadence}</span></div><p className="text-sm text-[#6B5D54] leading-relaxed mb-5">{tier.description}</p><ul className="space-y-2 mb-5 flex-1">{tier.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-[#4D423C]"><Check size={15} className="text-[#5FA37E] mt-0.5 shrink-0" />{feature}</li>)}</ul><p className="text-xs text-[#A8998E] mb-5">{tier.note}</p><Link to={tier.name === 'Free' ? (isAuthenticated ? '/dashboard' : '/signup') : paidHref} className={`w-full text-center rounded-xl py-3 text-sm font-semibold ${tier.highlight ? 'bg-[#E85D70] text-white' : 'bg-[#332C28] text-white'}`}>{tier.name === 'Free' ? (isAuthenticated ? 'Open dashboard' : 'Start tracking free') : isAuthenticated ? `Choose ${tier.name}` : `Create account for ${tier.name}`}</Link></div>)}
         </div>
       </section>
 
