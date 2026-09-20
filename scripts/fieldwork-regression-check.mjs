@@ -39,7 +39,7 @@ for (const required of [
 
 const quickLog = read('src/components/RipleyQuickLog.tsx');
 for (const required of [
-  'Ripley-style Quick Log',
+  'A familiar Ripley-style workflow',
   'Start time',
   'End time',
   'Exact decimal hours',
@@ -49,6 +49,25 @@ for (const required of [
 ]) {
   assert(quickLog.includes(required), `Ripley-style quick logging missing: ${required}`);
 }
+
+
+const footer = read('src/components/Footer.tsx');
+assert(!footer.includes('href="#"'), 'Footer still contains dead # links');
+for (const route of ['/privacy', '/terms', '/cookies', '/security']) {
+  assert(read('src/App.tsx').includes(`path="${route}"`), `Legal route missing: ${route}`);
+}
+const contact = read('src/pages/Contact.tsx');
+assert(contact.includes('mailto:'), 'Contact form must create a real support request');
+assert(!contact.includes('setSubmitted(true)'), 'Contact page still contains fake success-only submission');
+const enterprise = read('src/pages/Enterprise.tsx');
+assert(enterprise.includes('sales@fieldworkbybaker.com'), 'Enterprise demo request is not connected');
+assert(!enterprise.includes("onSubmit={(e) => e.preventDefault()}"), 'Enterprise form is still a no-op');
+assert(!enterprise.includes('SOC 2 Type II'), 'Enterprise page contains an unverified SOC 2 claim');
+assert(!enterprise.includes('HIPAA Compliant'), 'Enterprise page contains an unverified HIPAA claim');
+const pricing = read('src/pages/Pricing.tsx');
+assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
+const health = read('api/health.ts');
+assert(health.includes('stripeCheckoutConfigured'), 'Health endpoint does not expose safe Stripe readiness');
 
 const editor = read('src/components/TrackedHoursEditor.tsx');
 for (const required of [
