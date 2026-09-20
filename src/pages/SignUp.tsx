@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowRight, BarChart3, Check, Clock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { registerFree } = useAuth();
+  const params = new URLSearchParams(location.search);
+  const requestedReturn = params.get('return');
+  const returnTo = requestedReturn && requestedReturn.startsWith('/') && !requestedReturn.startsWith('//') ? requestedReturn : '/dashboard';
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -32,7 +36,7 @@ export default function SignUp() {
       setError('Free account creation is temporarily unavailable. Please try again.');
       return;
     }
-    navigate('/dashboard');
+    navigate(returnTo);
   };
 
   return (
@@ -67,7 +71,7 @@ export default function SignUp() {
               <div className="relative mt-2"><Input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} className="h-11 rounded-xl pr-10" placeholder="At least 8 characters" /><button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A8998E]">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
             </label>
 
-            <label className="flex items-start gap-3 text-sm text-[#6B5D54] mb-6"><input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="mt-1" /><span>I agree to the Terms of Service and Privacy Policy.</span></label>
+            <label className="flex items-start gap-3 text-sm text-[#6B5D54] mb-6"><input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="mt-1" /><span>I agree to the <Link to="/terms" className="font-semibold text-[#E85D70] hover:underline">Terms of Service</Link> and <Link to="/privacy" className="font-semibold text-[#E85D70] hover:underline">Privacy Policy</Link>.</span></label>
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-3 rounded-xl disabled:opacity-50">{loading ? 'Creating Free account…' : 'Start Tracking Free'}{!loading && <ArrowRight size={16} />}</button>
             <p className="text-center text-sm text-[#A8998E] mt-5">Already have authorized beta access? <Link to="/login" className="text-[#E85D70] font-medium hover:underline">Sign in</Link></p>
