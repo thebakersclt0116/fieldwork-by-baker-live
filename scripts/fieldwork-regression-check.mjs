@@ -64,6 +64,13 @@ assert(enterprise.includes('sales@fieldworkbybaker.com'), 'Enterprise demo reque
 assert(!enterprise.includes("onSubmit={(e) => e.preventDefault()}"), 'Enterprise form is still a no-op');
 assert(!enterprise.includes('SOC 2 Type II'), 'Enterprise page contains an unverified SOC 2 claim');
 assert(!enterprise.includes('HIPAA Compliant'), 'Enterprise page contains an unverified HIPAA claim');
+const featuresPage = read('src/pages/Features.tsx');
+const faqPage = read('src/pages/FAQ.tsx');
+for (const unsafeClaim of ['HIPAA Compliant', 'SOC 2 Type II', 'Official BACB Format Guaranteed', '10,000+ Active Users']) {
+  assert(!featuresPage.includes(unsafeClaim), `Features contains unverified marketing claim: ${unsafeClaim}`);
+  assert(!faqPage.includes(unsafeClaim), `FAQ contains unverified marketing claim: ${unsafeClaim}`);
+}
+
 const pricing = read('src/pages/Pricing.tsx');
 assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
 const health = read('api/health.ts');
