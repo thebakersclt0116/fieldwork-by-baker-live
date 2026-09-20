@@ -73,6 +73,11 @@ for (const unsafeClaim of ['HIPAA Compliant', 'SOC 2 Type II', 'Official BACB Fo
 
 const pricing = read('src/pages/Pricing.tsx');
 assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
+const launchCheck = read('src/pages/AdminLaunchCheck.tsx');
+assert(launchCheck.includes("mode: 'bcba-brain'"), 'Owner launch diagnostics does not perform a real Baker Brain request');
+assert(launchCheck.includes('stripeCheckoutConfigured'), 'Owner launch diagnostics does not inspect Stripe status');
+assert(read('src/App.tsx').includes('path="/admin/launch-check"'), 'Owner launch diagnostics route is missing');
+
 const health = read('api/health.ts');
 assert(health.includes('stripeCheckoutConfigured'), 'Health endpoint does not expose safe Stripe readiness');
 
