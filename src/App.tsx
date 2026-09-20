@@ -28,6 +28,8 @@ import ExportCenter from './pages/ExportCenter';
 import SupervisorView from './pages/SupervisorView';
 import ApplySupervisorFeedback from './pages/ApplySupervisorFeedback';
 import AdminSupervisorPreview from './pages/AdminSupervisorPreview';
+import Legal from './pages/Legal';
+import NotFound from './pages/NotFound';
 import { useAuth } from './hooks/useAuth';
 
 function AccountDashboard() {
@@ -47,6 +49,10 @@ export default function App() {
         <Route path="/blog" element={<Blog />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy" element={<Legal />} />
+        <Route path="/terms" element={<Legal />} />
+        <Route path="/cookies" element={<Legal />} />
+        <Route path="/security" element={<Legal />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
 
@@ -66,6 +72,7 @@ export default function App() {
         <Route path="/admin/supervisor-preview" element={<ProtectedRoute><AdminSupervisorPreview /></ProtectedRoute>} />
         <Route path="/supervisor/:token" element={<SupervisorView />} />
         <Route path="/feedback/:token" element={<ApplySupervisorFeedback />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
   );
