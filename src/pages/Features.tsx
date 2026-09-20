@@ -130,7 +130,7 @@ const comparisonRows = [
   { feature: 'BACB 2027 Compliant', ripley: true, others: true, fbb: true },
   { feature: 'Free Tier', ripley: 'partial', others: 'partial', fbb: true, note: '14-day free trial' },
   { feature: 'Modern UI Design', ripley: false, others: 'partial', fbb: true },
-  { feature: 'Official BACB PDF Export', ripley: false, others: false, fbb: true },
+  { feature: 'BACB Form-Ready Export', ripley: false, others: false, fbb: true },
   { feature: 'Dark Mode', ripley: false, others: 'partial', fbb: true },
   { feature: 'Progress Analytics', ripley: 'basic', others: 'basic', fbb: true },
   { feature: 'Supervisor Dashboard', ripley: 'basic', others: false, fbb: true },
@@ -454,7 +454,7 @@ export default function Features() {
             </StaggerChild>
             <StaggerChild>
               <h2 className="font-display-md font-serif text-warm-gray-900 mb-4">
-                The Only Tracker with Official BACB PDF Export
+                The Only Tracker with BACB Form-Ready Export
               </h2>
             </StaggerChild>
             <StaggerChild>
@@ -515,7 +515,7 @@ export default function Features() {
                   </div>
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success bg-success-light px-3 py-1 rounded-full">
                     <CheckCircle size={12} />
-                    Official BACB Format Guaranteed
+                    Structured for BACB form workflows
                   </span>
                 </div>
                 {/* Mock form fields */}
@@ -782,10 +782,10 @@ export default function Features() {
 
           <StaggerContainer className="flex flex-wrap justify-center gap-6 mb-10">
             {[
-              { icon: ShieldCheck, label: 'HIPAA Compliant', color: 'text-success bg-success-light' },
+              { icon: ShieldCheck, label: 'Privacy-first design', color: 'text-success bg-success-light' },
               { icon: Lock, label: 'SSL Encrypted', color: 'text-info bg-info-light' },
-              { icon: ShieldCheck, label: 'SOC 2 Type II', color: 'text-info bg-info-light' },
-              { icon: CheckCircle, label: 'BACB 2027 Ready', color: 'text-rose-500 bg-rose-50' },
+              { icon: ShieldCheck, label: 'Signed access controls', color: 'text-info bg-info-light' },
+              { icon: CheckCircle, label: '2027 guidance aware', color: 'text-rose-500 bg-rose-50' },
             ].map((badge) => (
               <StaggerChild key={badge.label}>
                 <div className="w-[140px] flex flex-col items-center text-center p-5 bg-warm-gray-50 rounded-2xl">
