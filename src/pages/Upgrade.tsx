@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, FileDown, LockKeyhole, Sparkles, UserCheck, Upload } from 'lucide-react';
 import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 
@@ -27,7 +27,7 @@ const plans: Array<{
     price: '$12',
     cadence: '/month',
     description: 'For candidates who want Baker AI and fast migration tools.',
-    features: ['Unlimited official export tools', 'Baker AI text + voice logging', 'Ripley/CSV batch import', 'Compliance Oracle'],
+    features: ['Unlimited form-ready export tools', 'Baker AI text + voice logging', 'Ripley/CSV batch import', 'Compliance Oracle'],
   },
   {
     id: 'professional_monthly',
@@ -53,6 +53,22 @@ export default function Upgrade() {
   const { user, isOwner, hasPaidFeatures, canExportOfficialForms } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState('');
+  const [stripeMode, setStripeMode] = useState<'checking' | 'live' | 'test' | 'configured' | 'unconfigured'>('checking');
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/health?billing=1', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((payload: { stripeCheckoutConfigured?: boolean; stripeMode?: string }) => {
+        if (!active) return;
+        if (!payload.stripeCheckoutConfigured) setStripeMode('unconfigured');
+        else if (payload.stripeMode === 'live') setStripeMode('live');
+        else if (payload.stripeMode === 'test') setStripeMode('test');
+        else setStripeMode('configured');
+      })
+      .catch(() => { if (active) setStripeMode('unconfigured'); });
+    return () => { active = false; };
+  }, []);
 
   const startCheckout = async (plan: PlanId) => {
     const token = getStoredAccessToken();
@@ -91,8 +107,16 @@ export default function Upgrade() {
         <div className="max-w-3xl mx-auto text-center mb-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] text-[#E85D70] px-3 py-1.5 text-xs font-semibold mb-4"><Sparkles size={14} /> Track free forever</div>
           <h1 className="font-serif text-4xl lg:text-5xl font-semibold text-[#332C28] mb-4">Pay only when you need premium leverage.</h1>
-          <p className="text-[#6B5D54] text-lg">Free users can log unlimited hours and keep their underlying records. Official-form export convenience, AI, imports, and supervisor workflow are paid tools.</p>
+          <p className="text-[#6B5D54] text-lg">Free users can log unlimited hours and keep their underlying records. Form-ready export convenience, AI, imports, and supervisor workflow are paid tools.</p>
         </div>
+
+        {stripeMode !== 'checking' && stripeMode !== 'live' && (
+          <div className={`max-w-3xl mx-auto mb-7 rounded-2xl border px-5 py-4 text-sm text-center ${stripeMode === 'test' ? 'border-[#F1D8B9] bg-[#FFF9F2] text-[#8A5D36]' : 'border-[#F0D5DA] bg-[#FFF7F8] text-[#C9445A]'}`}>
+            {stripeMode === 'test'
+              ? 'Stripe is connected in TEST MODE. Checkout is safe to test, but it will not create real production charges until a live Stripe secret key is installed.'
+              : 'Stripe Checkout is not ready for production charges on this deployment yet.'}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
           {plans.map((plan) => (
@@ -103,7 +127,7 @@ export default function Upgrade() {
               <p className="text-sm text-[#6B5D54] leading-relaxed mb-5">{plan.description}</p>
               <ul className="space-y-2 mb-6 flex-1">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-[#4D423C]"><Check size={15} className="text-[#5FA37E] mt-0.5 shrink-0" />{feature}</li>)}</ul>
               <button onClick={() => void startCheckout(plan.id)} disabled={Boolean(loadingPlan) || isOwner || (hasPaidFeatures && plan.id !== 'export_pass') || (canExportOfficialForms && plan.id === 'export_pass')} className="w-full rounded-xl bg-[#332C28] text-white py-3 text-sm font-semibold disabled:opacity-40">
-                {loadingPlan === plan.id ? 'Opening Stripe…' : isOwner ? 'Owner unlocked' : plan.id === 'export_pass' && canExportOfficialForms ? 'Export unlocked' : hasPaidFeatures && plan.id !== 'export_pass' ? 'Paid plan active' : 'Continue to Stripe'}
+                {loadingPlan === plan.id ? 'Opening Stripe…' : isOwner ? 'Owner unlocked' : plan.id === 'export_pass' && canExportOfficialForms ? 'Export unlocked' : hasPaidFeatures && plan.id !== 'export_pass' ? 'Paid plan active' : stripeMode === 'test' ? 'Open Stripe test checkout' : 'Continue to Stripe'}
               </button>
             </div>
           ))}
