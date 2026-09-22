@@ -33,7 +33,7 @@ export default function SignUp() {
     const success = await registerFree(name, email, password);
     setLoading(false);
     if (!success) {
-      setError('Free account creation is temporarily unavailable. Please try again.');
+      setError('Trial account creation is temporarily unavailable. Please try again.');
       return;
     }
     navigate(returnTo);
