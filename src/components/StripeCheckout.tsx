@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CreditCard, Loader2 } from 'lucide-react';
 import { getStoredAccessToken } from '@/hooks/useAuth';
 
-type PlanId = 'export_pass' | 'individual_monthly' | 'professional_monthly' | 'professional_annual';
+type PlanId = 'individual_monthly' | 'professional_monthly' | 'professional_annual';
 
 interface StripeCheckoutProps {
   priceId?: string;
@@ -16,9 +16,8 @@ interface StripeCheckoutProps {
 function inferPlanId(planId: PlanId | undefined, priceId: string | undefined, planName: string, billingCycle: 'monthly' | 'annual'): PlanId | null {
   if (planId) return planId;
   const explicit = String(priceId || '');
-  if (['export_pass', 'individual_monthly', 'professional_monthly', 'professional_annual'].includes(explicit)) return explicit as PlanId;
+  if (['individual_monthly', 'professional_monthly', 'professional_annual'].includes(explicit)) return explicit as PlanId;
   const lower = planName.toLowerCase();
-  if (lower.includes('export')) return 'export_pass';
   if (lower.includes('professional')) return billingCycle === 'annual' ? 'professional_annual' : 'professional_monthly';
   if (lower.includes('individual')) return 'individual_monthly';
   return null;
