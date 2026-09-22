@@ -23,7 +23,7 @@ export default function Features() {
           <h1 className="mx-auto mt-3 max-w-4xl font-serif text-5xl font-semibold leading-tight sm:text-6xl">A BCBA workspace where the useful parts actually connect.</h1>
           <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-[#6B5D54] dark:text-[#CFC4BE]">Track fieldwork, collaborate with supervisors, practice the exam, build personalized lessons, organize resources, and ask Baker Brain what to do next.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link to="/signup" className="inline-flex items-center gap-2 rounded-2xl bg-[#E85D70] px-6 py-3.5 text-sm font-bold text-white">Start tracking free <ArrowRight size={16} /></Link>
+            <Link to="/signup" className="inline-flex items-center gap-2 rounded-2xl bg-[#E85D70] px-6 py-3.5 text-sm font-bold text-white">Start 3-Day Free Trial <ArrowRight size={16} /></Link>
             <Link to="/pricing" className="rounded-2xl border border-[#E2DAD5] bg-white px-6 py-3.5 text-sm font-bold text-[#5F5149] dark:border-white/10 dark:bg-white/5 dark:text-white">View plans</Link>
           </div>
         </div>
