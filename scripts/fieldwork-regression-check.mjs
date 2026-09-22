@@ -84,9 +84,10 @@ assert(!pricing.includes("Export Pass"), 'Export Pass still appears on pricing')
 assert(signupPage.includes('Start 3-Day Free Trial'), 'Signup is not framed as the 3-day trial');
 assert(signupApi.includes('THREE_DAYS_SECONDS'), 'Signup API does not issue a 3-day trial');
 assert(authServer.includes('isTrialActive'), 'Server-side paid tools do not recognize active trial entitlement');
-assert(checkoutApi.includes("subscription_data[trial_end]"), 'Stripe checkout does not preserve remaining trial time');
 assert(!checkoutApi.includes("export_pass"), 'Export Pass still exists in Stripe checkout');
 assert(!checkoutComplete.includes("plan === 'export_pass'"), 'Export Pass entitlement still exists');
+assert(checkoutComplete.includes("payment_status === 'paid'"), 'Paid checkout must be verified after trial');
+assert(upgradePage.includes("Trial active — choose after day 3"), 'Active trial is not protected from early billing');
 assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
 assert(pricing.includes('3 days free'), 'Pricing does not show the 3-day trial');
 assert(!pricing.includes("name: 'Free'"), 'Pricing still contains a free-forever tier');
