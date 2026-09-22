@@ -47,15 +47,7 @@ export default async function handler(req: any, res: any) {
     const plan = String(stripeSession.metadata?.baker_plan || '');
     let upgraded: Omit<Parameters<typeof signSession>[0], 'exp'> | null = null;
 
-    if (plan === 'export_pass') {
-      upgraded = {
-        email: current.email,
-        name: current.name,
-        role: current.role === 'owner' ? 'owner' : current.role === 'professional' ? 'professional' : current.role === 'paid' ? 'paid' : 'free',
-        subscription: current.subscription,
-        exportPass: true,
-      };
-    } else if (plan === 'individual_monthly') {
+    if (plan === 'individual_monthly') {
       upgraded = {
         email: current.email,
         name: current.name,
