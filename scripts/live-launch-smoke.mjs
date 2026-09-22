@@ -81,7 +81,7 @@ const login = await request('/api/auth', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ email, password }),
 });
-assert(login.response.ok && login.body.token, 'The new trial user could not sign back in');
+const signInPassed = Boolean(login.response.ok && login.body.token);
 
 console.log(JSON.stringify({
   baseUrl,
@@ -93,6 +93,8 @@ console.log(JSON.stringify({
     stripeMode: health.body.stripeMode,
   },
   signup: 'passed',
-  signIn: 'passed',
+  signIn: signInPassed ? 'passed' : `failed (${login.response.status})`,
   scenarios: results,
 }, null, 2));
+
+assert(signInPassed, 'The new trial user could not sign back in');

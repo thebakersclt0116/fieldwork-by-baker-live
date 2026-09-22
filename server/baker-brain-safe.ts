@@ -22,10 +22,10 @@ const OFFICIAL_SOURCES = [
 
 export function createBakerBrainFallback(message: string) {
   const lower = message.toLowerCase();
-  const containsIdentifyingInformation = /\b(?:john|jane)\s+[a-z]+\b|\b\d{1,5}\s+[a-z]+\s+(?:street|st|avenue|ave|road|rd|drive|dr)\b/i.test(message);
+  const containsIdentifyingInformation = /de-?identif|full name|street address|\b(?:john|jane)\s+[a-z]+\b|\b\d{1,5}\s+[a-z]+\s+(?:street|st|avenue|ave|road|rd|drive|dr)\b/i.test(message);
   const outsideDomain = /\b(?:crypto|stock trading|sports betting|recipe|vacation itinerary)\b/i.test(message);
   const examNavigation = /\b(?:mock exam|exam lab|practice exam|weak area)\b/i.test(message);
-  const fieldwork = /\b(?:fieldwork|unrestricted|restricted|supervision|parent training)\b/i.test(message);
+  const fieldwork = /\b(?:unrestricted|restricted|supervision|parent training|fieldwork hours|fieldwork note|fieldwork entry|document fieldwork)\b/i.test(message);
 
   if (outsideDomain) {
     return {
