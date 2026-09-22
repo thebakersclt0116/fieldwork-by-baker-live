@@ -35,6 +35,7 @@ export interface BakerSession {
   role: BakerRole;
   subscription?: 'individual' | 'professional' | 'enterprise';
   exportPass?: boolean;
+  trialEndsAt?: number;
   superviseeEmail?: string;
   reviewEntry?: ReviewEntrySnapshot;
   feedback?: SupervisorFeedbackPayload;
@@ -229,12 +230,16 @@ export function isEmilySupervisor(session: Pick<BakerSession, 'role' | 'supervis
   return session.role === 'supervisor' && session.superviseeEmail?.trim().toLowerCase() === EMILY_EMAIL;
 }
 
+export function isTrialActive(session: Pick<BakerSession, 'trialEndsAt'>): boolean {
+  return typeof session.trialEndsAt === 'number' && session.trialEndsAt > Math.floor(Date.now() / 1000);
+}
+
 export function canUsePaidTools(session: BakerSession): boolean {
-  return isEmilyBetaAccount(session) || session.role === 'owner' || session.role === 'paid' || session.role === 'professional';
+  return isEmilyBetaAccount(session) || session.role === 'owner' || session.role === 'paid' || session.role === 'professional' || isTrialActive(session);
 }
 
 export function canUseSupervisorTools(session: BakerSession): boolean {
-  return isEmilyBetaAccount(session) || isEmilySupervisor(session) || session.role === 'owner' || session.role === 'professional' || session.subscription === 'professional' || session.subscription === 'enterprise';
+  return isEmilyBetaAccount(session) || isEmilySupervisor(session) || session.role === 'owner' || session.role === 'professional' || session.subscription === 'professional' || session.subscription === 'enterprise' || isTrialActive(session);
 }
 
 export function canExportOfficialForms(session: BakerSession): boolean {
