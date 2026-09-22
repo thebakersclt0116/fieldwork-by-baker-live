@@ -57,14 +57,14 @@ export default function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
 
-        <Route path="/my-path" element={<ProtectedRoute><MyPathV2 /></ProtectedRoute>} />
+        <Route path="/my-path" element={<ProtectedRoute><PaidFeatureRoute><MyPathV2 /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/roadmap" element={<BCBARoadmap />} />
-        <Route path="/commons" element={<ProtectedRoute><BakerCommons /></ProtectedRoute>} />
-        <Route path="/baker-brain" element={<ProtectedRoute><BakerBrainHub /></ProtectedRoute>} />
-        <Route path="/exam-lab" element={<ExamLab />} />
-        <Route path="/resources" element={<ResourceVault />} />
+        <Route path="/commons" element={<ProtectedRoute><PaidFeatureRoute><BakerCommons /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/baker-brain" element={<ProtectedRoute><PaidFeatureRoute><BakerBrainHub /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/exam-lab" element={<ProtectedRoute><PaidFeatureRoute><ExamLab /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/resources" element={<ProtectedRoute><PaidFeatureRoute><ResourceVault /></PaidFeatureRoute></ProtectedRoute>} />
 
-        <Route path="/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><PaidFeatureRoute><AccountDashboard /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
