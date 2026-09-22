@@ -1,17 +1,16 @@
 import { requireSession } from './_auth.js';
 
-type PlanId = 'export_pass' | 'individual_monthly' | 'professional_monthly' | 'professional_annual';
+type PlanId = 'individual_monthly' | 'professional_monthly' | 'professional_annual';
 
 type Plan = {
   id: PlanId;
   name: string;
   amount: number;
-  mode: 'payment' | 'subscription';
+  mode: 'subscription';
   interval?: 'month' | 'year';
 };
 
 const PLANS: Record<PlanId, Plan> = {
-  export_pass: { id: 'export_pass', name: 'Fieldwork by Baker Export Pass', amount: 1900, mode: 'payment' },
   individual_monthly: { id: 'individual_monthly', name: 'Fieldwork by Baker Individual', amount: 1200, mode: 'subscription', interval: 'month' },
   professional_monthly: { id: 'professional_monthly', name: 'Fieldwork by Baker Professional', amount: 2400, mode: 'subscription', interval: 'month' },
   professional_annual: { id: 'professional_annual', name: 'Fieldwork by Baker Professional Annual', amount: 22800, mode: 'subscription', interval: 'year' },
@@ -64,11 +63,7 @@ export default async function handler(req: any, res: any) {
   params.set('line_items[0][price_data][currency]', 'usd');
   params.set('line_items[0][price_data][unit_amount]', String(plan.amount));
   params.set('line_items[0][price_data][product_data][name]', plan.name);
-  params.set('line_items[0][price_data][product_data][description]',
-    plan.id === 'export_pass'
-      ? 'One paid unlock for BACB form-ready export tools.'
-      : 'Fieldwork by Baker paid subscription with premium tracking tools.'
-  );
+  params.set('line_items[0][price_data][product_data][description]', 'Fieldwork by Baker subscription with the connected BCBA workspace.');
   if (plan.interval) params.set('line_items[0][price_data][recurring][interval]', plan.interval);
 
   try {
