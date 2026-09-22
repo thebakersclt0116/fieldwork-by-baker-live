@@ -16,7 +16,7 @@ const faqs = [
   { category: 'Privacy & security', q: 'Should I enter client-identifying information?', a: 'No. Do not enter unnecessary protected health information or client-identifying information. Use de-identified descriptions and follow your employer, supervisor, and applicable privacy requirements.' },
   { category: 'Privacy & security', q: 'Is Fieldwork by Baker HIPAA compliant or SOC 2 certified?', a: 'The platform does not claim HIPAA compliance, SOC 2 certification, or another third-party security certification unless and until that status has been formally established and documented.' },
   { category: 'Billing', q: 'How does payment work?', a: 'Paid upgrades use Stripe Checkout when Stripe is configured for the deployment. Card information is entered on Stripe-hosted checkout, not stored directly by Fieldwork by Baker.' },
-  { category: 'Billing', q: 'What paid options are planned in the current checkout?', a: 'The current upgrade flow includes a one-time Export Pass, Individual monthly, Professional monthly, and Professional annual options. The live pricing page shows the current amounts before checkout.' },
+  { category: 'Billing', q: 'What paid options are planned in the current checkout?', a: 'After the 3-day full-access trial, the current launch options are Individual at $16.99/month, Professional at $34.99/month, or Professional Annual at $349/year. The live pricing page and Stripe Checkout show the current amount before payment.' },
   { category: 'Support', q: 'How do I report a bug tonight?', a: 'Use the Contact page and choose Bug Report. Include what you clicked, what you expected, what happened instead, and a screenshot when useful. Do not include client-identifying information.' },
 ];
 
