@@ -120,7 +120,7 @@ export default function Upgrade() {
               <p className="text-sm text-[#6B5D54] leading-relaxed mb-5">{plan.description}</p>
               <ul className="space-y-2 mb-6 flex-1">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-[#4D423C]"><Check size={15} className="text-[#5FA37E] mt-0.5 shrink-0" />{feature}</li>)}</ul>
               <button onClick={() => void startCheckout(plan.id)} disabled={Boolean(loadingPlan) || isOwner} className="w-full rounded-xl bg-[#332C28] text-white py-3 text-sm font-semibold disabled:opacity-40">
-                {loadingPlan === plan.id ? 'Opening Stripe…' : isOwner ? 'Owner unlocked' : hasPaidFeatures && !activeTrial ? 'Paid plan active' : stripeMode === 'test' ? 'Open Stripe test checkout' : 'Continue to Stripe'}
+                {loadingPlan === plan.id ? 'Opening Stripe…' : isOwner ? 'Owner unlocked' : activeTrial ? 'Trial active — choose after day 3' : hasPaidFeatures ? 'Paid plan active' : stripeMode === 'test' ? 'Open Stripe test checkout' : 'Continue to Stripe'}
               </button>
             </div>
           ))}
