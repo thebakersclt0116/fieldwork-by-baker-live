@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check, FileDown, LockKeyhole, Sparkles, UserCheck, Upload } from 'lucide-react';
 import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 
-type PlanId = 'export_pass' | 'individual_monthly' | 'professional_monthly' | 'professional_annual';
+type PlanId = 'individual_monthly' | 'professional_monthly' | 'professional_annual';
 
 const plans: Array<{
   id: PlanId;
@@ -14,20 +14,13 @@ const plans: Array<{
   features: string[];
 }> = [
   {
-    id: 'export_pass',
-    name: 'Export Pass',
-    price: '$19',
-    cadence: 'one time',
-    description: 'Unlock the BACB form-ready export center without starting a subscription.',
-    features: ['BACB M-FVF/F-FVF export center', 'One-time payment', 'Keep tracking on Free'],
-  },
-  {
     id: 'individual_monthly',
     name: 'Individual',
     price: '$12',
     cadence: '/month',
-    description: 'For candidates who want Baker AI and fast migration tools.',
-    features: ['Unlimited form-ready export tools', 'Baker AI text + voice logging', 'Ripley/CSV batch import', 'Compliance Oracle'],
+    badge: '3-day trial',
+    description: 'The connected BCBA workspace for candidates who want more than a basic tracker.',
+    features: ['Fieldwork tracking', 'Baker Brain', 'Full Exam Lab + weak-area plans', 'Ripley/CSV migration', 'Form-ready exports', 'Resource Vault'],
   },
   {
     id: 'professional_monthly',
@@ -35,8 +28,8 @@ const plans: Array<{
     price: '$24',
     cadence: '/month',
     badge: 'Supervisor workflow',
-    description: 'Everything in Individual plus secure supervisor collaboration.',
-    features: ['Everything in Individual', 'Signed supervisor review links', 'Supervisor notes + messages', 'Priority beta features'],
+    description: 'Everything in Individual plus active supervisor collaboration.',
+    features: ['Everything in Individual', 'Signed supervisor review links', 'Supervisor notes + messages', 'Revision + re-approval workflow', 'Multiple supervisors + organizations'],
   },
   {
     id: 'professional_annual',
@@ -44,13 +37,13 @@ const plans: Array<{
     price: '$228',
     cadence: '/year',
     badge: '$19/mo equivalent',
-    description: 'Professional access billed annually at the pricing you specified.',
+    description: 'Professional access billed annually.',
     features: ['Everything in Professional', '$60/year less than monthly Professional', 'One annual payment'],
   },
 ];
 
 export default function Upgrade() {
-  const { user, isOwner, hasPaidFeatures, canExportOfficialForms } = useAuth();
+  const { user, isOwner, hasPaidFeatures, activeTrial, trialEndsAt } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState('');
   const [stripeMode, setStripeMode] = useState<'checking' | 'live' | 'test' | 'configured' | 'unconfigured'>('checking');
@@ -105,9 +98,9 @@ export default function Upgrade() {
     <div className="min-h-[100dvh] bg-[#FFFCF9] py-10 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="max-w-3xl mx-auto text-center mb-10">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] text-[#E85D70] px-3 py-1.5 text-xs font-semibold mb-4"><Sparkles size={14} /> Track free forever</div>
-          <h1 className="font-serif text-4xl lg:text-5xl font-semibold text-[#332C28] mb-4">Pay only when you need premium leverage.</h1>
-          <p className="text-[#6B5D54] text-lg">Free users can log unlimited hours and keep their underlying records. Form-ready export convenience, AI, imports, and supervisor workflow are paid tools.</p>
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] text-[#E85D70] px-3 py-1.5 text-xs font-semibold mb-4"><Sparkles size={14} /> 3-day full-access trial</div>
+          <h1 className="font-serif text-4xl lg:text-5xl font-semibold text-[#332C28] mb-4">Choose your plan after trying the real product.</h1>
+          <p className="text-[#6B5D54] text-lg">Your 3-day trial includes the connected experience. After the trial, continue with Individual or Professional.</p>
         </div>
 
         {stripeMode !== 'checking' && stripeMode !== 'live' && (
@@ -118,7 +111,7 @@ export default function Upgrade() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
           {plans.map((plan) => (
             <div key={plan.id} className={`relative bg-white rounded-3xl border p-6 shadow-sm flex flex-col ${plan.id === 'professional_monthly' ? 'border-[#E85D70]' : 'border-[#F2EDEA]'}`}>
               {plan.badge && <div className="absolute -top-3 left-5 rounded-full bg-[#332C28] text-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wider">{plan.badge}</div>}
@@ -126,8 +119,8 @@ export default function Upgrade() {
               <div className="flex items-baseline gap-1 mb-3"><span className="font-mono text-3xl text-[#E85D70]">{plan.price}</span><span className="text-sm text-[#A8998E]">{plan.cadence}</span></div>
               <p className="text-sm text-[#6B5D54] leading-relaxed mb-5">{plan.description}</p>
               <ul className="space-y-2 mb-6 flex-1">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-[#4D423C]"><Check size={15} className="text-[#5FA37E] mt-0.5 shrink-0" />{feature}</li>)}</ul>
-              <button onClick={() => void startCheckout(plan.id)} disabled={Boolean(loadingPlan) || isOwner || (hasPaidFeatures && plan.id !== 'export_pass') || (canExportOfficialForms && plan.id === 'export_pass')} className="w-full rounded-xl bg-[#332C28] text-white py-3 text-sm font-semibold disabled:opacity-40">
-                {loadingPlan === plan.id ? 'Opening Stripe…' : isOwner ? 'Owner unlocked' : plan.id === 'export_pass' && canExportOfficialForms ? 'Export unlocked' : hasPaidFeatures && plan.id !== 'export_pass' ? 'Paid plan active' : stripeMode === 'test' ? 'Open Stripe test checkout' : 'Continue to Stripe'}
+              <button onClick={() => void startCheckout(plan.id)} disabled={Boolean(loadingPlan) || isOwner} className="w-full rounded-xl bg-[#332C28] text-white py-3 text-sm font-semibold disabled:opacity-40">
+                {loadingPlan === plan.id ? 'Opening Stripe…' : isOwner ? 'Owner unlocked' : hasPaidFeatures && !activeTrial ? 'Paid plan active' : stripeMode === 'test' ? 'Open Stripe test checkout' : 'Continue to Stripe'}
               </button>
             </div>
           ))}
@@ -135,10 +128,12 @@ export default function Upgrade() {
 
         {error && <div className="max-w-2xl mx-auto rounded-2xl bg-[#FFF5F7] border border-[#FFC1CC] px-5 py-4 text-sm text-[#C9445A] text-center mb-8">{error}</div>}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
-          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><FileDown size={18} className="text-[#E85D70] mb-2" /><strong className="block text-[#332C28] mb-1">Free</strong>Unlimited manual hour logging, dashboard, calendar-style history, compliance basics.</div>
-          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><Upload size={18} className="text-[#D4A574] mb-2" /><strong className="block text-[#332C28] mb-1">Paid import</strong>Move a large Ripley/CSV history into Baker in batches.</div>
-          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><Sparkles size={18} className="text-[#E85D70] mb-2" /><strong className="block text-[#332C28] mb-1">Paid AI</strong>Voice/text-to-entry and richer compliance guidance.</div>
+        {activeTrial && trialEndsAt && <div className="mx-auto mb-6 max-w-3xl rounded-2xl border border-[#CFE7D9] bg-[#F4FBF7] px-5 py-4 text-center text-sm text-[#4B8C69]">Your 3-day trial is active until {new Date(trialEndsAt * 1000).toLocaleString()}.</div>}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><FileDown size={18} className="text-[#E85D70] mb-2" /><strong className="block text-[#332C28] mb-1">3-day trial</strong>Use the connected platform before choosing a paid plan.</div>
+          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><Upload size={18} className="text-[#D4A574] mb-2" /><strong className="block text-[#332C28] mb-1">Individual</strong>AI, Exam Lab, migration, exports, and the candidate workspace.</div>
+          
           <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><UserCheck size={18} className="text-[#5FA37E] mb-2" /><strong className="block text-[#332C28] mb-1">Professional</strong>Secure supervisor review, notes, and messages.</div>
         </div>
 
