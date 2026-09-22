@@ -71,7 +71,22 @@ for (const unsafeClaim of ['HIPAA Compliant', 'SOC 2 Type II', 'Official BACB Fo
   assert(!faqPage.includes(unsafeClaim), `FAQ contains unverified marketing claim: ${unsafeClaim}`);
 }
 
+const authServer = read('api/_auth.ts');
+const signupApi = read('api/free-signup.ts');
+const signupPage = read('src/pages/SignUp.tsx');
+const checkoutApi = read('api/create-checkout-session.ts');
+const checkoutComplete = read('api/checkout-complete.ts');
+
 const pricing = read('src/pages/Pricing.tsx');
+assert(pricing.includes("3-Day Free Trial"), 'Pricing does not advertise the 3-day trial');
+assert(!pricing.includes("name: 'Free'"), 'Permanent Free pricing tier still exists');
+assert(!pricing.includes("Export Pass"), 'Export Pass still appears on pricing');
+assert(signupPage.includes('Start 3-Day Free Trial'), 'Signup is not framed as the 3-day trial');
+assert(signupApi.includes('THREE_DAYS_SECONDS'), 'Signup API does not issue a 3-day trial');
+assert(authServer.includes('isTrialActive'), 'Server-side paid tools do not recognize active trial entitlement');
+assert(checkoutApi.includes("subscription_data[trial_end]"), 'Stripe checkout does not preserve remaining trial time');
+assert(!checkoutApi.includes("export_pass"), 'Export Pass still exists in Stripe checkout');
+assert(!checkoutComplete.includes("plan === 'export_pass'"), 'Export Pass entitlement still exists');
 assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
 const launchCheck = read('src/pages/AdminLaunchCheck.tsx');
 assert(launchCheck.includes("mode: 'bcba-brain'"), 'Owner launch diagnostics does not perform a real Baker Brain request');
