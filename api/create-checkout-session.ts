@@ -11,9 +11,9 @@ type Plan = {
 };
 
 const PLANS: Record<PlanId, Plan> = {
-  individual_monthly: { id: 'individual_monthly', name: 'Fieldwork by Baker Individual', amount: 1200, mode: 'subscription', interval: 'month' },
-  professional_monthly: { id: 'professional_monthly', name: 'Fieldwork by Baker Professional', amount: 2400, mode: 'subscription', interval: 'month' },
-  professional_annual: { id: 'professional_annual', name: 'Fieldwork by Baker Professional Annual', amount: 22800, mode: 'subscription', interval: 'year' },
+  individual_monthly: { id: 'individual_monthly', name: 'Fieldwork by Baker Individual', amount: 1699, mode: 'subscription', interval: 'month' },
+  professional_monthly: { id: 'professional_monthly', name: 'Fieldwork by Baker Professional', amount: 3499, mode: 'subscription', interval: 'month' },
+  professional_annual: { id: 'professional_annual', name: 'Fieldwork by Baker Professional Annual', amount: 34900, mode: 'subscription', interval: 'year' },
 };
 
 function send(res: any, status: number, body: unknown) {
