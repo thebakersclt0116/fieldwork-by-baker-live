@@ -36,8 +36,8 @@ export default async function handler(req: any, res: any) {
     const stripeSession = await response.json() as StripeSession & { error?: { message?: string } };
     if (!response.ok) return send(res, 502, { error: stripeSession.error?.message || 'Could not verify Stripe Checkout.' });
 
-    const paid = stripeSession.status === 'complete' && stripeSession.payment_status === 'paid';
-    if (!paid) return send(res, 402, { error: 'Stripe has not marked this Checkout Session as paid.' });
+    const settled = stripeSession.status === 'complete' && (stripeSession.payment_status === 'paid' || stripeSession.payment_status === 'no_payment_required');
+    if (!settled) return send(res, 402, { error: 'Stripe has not completed this Checkout Session.' });
 
     const purchasedEmail = String(stripeSession.metadata?.baker_email || stripeSession.client_reference_id || '').toLowerCase();
     if (!purchasedEmail || purchasedEmail !== current.email.toLowerCase()) {
