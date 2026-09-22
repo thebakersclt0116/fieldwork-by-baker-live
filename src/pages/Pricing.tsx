@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 const tiers = [
   {
     name: 'Individual',
-    price: '$12',
+    price: '$16.99',
     cadence: '/month',
     highlight: true,
     description: 'For BCBA candidates who want fieldwork, AI, exam prep, and migration in one connected workspace.',
@@ -14,12 +14,12 @@ const tiers = [
   },
   {
     name: 'Professional',
-    price: '$24',
+    price: '$34.99',
     cadence: '/month',
     highlight: false,
     description: 'For candidates who want the full platform plus active supervisor collaboration.',
     features: ['Everything in Individual', '3-day full-access trial', 'Secure supervisor review links', 'Supervisor notes + messages', 'Revision and re-approval workflow', 'Multiple supervisors + organizations', 'Priority beta support'],
-    note: 'Professional Annual remains available in checkout at $228/year.',
+    note: 'Professional Annual is available in checkout at $349/year — about $29.08/month.',
   },
 ];
 
