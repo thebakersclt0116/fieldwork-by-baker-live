@@ -11,6 +11,7 @@ export interface AuthUser {
   subscription?: SubscriptionTier;
   billingCycle?: BillingCycle;
   exportPass?: boolean;
+  trialEndsAt?: number;
 }
 
 const USER_KEY = 'authUser';
@@ -113,6 +114,7 @@ export function useAuth() {
           role?: 'owner' | 'professional' | 'paid';
           subscription?: SubscriptionTier;
           exportPass?: boolean;
+          trialEndsAt?: number;
         };
         token?: string;
       };
@@ -125,6 +127,7 @@ export function useAuth() {
         initials: getInitials(payload.user.name),
         subscription: payload.user.subscription,
         exportPass: payload.user.exportPass,
+        trialEndsAt: payload.user.trialEndsAt,
         billingCycle: payload.user.email.toLowerCase() === EMILY_EMAIL ? 'annual' : undefined,
       });
       setUser(nextUser);
@@ -141,7 +144,7 @@ export function useAuth() {
         body: JSON.stringify({ name, email, password }),
       });
       const payload = await response.json() as {
-        user?: { name?: string; email?: string; role?: 'free' };
+        user?: { name?: string; email?: string; role?: 'free'; trialEndsAt?: number };
         token?: string;
       };
       if (!response.ok || !payload.user?.name || !payload.user.email || !payload.token) return false;
@@ -152,6 +155,7 @@ export function useAuth() {
         initials: getInitials(payload.user.name),
         subscription: 'none',
         exportPass: false,
+        trialEndsAt: payload.user.trialEndsAt,
       });
       setUser(nextUser);
       storeSession(nextUser, payload.token);
@@ -169,13 +173,15 @@ export function useAuth() {
   const accessToken = getStoredAccessToken();
   const isEmilyBeta = user?.email.trim().toLowerCase() === EMILY_EMAIL;
   const isOwner = user?.role === 'owner';
+  const activeTrial = Boolean(user?.trialEndsAt && user.trialEndsAt > Math.floor(Date.now() / 1000));
+  const trialExpired = Boolean(user?.trialEndsAt && user.trialEndsAt <= Math.floor(Date.now() / 1000));
   const isProfessional = user?.role === 'professional' || isEmilyBeta;
-  const isFree = user?.role === 'free' && !isEmilyBeta;
+  const isFree = user?.role === 'free' && !isEmilyBeta && !activeTrial;
   const isDemo = false;
   const subscription = isEmilyBeta ? 'professional' : (user?.subscription || 'none');
   const isPaid = Boolean(isEmilyBeta || user?.role === 'paid' || ['individual', 'professional', 'enterprise'].includes(subscription));
-  const hasPaidFeatures = Boolean(isEmilyBeta || isOwner || isProfessional || isPaid);
-  const hasSupervisorFeatures = Boolean(isEmilyBeta || isOwner || isProfessional || subscription === 'professional' || subscription === 'enterprise');
+  const hasPaidFeatures = Boolean(isEmilyBeta || isOwner || isProfessional || isPaid || activeTrial);
+  const hasSupervisorFeatures = Boolean(isEmilyBeta || isOwner || isProfessional || subscription === 'professional' || subscription === 'enterprise' || activeTrial);
   const canExportOfficialForms = Boolean(isEmilyBeta || hasPaidFeatures || user?.exportPass);
   const isAuthenticated = !!user && !!accessToken;
   const hasAppAccess = !!user && !!accessToken && ['owner', 'free', 'paid', 'professional', 'supervisor'].includes(user.role);
@@ -191,6 +197,9 @@ export function useAuth() {
     isFree,
     isDemo,
     isPaid,
+    activeTrial,
+    trialExpired,
+    trialEndsAt: user?.trialEndsAt,
     hasPaidFeatures,
     hasSupervisorFeatures,
     canExportOfficialForms,
