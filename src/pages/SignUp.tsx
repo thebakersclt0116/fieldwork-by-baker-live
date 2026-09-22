@@ -51,7 +51,7 @@ export default function SignUp() {
             <div className="rounded-2xl bg-white/80 p-5"><Clock size={21} className="text-[#E85D70] mb-3" /><h3 className="font-semibold text-[#332C28] mb-1">Full fieldwork workspace</h3><p className="text-sm text-[#7B6B62]">Log real sessions with start/end times, decimals, categories, supervisors, and organizations.</p></div>
             <div className="rounded-2xl bg-white/80 p-5"><BarChart3 size={21} className="text-[#D4A574] mb-3" /><h3 className="font-semibold text-[#332C28] mb-1">Baker Brain + Exam Lab</h3><p className="text-sm text-[#7B6B62]">Use the BCBA AI, full mock exam, and personalized weak-area plan during your trial.</p></div>
             <div className="rounded-2xl bg-white/80 p-5"><ShieldCheck size={21} className="text-[#5FA37E] mb-3" /><h3 className="font-semibold text-[#332C28] mb-1">Supervisor workflow</h3><p className="text-sm text-[#7B6B62]">Try supervisor review, revision, and re-approval workflows before choosing a plan.</p></div>
-            <div className="rounded-2xl bg-[#332C28] p-5 text-white"><ArrowRight size={21} className="text-[#D4A574] mb-3" /><h3 className="font-semibold mb-1">Pick your plan after day 3</h3><p className="text-sm text-white/70">$12 Individual or $24 Professional after the 3-day trial.</p></div>
+            <div className="rounded-2xl bg-[#332C28] p-5 text-white"><ArrowRight size={21} className="text-[#D4A574] mb-3" /><h3 className="font-semibold mb-1">Pick your plan after day 3</h3><p className="text-sm text-white/70">$16.99 Individual or $34.99 Professional after the 3-day trial.</p></div>
           </div>
         </div>
 
