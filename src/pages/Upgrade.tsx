@@ -16,7 +16,7 @@ const plans: Array<{
   {
     id: 'individual_monthly',
     name: 'Individual',
-    price: '$12',
+    price: '$16.99',
     cadence: '/month',
     badge: '3-day trial',
     description: 'The connected BCBA workspace for candidates who want more than a basic tracker.',
@@ -25,7 +25,7 @@ const plans: Array<{
   {
     id: 'professional_monthly',
     name: 'Professional',
-    price: '$24',
+    price: '$34.99',
     cadence: '/month',
     badge: 'Supervisor workflow',
     description: 'Everything in Individual plus active supervisor collaboration.',
@@ -34,11 +34,11 @@ const plans: Array<{
   {
     id: 'professional_annual',
     name: 'Professional Annual',
-    price: '$228',
+    price: '$349',
     cadence: '/year',
-    badge: '$19/mo equivalent',
+    badge: '$29.08/mo equivalent',
     description: 'Professional access billed annually.',
-    features: ['Everything in Professional', '$60/year less than monthly Professional', 'One annual payment'],
+    features: ['Everything in Professional', 'Save $70.88/year vs monthly Professional', 'One annual payment'],
   },
 ];
 
