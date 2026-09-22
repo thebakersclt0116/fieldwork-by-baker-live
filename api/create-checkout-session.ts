@@ -65,10 +65,6 @@ export default async function handler(req: any, res: any) {
   params.set('line_items[0][price_data][product_data][name]', plan.name);
   params.set('line_items[0][price_data][product_data][description]', 'Fieldwork by Baker subscription with the connected BCBA workspace.');
   if (plan.interval) params.set('line_items[0][price_data][recurring][interval]', plan.interval);
-  const now = Math.floor(Date.now() / 1000);
-  if (plan.mode === 'subscription' && typeof session.trialEndsAt === 'number' && session.trialEndsAt > now + 60) {
-    params.set('subscription_data[trial_end]', String(session.trialEndsAt));
-  }
 
   try {
     const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
