@@ -1,8 +1,10 @@
 import { canUsePaidTools, requireSession } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
-import { runBakerBrain } from '../server/baker-brain-safe.js';
+import { createBakerBrainFallback, runBakerBrain } from '../server/baker-brain-safe.js';
 
 const MODEL = 'openai/gpt-5.6-sol';
+
+export const config = { maxDuration: 60 };
 
 function send(res: any, status: number, body: unknown) {
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
@@ -159,7 +161,10 @@ export default async function handler(req: any, res: any) {
       return send(res, 200, result);
     } catch (error) {
       console.error('Baker Brain request failed', error);
-      return send(res, 502, { error: 'Baker Brain could not complete that turn. Try again.' });
+      return send(res, 200, {
+        ...createBakerBrainFallback(message),
+        warning: 'The live Baker Brain model was temporarily unavailable. No user data was lost.',
+      });
     }
   }
 

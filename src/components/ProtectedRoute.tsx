@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-[#FFFCF9]">
-        <div className="text-sm text-[#A8998E]">Verifying private beta access…</div>
+        <div className="text-sm text-[#A8998E]">Verifying secure access…</div>
       </div>
     );
   }

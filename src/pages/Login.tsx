@@ -28,7 +28,7 @@ export default function Login() {
     event.preventDefault();
     setError('');
     if (!email.trim() || !password) {
-      setError('Enter your authorized beta email and password.');
+      setError('Enter your account email and password.');
       return;
     }
 
@@ -36,7 +36,7 @@ export default function Login() {
     const success = await login(email, password);
     setIsLoggingIn(false);
     if (!success) {
-      setError('Access denied. This private beta is limited to authorized Baker accounts.');
+      setError('We could not sign you in with those details. Check your email and password, then try again.');
       return;
     }
 
@@ -62,15 +62,15 @@ export default function Login() {
               <Sparkles size={24} />
             </div>
             <h1 className="font-serif text-4xl font-semibold text-[#332C28] leading-tight mb-4">
-              Baker AI private beta
+              Your BCBA journey, connected
             </h1>
             <p className="text-[#6B5D54] leading-relaxed max-w-md">
-              Secure access for the platform owner, authorized paid users, Emily&apos;s beta account, and supervisors using a signed invite link.
+              Sign in to track fieldwork, study with Baker Brain, prepare in Exam Lab, and collaborate with your supervisor.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-[#7B6B62] mt-10">
             <ShieldCheck size={17} className="text-[#5FA37E]" />
-            Protected app routes require a server-issued session.
+            Your workspace is protected with secure, server-verified access.
           </div>
         </div>
 
@@ -78,14 +78,14 @@ export default function Login() {
           <div className="w-full max-w-sm mx-auto">
             <div className="flex items-center gap-2 mb-2 text-[#D4A574]">
               <Crown size={17} />
-              <span className="text-xs uppercase tracking-[0.18em] font-semibold">Authorized access</span>
+              <span className="text-xs uppercase tracking-[0.18em] font-semibold">Secure account access</span>
             </div>
             <h2 className="font-serif text-3xl font-semibold text-[#332C28] mb-2">Welcome back</h2>
-            <p className="text-sm text-[#A8998E] mb-6">Sign in to your approved Fieldwork by Baker account.</p>
+            <p className="text-sm text-[#A8998E] mb-6">Sign in to your Fieldwork by Baker account.</p>
 
             {sessionRefresh && (
               <div className="mb-5 rounded-xl bg-[#F4F7FF] border border-[#CFD8F7] px-4 py-3 text-sm leading-relaxed text-[#4B5EA8]">
-                <strong>Your Baker access is still active.</strong> We detected an older browser session and cleared it automatically. Sign in once and you&apos;ll return directly to Import with your full beta access restored.
+                <strong>Your Baker access is still active.</strong> We detected an older browser session and cleared it automatically. Sign in once and you&apos;ll return directly to Import.
               </div>
             )}
 
@@ -146,6 +146,9 @@ export default function Login() {
 
             <p className="mt-6 text-xs leading-relaxed text-[#A8998E] text-center">
               Supervisors do not sign in here. They use the private invite link issued by the supervisee or platform owner.
+            </p>
+            <p className="mt-3 text-sm text-center text-[#7B6B62]">
+              New to Baker? <Link to="/signup" className="font-semibold text-[#E85D70] hover:underline">Start your 3-day free trial</Link>
             </p>
           </div>
         </div>

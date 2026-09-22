@@ -98,6 +98,11 @@ assert(!pricing.includes("name: 'Free'"), 'Pricing still contains a free-forever
 assert(!pricing.includes('Export Pass'), 'Pricing still contains Export Pass');
 assert(pricing.includes("price: '$16.99'"), 'Individual launch price is missing');
 assert(pricing.includes("price: '$34.99'"), 'Professional launch price is missing');
+const loginPage = read('src/pages/Login.tsx');
+assert(!loginPage.includes('private beta'), 'Login still presents the launched product as a private beta');
+assert(!loginPage.includes("Emily&apos;s beta account"), 'Login exposes a person-specific beta account');
+assert(loginPage.includes('Start your 3-day free trial'), 'Login does not offer a clear path to self-serve signup');
+assert(read('src/App.tsx').includes('lazy(() => import'), 'Routes are not code-split for launch performance');
 const launchCheck = read('src/pages/AdminLaunchCheck.tsx');
 assert(launchCheck.includes("mode: 'bcba-brain'"), 'Owner launch diagnostics does not perform a real Baker Brain request');
 assert(launchCheck.includes('stripeCheckoutConfigured'), 'Owner launch diagnostics does not inspect Stripe status');
@@ -173,6 +178,8 @@ for (const required of [
   'OFFICIAL SOURCES',
   'create study material',
   'original and unofficial',
+  'createBakerBrainFallback',
+  'identifying information',
 ]) {
   assert(brainEngine.includes(required), `Baker Brain engine missing: ${required}`);
 }

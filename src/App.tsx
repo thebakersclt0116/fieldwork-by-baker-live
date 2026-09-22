@@ -1,37 +1,47 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PaidFeatureRoute from './components/PaidFeatureRoute';
 import PlatformHome from './pages/PlatformHome';
-import Features from './pages/Features';
-import Pricing from './pages/Pricing';
-import Enterprise from './pages/Enterprise';
-import About from './pages/About';
-import Blog from './pages/Blog';
-import FAQ from './pages/FAQ';
-import Contact from './pages/Contact';
-import SignUp from './pages/SignUp';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import MemberDashboard from './pages/MemberDashboard';
-import SmartImportBridge from './pages/SmartImportBridge';
-import BakerAI from './pages/BakerAI';
-import BakerBrainHub from './pages/BakerBrainHub';
-import MyPathV2 from './pages/MyPathV2';
-import BCBARoadmap from './pages/BCBARoadmap';
-import BakerCommons from './pages/BakerCommons';
-import ExamLab from './pages/ExamLab';
-import ResourceVault from './pages/ResourceVault';
-import Upgrade from './pages/Upgrade';
-import UpgradeSuccess from './pages/UpgradeSuccess';
-import ExportCenter from './pages/ExportCenter';
-import SupervisorView from './pages/SupervisorView';
-import ApplySupervisorFeedback from './pages/ApplySupervisorFeedback';
-import AdminSupervisorPreview from './pages/AdminSupervisorPreview';
-import AdminLaunchCheck from './pages/AdminLaunchCheck';
-import Legal from './pages/Legal';
-import NotFound from './pages/NotFound';
 import { useAuth } from './hooks/useAuth';
+
+const Features = lazy(() => import('./pages/Features'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const Enterprise = lazy(() => import('./pages/Enterprise'));
+const About = lazy(() => import('./pages/About'));
+const Blog = lazy(() => import('./pages/Blog'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+const Contact = lazy(() => import('./pages/Contact'));
+const SignUp = lazy(() => import('./pages/SignUp'));
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
+const SmartImportBridge = lazy(() => import('./pages/SmartImportBridge'));
+const BakerAI = lazy(() => import('./pages/BakerAI'));
+const BakerBrainHub = lazy(() => import('./pages/BakerBrainHub'));
+const MyPathV2 = lazy(() => import('./pages/MyPathV2'));
+const BCBARoadmap = lazy(() => import('./pages/BCBARoadmap'));
+const BakerCommons = lazy(() => import('./pages/BakerCommons'));
+const ExamLab = lazy(() => import('./pages/ExamLab'));
+const ResourceVault = lazy(() => import('./pages/ResourceVault'));
+const Upgrade = lazy(() => import('./pages/Upgrade'));
+const UpgradeSuccess = lazy(() => import('./pages/UpgradeSuccess'));
+const ExportCenter = lazy(() => import('./pages/ExportCenter'));
+const SupervisorView = lazy(() => import('./pages/SupervisorView'));
+const ApplySupervisorFeedback = lazy(() => import('./pages/ApplySupervisorFeedback'));
+const AdminSupervisorPreview = lazy(() => import('./pages/AdminSupervisorPreview'));
+const AdminLaunchCheck = lazy(() => import('./pages/AdminLaunchCheck'));
+const Legal = lazy(() => import('./pages/Legal'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center bg-[#FFFCF9] text-sm text-[#A8998E]" role="status">
+      Loading Fieldwork by Baker…
+    </div>
+  );
+}
 
 function AccountDashboard() {
   const { isOwner } = useAuth();
@@ -41,7 +51,8 @@ function AccountDashboard() {
 export default function App() {
   return (
     <Layout>
-      <Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
         <Route path="/" element={<PlatformHome />} />
         <Route path="/features" element={<Features />} />
         <Route path="/pricing" element={<Pricing />} />
@@ -75,7 +86,8 @@ export default function App() {
         <Route path="/supervisor/:token" element={<SupervisorView />} />
         <Route path="/feedback/:token" element={<ApplySupervisorFeedback />} />
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </Layout>
   );
 }

@@ -20,6 +20,51 @@ const OFFICIAL_SOURCES = [
   { label: 'Ethics Code for Behavior Analysts', url: 'https://www.bacb.com/ethics-information/ethics-codes/' },
 ];
 
+export function createBakerBrainFallback(message: string) {
+  const lower = message.toLowerCase();
+  const containsIdentifyingInformation = /\b(?:john|jane)\s+[a-z]+\b|\b\d{1,5}\s+[a-z]+\s+(?:street|st|avenue|ave|road|rd|drive|dr)\b/i.test(message);
+  const outsideDomain = /\b(?:crypto|stock trading|sports betting|recipe|vacation itinerary)\b/i.test(message);
+  const examNavigation = /\b(?:mock exam|exam lab|practice exam|weak area)\b/i.test(message);
+  const fieldwork = /\b(?:fieldwork|unrestricted|restricted|supervision|parent training)\b/i.test(message);
+
+  if (outsideDomain) {
+    return {
+      answer: 'Baker Brain is intentionally focused on BCBA certification, behavior analysis, fieldwork, and exam preparation, so I can’t help with that request. I can help you turn your available time into a BCBA study plan or work through a behavior-analytic concept instead.',
+      mode: 'NAVIGATE',
+      actions: [{ label: 'Open Baker Brain', href: '/baker-brain', reason: 'Ask a BCBA-focused question.' }],
+      followUps: ['Build me a BCBA study plan.', 'Quiz me on an exam content area.'],
+      citations: [],
+      artifact: null,
+      provider: 'safe-fallback',
+    };
+  }
+
+  const privacyLead = containsIdentifyingInformation
+    ? 'Please remove names, addresses, and other identifying information before saving or sharing fieldwork notes. Use only the minimum de-identified details your documentation requires. '
+    : '';
+  const answer = fieldwork
+    ? `${privacyLead}Baker Brain’s live teaching model is temporarily unavailable. For fieldwork classification, document only what occurred, the organization and responsible supervisor, exact time or duration, whether supervision occurred, and enough detail for your qualified supervisor to review. Your supervisor and current BACB guidance—not Baker—determine whether an activity is acceptable.`
+    : `${privacyLead}Baker Brain’s live teaching model is temporarily unavailable, so I’m not going to invent a lesson or recommendation. Your saved progress is safe. Please try this question again shortly, or continue in Exam Lab and Resource Vault while the live model reconnects.`;
+  const actions = examNavigation
+    ? [
+        { label: 'Open Exam Lab', href: '/exam-lab', reason: 'Take a simulation and review weak areas.' },
+        { label: 'Open Resource Vault', href: '/resources', reason: 'Review saved lessons and study resources.' },
+      ]
+    : fieldwork
+      ? [{ label: 'Open Fieldwork Dashboard', href: '/dashboard', reason: 'Review or document fieldwork with your supervisor.' }]
+      : [{ label: 'Open Resource Vault', href: '/resources', reason: 'Continue with saved study resources.' }];
+
+  return {
+    answer,
+    mode: fieldwork ? 'FIELDWORK' : examNavigation ? 'EXAM_COACH' : 'NAVIGATE',
+    actions,
+    followUps: ['Try this question again.', 'Show me where to continue studying.'],
+    citations: fieldwork ? [OFFICIAL_SOURCES[1]] : [],
+    artifact: null,
+    provider: 'safe-fallback',
+  };
+}
+
 function extractOutputText(payload: any): string {
   if (typeof payload?.output_text === 'string') return payload.output_text;
   if (!Array.isArray(payload?.output)) return '';
