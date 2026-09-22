@@ -88,6 +88,9 @@ assert(checkoutApi.includes("subscription_data[trial_end]"), 'Stripe checkout do
 assert(!checkoutApi.includes("export_pass"), 'Export Pass still exists in Stripe checkout');
 assert(!checkoutComplete.includes("plan === 'export_pass'"), 'Export Pass entitlement still exists');
 assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
+assert(pricing.includes('3 days free'), 'Pricing does not show the 3-day trial');
+assert(!pricing.includes("name: 'Free'"), 'Pricing still contains a free-forever tier');
+assert(!pricing.includes('Export Pass'), 'Pricing still contains Export Pass');
 const launchCheck = read('src/pages/AdminLaunchCheck.tsx');
 assert(launchCheck.includes("mode: 'bcba-brain'"), 'Owner launch diagnostics does not perform a real Baker Brain request');
 assert(launchCheck.includes('stripeCheckoutConfigured'), 'Owner launch diagnostics does not inspect Stripe status');
