@@ -25,7 +25,7 @@ const tiers = [
 
 export default function Pricing() {
   const { isAuthenticated } = useAuth();
-  const trialHref = isAuthenticated ? '/upgrade' : '/signup?return=/upgrade';
+  const trialHref = isAuthenticated ? '/upgrade' : '/signup?return=/dashboard';
   return (
     <div className="min-h-[100dvh] bg-[#FFFCF9] dark:bg-[#171412]">
       <section className="px-4 pb-12 pt-16 text-center">
