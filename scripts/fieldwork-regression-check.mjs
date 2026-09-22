@@ -87,7 +87,6 @@ assert(authServer.includes('isTrialActive'), 'Server-side paid tools do not reco
 assert(!checkoutApi.includes("export_pass"), 'Export Pass still exists in Stripe checkout');
 assert(!checkoutComplete.includes("plan === 'export_pass'"), 'Export Pass entitlement still exists');
 assert(checkoutComplete.includes("payment_status === 'paid'"), 'Paid checkout must be verified after trial');
-assert(upgradePage.includes("Trial active — choose after day 3"), 'Active trial is not protected from early billing');
 assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
 assert(pricing.includes('3 days free'), 'Pricing does not show the 3-day trial');
 assert(!pricing.includes("name: 'Free'"), 'Pricing still contains a free-forever tier');
@@ -104,6 +103,7 @@ assert(resourceVault.includes("title: 'Measurement Flashcard Pack'"), 'Built-in 
 assert(resourceVault.includes("heading: 'Quick discrimination'"), 'Built-in resource bodies are not populated');
 
 const upgradePage = read('src/pages/Upgrade.tsx');
+assert(upgradePage.includes("Trial active — choose after day 3"), 'Active trial is not protected from early billing');
 assert(upgradePage.includes("stripeMode === 'test'"), 'Billing page does not disclose Stripe test mode');
 const stripeComponent = read('src/components/StripeCheckout.tsx');
 assert(stripeComponent.includes('/api/create-checkout-session'), 'Stripe UI is not wired to the real checkout endpoint');
