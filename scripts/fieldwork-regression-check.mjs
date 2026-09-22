@@ -110,7 +110,7 @@ assert(resourceVault.includes("title: 'Measurement Flashcard Pack'"), 'Built-in 
 assert(resourceVault.includes("heading: 'Quick discrimination'"), 'Built-in resource bodies are not populated');
 
 const upgradePage = read('src/pages/Upgrade.tsx');
-assert(upgradePage.includes("Trial active — choose after day 3"), 'Active trial is not protected from early billing');
+assert(upgradePage.includes("Choose this plan now"), 'Trial users cannot choose a paid plan before trial ends');
 assert(upgradePage.includes("stripeMode === 'test'"), 'Billing page does not disclose Stripe test mode');
 const stripeComponent = read('src/components/StripeCheckout.tsx');
 assert(stripeComponent.includes('/api/create-checkout-session'), 'Stripe UI is not wired to the real checkout endpoint');
