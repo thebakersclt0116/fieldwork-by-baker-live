@@ -77,6 +77,11 @@ const signupPage = read('src/pages/SignUp.tsx');
 const checkoutApi = read('api/create-checkout-session.ts');
 const checkoutComplete = read('api/checkout-complete.ts');
 
+const stripePricing = read('api/create-checkout-session.ts');
+assert(stripePricing.includes('amount: 1699'), 'Individual Stripe price is not $16.99');
+assert(stripePricing.includes('amount: 3499'), 'Professional Stripe price is not $34.99');
+assert(stripePricing.includes('amount: 34900'), 'Professional Annual Stripe price is not $349');
+
 const pricing = read('src/pages/Pricing.tsx');
 assert(pricing.includes("3-Day Free Trial"), 'Pricing does not advertise the 3-day trial');
 assert(!pricing.includes("name: 'Free'"), 'Permanent Free pricing tier still exists');
@@ -91,6 +96,8 @@ assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrad
 assert(pricing.includes('3 days free'), 'Pricing does not show the 3-day trial');
 assert(!pricing.includes("name: 'Free'"), 'Pricing still contains a free-forever tier');
 assert(!pricing.includes('Export Pass'), 'Pricing still contains Export Pass');
+assert(pricing.includes("price: '$16.99'"), 'Individual launch price is missing');
+assert(pricing.includes("price: '$34.99'"), 'Professional launch price is missing');
 const launchCheck = read('src/pages/AdminLaunchCheck.tsx');
 assert(launchCheck.includes("mode: 'bcba-brain'"), 'Owner launch diagnostics does not perform a real Baker Brain request');
 assert(launchCheck.includes('stripeCheckoutConfigured'), 'Owner launch diagnostics does not inspect Stripe status');
