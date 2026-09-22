@@ -137,7 +137,7 @@ export default function Upgrade() {
           <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><UserCheck size={18} className="text-[#5FA37E] mb-2" /><strong className="block text-[#332C28] mb-1">Professional</strong>Secure supervisor review, notes, and messages.</div>
         </div>
 
-        <div className="max-w-3xl mx-auto mt-8 rounded-2xl bg-[#FAF8F6] p-5 flex items-start gap-3 text-sm text-[#6B5D54]"><LockKeyhole size={18} className="text-[#A8998E] shrink-0 mt-0.5" /><div><strong className="text-[#332C28]">Your data stays yours.</strong> The paywall is for premium automation and official-form generation convenience—not for seeing or manually copying the fieldwork records you entered.</div></div>
+        <div className="max-w-3xl mx-auto mt-8 rounded-2xl bg-[#FAF8F6] p-5 flex items-start gap-3 text-sm text-[#6B5D54]"><LockKeyhole size={18} className="text-[#A8998E] shrink-0 mt-0.5" /><div><strong className="text-[#332C28]">Your data stays yours.</strong> After the 3-day trial, an active plan is required to keep using the connected app. Keep independent backups of fieldwork records you are professionally required to retain.</div></div>
         {user && <p className="text-center text-xs text-[#A8998E] mt-6">Signed in as {user.email}</p>}
       </div>
     </div>
