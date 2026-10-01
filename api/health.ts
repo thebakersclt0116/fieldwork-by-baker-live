@@ -25,6 +25,8 @@ export default async function handler(req: any, res: any) {
     secureSessionSigningAvailable: hasSessionSigningSecret(),
     stripeCheckoutConfigured: Boolean(stripeSecret),
     stripeMode,
+    deployedCommit: process.env.VERCEL_GIT_COMMIT_SHA || null,
+    detailedMigrationVersion: 'entry-audit-v1',
     timestamp: new Date().toISOString(),
   });
 }

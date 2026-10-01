@@ -1,6 +1,6 @@
 import { buildStoreZip } from './downloadZip';
 import { getCurrentUserEmail, loadEntries, saveEntries } from './fieldworkStore';
-import { auditCsv, entryFingerprint, planMerge, sha256, type AuditEntry, type Mapping, type ImportOptions, type MigrationPreview, type SourceTable } from './detailedMigration';
+import { auditCsv, planMerge, sha256, type AuditEntry, type Mapping, type ImportOptions, type MigrationPreview, type SourceTable } from './detailedMigration';
 
 export type SourceDocument = { id: string; owner: string; hash: string; filename: string; mime: string; size: number; savedAt: string; kind: 'detailed-source' | 'supporting-document'; bytes: Uint8Array };
 export type AuditBatch = { id: string; owner: string; createdAt: string; sourceHash: string; filename: string; mapping: Mapping; options: ImportOptions; sourceRows: number; results: MigrationPreview['rows']; before: AuditEntry[]; addedIds: string[]; archivedSummaryIds: string[]; state: 'prepared' | 'committed' | 'failed'; note: string };

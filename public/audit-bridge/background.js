@@ -72,7 +72,8 @@ async function capture(sender, requestId) {
     }
     const digestBytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(scan.links.map(l => l.url).join('\n')));
     const cursorKey = 'detail-' + [...new Uint8Array(digestBytes)].map(b => b.toString(16).padStart(2, '0')).join('');
-    const stored = await chrome.storage.session.get(cursorKey), offset = Number(stored[cursorKey] || 0);
+    const stored = await chrome.storage.session.get(cursorKey), saved = stored[cursorKey] || {}, offset = Number(saved.offset || 0);
+    if (offset > 0 && offset < scan.links.length) { entries.push(...(saved.entries || [])); failed.push(...(saved.failed || [])); }
     const start = offset < scan.links.length ? offset : 0, deadline = Date.now() + 210000;
     temp = await chrome.tabs.create({ url: 'about:blank', active: false });
     let next = start;
@@ -94,7 +95,8 @@ async function capture(sender, requestId) {
       else failed.push({ sourceId: link.sourceId, reason: detail?.reason || 'Entry did not render in time or authentication redirected it.', finalPath: lastPath });
     }
     const remaining = scan.links.length - next;
-    await chrome.storage.session.set({ [cursorKey]: remaining > 0 ? next : 0 });
+    if (remaining > 0) await chrome.storage.session.set({ [cursorKey]: { offset: next, entries, failed } });
+    else await chrome.storage.session.remove(cursorKey);
     warnings.push('Scope is only the entry links on the page you opened. Other months, organizations, pagination pages and attachments are NOT automatically included.');
     if (remaining) warnings.push(`${remaining} links remain on this page. Press Capture entry details again to continue the next batch. Do not call this a complete migration yet.`);
     if (failed.length) warnings.push(`${failed.length} entries could not be read. Their identifiers are in capture.failed. Revisit those entries or request an export; do not retire the source account.`);

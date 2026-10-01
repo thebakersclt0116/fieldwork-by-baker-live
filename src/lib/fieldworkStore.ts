@@ -50,15 +50,20 @@ export function saveEntries(entries: HourEntry[], email = getCurrentUserEmail() 
   localStorage.setItem(storageKey(email, 'entries'), JSON.stringify(entries));
 }
 
+function migrationIdentity(entry: HourEntry): string {
+  if ('migration' in entry && entry.migration) return `source:${entry.id}`;
+  return JSON.stringify([entry.date, entry.startTime, entry.endTime, entry.duration, entry.activityType, entry.activityCategory, entry.supervisorName, entry.organizationName || '', entry.setting, entry.notes || '', entry.workPresence, entry.supervisionFormat, entry.supervisionMinutes, entry.observationMinutes, entry.individualSupervisionMinutes]);
+}
+
 export function appendEntries(incoming: HourEntry[], email = getCurrentUserEmail() || ''): HourEntry[] {
   const existing = loadEntries(email);
   const seen = new Set(
     existing.map((entry) =>
-      [entry.date, entry.startTime, entry.endTime, entry.duration, entry.activityType, entry.supervisorName].join('|')
+      migrationIdentity(entry)
     )
   );
   const additions = incoming.filter((entry) => {
-    const signature = [entry.date, entry.startTime, entry.endTime, entry.duration, entry.activityType, entry.supervisorName].join('|');
+    const signature = migrationIdentity(entry);
     if (seen.has(signature)) return false;
     seen.add(signature);
     return true;

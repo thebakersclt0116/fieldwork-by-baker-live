@@ -44,7 +44,7 @@ export type Provenance = {
 export type AuditEntry = HourEntry & { migration?: Provenance };
 export type RowResult = { row: number; entries: AuditEntry[]; errors: string[]; warnings: string[] };
 export type MigrationPreview = { rows: RowResult[]; entries: AuditEntry[]; errors: number; warnings: number };
-const cleanHeader = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+const cleanHeader = (v: string) => v.toLowerCase().replace(/\s*\((?:optional|required)\)/g, '').replace(/[^a-z0-9]/g, '');
 const text = (v: unknown): string => v === null || v === undefined ? '' : typeof v === 'string' ? v : JSON.stringify(v);
 export function guessMapping(headers: string[]): Mapping {
   const result: Mapping = {};
@@ -121,7 +121,7 @@ export function parseTime(raw: string): { time: string; minutes: number } | unde
 export function parseAmount(raw: string): number | undefined {
   const s = raw.trim();
   if (!s) return undefined;
-  if (/^\d+(?:\.\d+)?$/.test(s)) return Number(s);
+  if (/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(s)) return Number(s);
   const clock = /^(\d+):(\d{2})$/.exec(s);
   if (clock && Number(clock[2]) < 60) return Number(clock[1]) + Number(clock[2]) / 60;
   const hm = /^(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?)?)?)?$/i.exec(s);
@@ -229,7 +229,7 @@ export function planMerge(existing: AuditEntry[], incoming: AuditEntry[]) {
   const add: AuditEntry[] = [], duplicate: AuditEntry[] = [], conflicts: AuditEntry[] = [], possibleDuplicates: AuditEntry[] = [];
   for (const entry of incoming) {
     const prior = byId.get(entry.id), fingerprint = entryFingerprint(entry);
-    if (prior) { (entryFingerprint(prior) === fingerprint ? duplicate : conflicts).push(entry); continue; }
+    if (prior) { (entryFingerprint(prior) === fingerprint && JSON.stringify(prior.migration?.original) === JSON.stringify(entry.migration?.original) ? duplicate : conflicts).push(entry); continue; }
     // Identical values without a matching source ID are flagged, NOT silently discarded.
     if (fingerprints.has(fingerprint)) possibleDuplicates.push(entry);
     add.push(entry); byId.set(entry.id, entry); fingerprints.add(fingerprint);

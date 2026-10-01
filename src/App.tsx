@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router';
+import { Routes, Route, Navigate } from 'react-router';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PaidFeatureRoute from './components/PaidFeatureRoute';
@@ -17,7 +17,7 @@ const SignUp = lazy(() => import('./pages/SignUp'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
-const SmartImportBridge = lazy(() => import('./pages/SmartImportBridge'));
+const DetailedMigration = lazy(() => import('./pages/DetailedMigration'));
 const BakerAI = lazy(() => import('./pages/BakerAI'));
 const BakerBrainHub = lazy(() => import('./pages/BakerBrainHub'));
 const MyPathV2 = lazy(() => import('./pages/MyPathV2'));
@@ -79,7 +79,9 @@ export default function App() {
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
-        <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><SmartImportBridge /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><DetailedMigration /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/audit-history" element={<ProtectedRoute><DetailedMigration /></ProtectedRoute>} />
+        <Route path="/import-monthly" element={<Navigate to="/import" replace />} />
         <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/admin/supervisor-preview" element={<ProtectedRoute><AdminSupervisorPreview /></ProtectedRoute>} />
         <Route path="/admin/launch-check" element={<ProtectedRoute><AdminLaunchCheck /></ProtectedRoute>} />
