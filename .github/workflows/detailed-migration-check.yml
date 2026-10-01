@@ -1,0 +1,95 @@
+name: Detailed Migration Acceptance
+on:
+  push:
+    branches: [baker-audit-detail-migration, main]
+    paths:
+      - 'src/**'
+      - 'public/audit-bridge/**'
+      - 'scripts/*migration*'
+      - 'scripts/detailed-playwright.config.mjs'
+      - '.github/workflows/detailed-migration-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: detailed-migration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply guarded migration wiring on feature branch only
+        if: github.ref == 'refs/heads/baker-audit-detail-migration'
+        run: |
+          node scripts/wire-detailed-migration.mjs
+          git config user.name 'Baker Migration CI'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.tsx src/components/Layout.tsx src/pages/DetailedMigration.tsx src/lib/detailedMigration.ts src/lib/migrationArchive.ts src/lib/fieldworkStore.ts public/audit-bridge/background.js api/health.ts
+          if ! git diff --cached --quiet; then
+            git commit -m 'Wire entry-level migration and portable audit archive'
+            git push origin HEAD:baker-audit-detail-migration
+          fi
+          echo "Tested source commit: $(git rev-parse HEAD)"
+      - name: Exact source data regression tests
+        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs
+      - name: Install build dependencies
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          rm -f package-lock.json
+          npm install --registry=https://registry.npmjs.org/
+      - name: Existing production regressions
+        run: node scripts/fieldwork-regression-check.mjs
+      - name: Build production application
+        run: npm run build
+      - name: Bundle every production API
+        run: |
+          mkdir -p /tmp/baker-api-check
+          for route in api/*.ts; do
+            case "$route" in api/_*) continue ;; esac
+            ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/baker-api-check/$(basename "$route" .ts).mjs"
+          done
+      - name: Install isolated browser test tools
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.51.1
+          npx playwright install --with-deps chromium
+      - name: Browser acceptance tests against compiled app
+        run: npx playwright test --config=scripts/detailed-playwright.config.mjs
+      - name: Wait for this exact production commit
+        if: github.ref == 'refs/heads/main'
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'JS'
+          let ready = false;
+          for (let attempt = 0; attempt < 45; attempt++) {
+            try {
+              const r = await fetch('https://www.fieldworkbybaker.com/api/health?audit_check=' + Date.now());
+              const h = await r.json();
+              if (h.deployedCommit === process.env.EXPECTED_COMMIT && h.detailedMigrationVersion === 'entry-audit-v1') { ready = true; break; }
+            } catch {}
+            await new Promise(r => setTimeout(r, 10000));
+          }
+          if (!ready) throw new Error('Expected main commit is not live on the custom domain; deployment must be checked.');
+          console.log('Exact main commit is live; running normal signed-trial production acceptance.');
+          JS
+      - name: Real authenticated production migration acceptance
+        if: github.ref == 'refs/heads/main'
+        env:
+          BAKER_TEST_ORIGIN: https://www.fieldworkbybaker.com
+        run: npx playwright test --config=scripts/detailed-playwright.config.mjs
+      - name: Collect safe synthetic evidence
+        if: always()
+        run: |
+          mkdir -p audit-test-artifacts
+          zip -q audit-test-artifacts/review-source.zip src/pages/DetailedMigration.tsx src/lib/detailedMigration.ts src/lib/migrationArchive.ts src/lib/fieldworkStore.ts src/lib/downloadZip.ts src/types/index.ts src/App.tsx public/audit-bridge/background.js scripts/detailed-migration.test.mjs scripts/detailed-migration.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: detailed-migration-acceptance
+          path: audit-test-artifacts
+          retention-days: 7
