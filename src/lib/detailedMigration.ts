@@ -41,7 +41,7 @@ export type Provenance = {
   originalStatus: string; elapsedMinutes?: number; sourceStart: string; sourceEnd: string;
   allocation?: string; warnings: string[];
 };
-export type AuditEntry = HourEntry & { migration?: Provenance };
+export type AuditEntry = HourEntry & { migration?: Provenance; contactType?: string };
 export type RowResult = { row: number; entries: AuditEntry[]; errors: string[]; warnings: string[] };
 export type MigrationPreview = { rows: RowResult[]; entries: AuditEntry[]; errors: number; warnings: number };
 const cleanHeader = (v: string) => v.toLowerCase().replace(/\s*\((?:optional|required)\)/g, '').replace(/[^a-z0-9]/g, '');
@@ -175,6 +175,7 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
     const fwText = enumText(get('fieldworkType'));
     const fw = fwText === 'concentrated' || fwText === 'concentrated supervised fieldwork' ? 'CONCENTRATED' : fwText === 'supervised' || fwText === 'supervised fieldwork' ? 'SUPERVISED' : options.defaultFieldworkType;
     if (!fw) errors.push('Choose the actual fieldwork type or map its source column.');
+    if (fwText && !['supervised', 'supervised fieldwork', 'concentrated', 'concentrated supervised fieldwork'].includes(fwText)) errors.push('Unrecognized source fieldwork type. Review it; do not silently replace it with a default.');
     if (!fwText && options.defaultFieldworkType) warnings.push(`Fieldwork type supplied by user: ${options.defaultFieldworkType}.`);
     const minuteValues: Partial<Record<'supervision' | 'observation' | 'individual', number>> = {};
     for (const key of ['supervision', 'observation', 'individual'] as const) {
@@ -183,7 +184,9 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
       else { minuteValues[key] = Number(raw); if (duration !== undefined && Number(raw) > duration * 60 + 0.61) errors.push(`${key} minutes exceed entry duration.`); }
     }
     if (minuteValues.individual !== undefined && minuteValues.supervision !== undefined && minuteValues.individual > minuteValues.supervision) errors.push('Individual supervision exceeds total supervision.');
-    if (presence === 'INDEPENDENT' && (minuteValues.supervision || 0) > 0) errors.push('Independent entry conflicts with supervision minutes.');
+    if (presence === 'INDEPENDENT' && ((minuteValues.supervision || 0) > 0 || (minuteValues.observation || 0) > 0)) errors.push('Independent entry conflicts with supervision/observation minutes.');
+    if (minuteValues.observation !== undefined && minuteValues.supervision !== undefined && minuteValues.observation > minuteValues.supervision) errors.push('Client observation exceeds total supervision.');
+    if (format === 'GROUP' && (minuteValues.individual || 0) > 0) errors.push('Group format conflicts with individual supervision minutes.');
     if (presence === 'SUPERVISED' && !format && !get('group').trim()) warnings.push('Individual/group format missing.');
     const modeText = enumText(get('observationMode'));
     const mode = ['in person', 'onsite', 'on site'].includes(modeText) ? 'IN_PERSON' : ['online', 'video', 'telehealth', 'synchronous', 'asynchronous'].includes(modeText) ? 'ONLINE' : ['phone', 'telephone'].includes(modeText) ? 'PHONE' : undefined;
@@ -201,7 +204,7 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
       supervisorId: `source_${get('supervisor').trim().toLowerCase()}`, supervisorName: get('supervisor').trim() || 'Not specified',
       supervisorEmail: get('supervisorEmail').trim() || undefined, organizationName: get('organization').trim() || undefined,
       workPresence: presence, supervisionFormat: allocation.group ? 'GROUP' : format,
-      observationMode: mode, clientInitials: get('client').trim() || undefined, setting: get('setting'),
+      observationMode: mode, contactType: get('contactType') || undefined, clientInitials: get('client').trim() || undefined, setting: get('setting'),
       notes: noteParts.join('\n\n'), status: 'PENDING', createdAt: importedAt, updatedAt: importedAt,
       // Whole-row supervision is never multiplied across split allocations. The original remains in the audit source.
       supervisionMinutes: allocations.length === 1 ? minuteValues.supervision : undefined,
@@ -239,7 +242,7 @@ export function planMerge(existing: AuditEntry[], incoming: AuditEntry[]) {
   return { add, duplicate, conflicts, possibleDuplicates, overlappingSummaries };
 }
 export function auditCsv(entries: AuditEntry[]): string {
-  const headers = ['Entry ID', 'Date', 'Start time', 'End time', 'Hours', 'Activity category', 'Fieldwork type', 'Organization', 'Supervisor', 'Supervisor email', 'Hour type', 'Supervision format', 'Supervision minutes', 'Observation minutes', 'Individual supervision minutes', 'Observation mode', 'Client initials', 'Setting', 'Description of activity', 'Baker status', 'Supervisor note', 'Supervisor message', 'Revision history', 'Source file', 'Source SHA256', 'Source row', 'Source entry ID', 'Source status', 'Original entry start', 'Original entry end', 'Allocation', 'Source warnings', 'All original fields'];
+  const headers = ['Entry ID', 'Date', 'Start time', 'End time', 'Hours', 'Activity category', 'Fieldwork type', 'Organization', 'Supervisor', 'Supervisor email', 'Hour type', 'Supervision format', 'Supervision minutes', 'Observation minutes', 'Individual supervision minutes', 'Observation mode', 'Client initials', 'Setting', 'Description of activity', 'Baker status', 'Supervisor note', 'Supervisor message', 'Revision history', 'Source file', 'Source SHA256', 'Source row', 'Source entry ID', 'Source status', 'Original entry start', 'Original entry end', 'Allocation', 'Source warnings', 'Contact type', 'All original fields'];
   const cell = (v: unknown) => { const raw = text(v); const safe = /^[\s]*[=+@-]/.test(raw) ? "'" + raw : raw; return '"' + safe.replace(/"/g, '""') + '"'; };
-  return [headers, ...entries.map(e => [e.id, e.date, e.startTime, e.endTime, e.duration, e.activityCategory, e.fieldworkType, e.organizationName, e.supervisorName, e.supervisorEmail, e.workPresence, e.supervisionFormat, e.supervisionMinutes, e.observationMinutes, e.individualSupervisionMinutes, e.observationMode, e.clientInitials, e.setting, e.notes, e.status, e.supervisorNote, e.supervisorMessage, e.revisionHistory, e.migration?.sourceFile, e.migration?.sourceHash, e.migration?.sourceRow, e.migration?.sourceId, e.migration?.originalStatus, e.migration?.sourceStart, e.migration?.sourceEnd, e.migration?.allocation, e.migration?.warnings, e.migration?.raw])].map(row => row.map(cell).join(',')).join('\r\n');
+  return [headers, ...entries.map(e => [e.id, e.date, e.startTime, e.endTime, e.duration, e.activityCategory, e.fieldworkType, e.organizationName, e.supervisorName, e.supervisorEmail, e.workPresence, e.supervisionFormat, e.supervisionMinutes, e.observationMinutes, e.individualSupervisionMinutes, e.observationMode, e.clientInitials, e.setting, e.notes, e.status, e.supervisorNote, e.supervisorMessage, e.revisionHistory, e.migration?.sourceFile, e.migration?.sourceHash, e.migration?.sourceRow, e.migration?.sourceId, e.migration?.originalStatus, e.migration?.sourceStart, e.migration?.sourceEnd, e.migration?.allocation, e.migration?.warnings, e.contactType, e.migration?.raw])].map(row => row.map(cell).join(',')).join('\r\n');
 }

@@ -22,7 +22,7 @@ async function all<T extends { owner: string }>(store: string, owner: string): P
   try { return await new Promise<T[]>((resolve, reject) => { const req = db.transaction(store).objectStore(store).getAll(); req.onsuccess = () => resolve((req.result as T[]).filter(r => normalized(r.owner) === normalized(owner))); req.onerror = () => reject(req.error); }); }
   finally { db.close(); }
 }
-async function put(store: string, record: { owner: string }): Promise<void> {
+async function put<T extends { owner: string }>(store: string, record: T): Promise<void> {
   requireOwner(record.owner); const db = await openDatabase();
   try { await new Promise<void>((resolve, reject) => { const tx = db.transaction(store, 'readwrite'); tx.objectStore(store).put(record); tx.oncomplete = () => resolve(); tx.onabort = () => reject(new Error('Archive write failed, possibly because storage is full. Nothing may be discarded; download a backup first.')); tx.onerror = () => reject(tx.error); }); }
   finally { db.close(); }
