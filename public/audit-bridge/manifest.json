@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Baker Detail Bridge",
+  "version": "1.0.0",
+  "description": "Read your authorized Ripley fieldwork entry detail pages into a portable JSON export. Never saves or deletes source entries.",
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": ["https://*.ripleyfieldworktracker.com/*", "https://ripleyfieldworktracker.com/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [{
+    "matches": ["https://www.fieldworkbybaker.com/*", "https://fieldworkbybaker.com/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }]
+}
