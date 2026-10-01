@@ -23,15 +23,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply guarded migration wiring on feature branch only
+      - name: Apply scoped hardening on feature branch only
         if: github.ref == 'refs/heads/baker-audit-detail-migration'
         run: |
-          node scripts/wire-detailed-migration.mjs
+          node scripts/harden-detailed-migration.mjs
           git config user.name 'Baker Migration CI'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/App.tsx src/components/Layout.tsx src/pages/DetailedMigration.tsx src/lib/detailedMigration.ts src/lib/migrationArchive.ts src/lib/fieldworkStore.ts public/audit-bridge/background.js api/health.ts
+          git add src/pages/DetailedMigration.tsx src/lib/detailedMigration.ts src/lib/migrationArchive.ts
           if ! git diff --cached --quiet; then
-            git commit -m 'Wire entry-level migration and portable audit archive'
+            git commit -m 'Harden original-record migration and typed archive writes'
             git push origin HEAD:baker-audit-detail-migration
           fi
           echo "Tested source commit: $(git rev-parse HEAD)"
