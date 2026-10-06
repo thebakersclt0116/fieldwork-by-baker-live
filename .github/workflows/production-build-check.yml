@@ -3,6 +3,8 @@ name: Production Build Check
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -19,10 +21,11 @@ jobs:
       - name: Install dependencies from official npm registry
         run: |
           npm config set registry https://registry.npmjs.org/
-          rm -f package-lock.json
-          npm install --registry=https://registry.npmjs.org/
+          npm ci --registry=https://registry.npmjs.org/
       - name: Run Emily fieldwork regression checks
         run: node scripts/fieldwork-regression-check.mjs
+      - name: Launch security and precision checks
+        run: node --experimental-strip-types --test scripts/launch-hardening.test.mjs
       - name: Build production frontend
         run: npm run build
       - name: Bundle production API routes

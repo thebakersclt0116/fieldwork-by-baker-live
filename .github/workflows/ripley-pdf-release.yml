@@ -3,9 +3,11 @@ on:
   push:
     branches: [baker-ripley-detailed-pdf-20261006, main]
     paths: ['src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: ripley-pdf-${{ github.ref }}
   cancel-in-progress: true
@@ -17,23 +19,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
-      - name: Apply final source-integrity review on feature branch
-        if: github.ref == 'refs/heads/baker-ripley-detailed-pdf-20261006'
-        run: |
-          if test -f scripts/harden-pdf-batch.mjs; then
-            node scripts/harden-pdf-batch.mjs
-            git config user.name 'Baker PDF Release CI'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add src/pages/DetailedMigration.tsx scripts/ripley-pdf-browser-check.mjs
-            git rm scripts/harden-pdf-batch.mjs
-            git commit -m 'Block incomplete PDF batches and show source candidate before import'
-            git push origin HEAD:baker-ripley-detailed-pdf-20261006
-          fi
-          echo "Tested commit: $(git rev-parse HEAD)"
       - name: Install exactly as current Vercel project
         run: |
-          rm -f package-lock.json
-          npm install --registry=https://registry.npmjs.org/
+          npm ci --registry=https://registry.npmjs.org/
       - name: Resolve real PDF reader and matching worker
         run: |
           node --input-type=module <<'JS'

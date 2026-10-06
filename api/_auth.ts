@@ -8,7 +8,6 @@ import {
   verify as verifyDetached,
   type KeyObject,
 } from 'node:crypto';
-import { BAKER_RUNTIME_SECRET } from './_runtime-secret.js';
 
 export type BakerRole = 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
 
@@ -63,7 +62,7 @@ function fromBase64Url(input: string): string {
 }
 
 function sessionSecret(): string | null {
-  return process.env.BAKER_SESSION_SECRET || BAKER_RUNTIME_SECRET || null;
+  return process.env.BAKER_SESSION_SECRET || null;
 }
 
 export function hasSessionSigningSecret(): boolean {

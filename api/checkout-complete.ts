@@ -12,6 +12,7 @@ type StripeSession = {
 };
 
 function send(res: any, status: number, body: unknown) {
+  res.setHeader('Cache-Control', 'private, no-store');
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
 }
 

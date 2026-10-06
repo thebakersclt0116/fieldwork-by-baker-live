@@ -1,3 +1,4 @@
+import { accountStorage } from '@/lib/accountStorage';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, Brain, BookOpen, Compass, ExternalLink, FileText, FlaskConical, Library, Loader2, Route, Send, Sparkles, Target, Users, WandSparkles } from 'lucide-react';
@@ -50,7 +51,7 @@ const quickStarts = [
 ];
 
 function safeParse<T>(key: string, fallback: T): T {
-  try { return JSON.parse(localStorage.getItem(key) || '') as T; } catch { return fallback; }
+  try { return JSON.parse(accountStorage.getItem(key) || '') as T; } catch { return fallback; }
 }
 
 function loadHistory(): Message[] {
@@ -79,12 +80,12 @@ export default function BakerBrainHub() {
     const seed = safeParse<{ prompt?: string } | null>(BRAIN_SEED_KEY, null);
     if (seed?.prompt) {
       setInput(seed.prompt);
-      localStorage.removeItem(BRAIN_SEED_KEY);
+      accountStorage.removeItem(BRAIN_SEED_KEY);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(messages.slice(-40)));
+    accountStorage.setItem(HISTORY_KEY, JSON.stringify(messages.slice(-40)));
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -187,13 +188,13 @@ export default function BakerBrainHub() {
       desc: artifact.summary,
       createdAt: new Date().toISOString(),
     };
-    localStorage.setItem(BRAIN_RESOURCES_KEY, JSON.stringify([item, ...current].slice(0, 50)));
+    accountStorage.setItem(BRAIN_RESOURCES_KEY, JSON.stringify([item, ...current].slice(0, 50)));
     setSavedArtifact(artifact.title);
   };
 
   const clearConversation = () => {
     setMessages([]);
-    localStorage.removeItem(HISTORY_KEY);
+    accountStorage.removeItem(HISTORY_KEY);
   };
 
   const latestAssistant = [...messages].reverse().find((message) => message.role === 'assistant');

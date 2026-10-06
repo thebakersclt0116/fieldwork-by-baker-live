@@ -1,3 +1,4 @@
+import { accountStorage } from '@/lib/accountStorage';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Brain, CalendarDays, CheckCircle2, Clock3, Compass, FileText, FlaskConical, Route, Sparkles, Users } from 'lucide-react';
@@ -19,7 +20,7 @@ const PROFILE_KEY = 'fieldworkByBaker:pathProfile:v1';
 const blank: PathProfile = { stage: 'Fieldwork + exam preparation', program: '', graduation: '', examDate: '', studyHours: '6', strongArea: '', growthArea: '' };
 
 function loadProfile(): PathProfile {
-  try { return { ...blank, ...(JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}') as Partial<PathProfile>) }; } catch { return blank; }
+  try { return { ...blank, ...(JSON.parse(accountStorage.getItem(PROFILE_KEY) || '{}') as Partial<PathProfile>) }; } catch { return blank; }
 }
 
 export default function MyPathV2() {
@@ -30,7 +31,7 @@ export default function MyPathV2() {
   const [profile, setProfile] = useState<PathProfile>(() => loadProfile());
   const [editing, setEditing] = useState(false);
 
-  const save = () => { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); setEditing(false); };
+  const save = () => { accountStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); setEditing(false); };
   const latestMonth = [...compliance.months].sort((a, b) => b.month.localeCompare(a.month))[0];
   const progress = Math.min(100, Math.max(8, Math.round((compliance.actualHours / 2000) * 100)));
   const supervisionNeedsAttention = Boolean(latestMonth && latestMonth.supervisionMinutes < latestMonth.requiredSupervisionMinutes);

@@ -140,11 +140,11 @@ export function normalizeTime(value: string): string {
 }
 
 export function hoursBetween(start: string, end: string): number {
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(start) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(end)) return 0;
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
-  if ([sh, sm, eh, em].some(Number.isNaN)) return 0;
-  const result = eh + em / 60 - (sh + sm / 60);
-  return result > 0 ? Math.round(result * 100) / 100 : 0;
+  const minutes = (eh * 60 + em) - (sh * 60 + sm);
+  return minutes > 0 ? minutes / 60 : 0;
 }
 
 export function inferFieldworkType(value: string): FieldworkType {

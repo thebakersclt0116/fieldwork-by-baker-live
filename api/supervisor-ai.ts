@@ -4,6 +4,7 @@ import { getAiGatewayToken } from './_gateway.js';
 const MODEL = 'openai/gpt-5.6-sol';
 
 function send(res: any, status: number, body: unknown) {
+  res.setHeader('Cache-Control', 'private, no-store');
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
 }
 
