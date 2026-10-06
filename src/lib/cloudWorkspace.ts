@@ -1,4 +1,5 @@
 import type { HourEntry } from '@/types';
+import { currentManagedToken } from './managedSession.ts';
 
 export type CloudState = 'loading' | 'saved' | 'saving' | 'blocked';
 const listeners = new Set<() => void>();
@@ -29,9 +30,17 @@ export function cloudKey(kind: string,email=managedEmail()||''): string {return 
 function notify(next:CloudState) {state=next;for(const listener of listeners)listener();}
 export function cloudState(){return state;}
 export function subscribeCloud(listener:()=>void){listeners.add(listener);return ()=>{listeners.delete(listener);};}
+export async function waitForCloudSave():Promise<void>{
+  if(state==='saved')return;if(state==='blocked')throw new Error('Cloud saving needs review. Your local draft is retained.');
+  await new Promise<void>((resolve,reject)=>{
+    const timeout=setTimeout(()=>{off();reject(new Error('Cloud save is still pending. Keep your backup and check its status before retrying.'));},120000);
+    const off=subscribeCloud(()=>{if(state==='saved'||state==='blocked'){clearTimeout(timeout);off();state==='saved'?resolve():reject(new Error('Cloud saving needs review. Your local draft is retained.'));}});
+  });
+}
 async function request(body?:unknown,cursor?:string,owner=activeEmail):Promise<any>{
   if(managedEmail()!==owner||activeEmail!==owner)throw new Error('Account changed');
-  const token=localStorage.getItem('bakerSessionToken');
+  const token=await currentManagedToken();
+  if(managedEmail()!==owner||activeEmail!==owner)throw new Error('Account changed');
   const response=await fetch('/api/workspace'+(cursor?'?cursor='+encodeURIComponent(cursor):''),{
     method:body?'POST':'GET',headers:{Authorization:`Bearer ${token}`,...(body?{'Content-Type':'application/json'}:{})},
     body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000),
@@ -85,8 +94,10 @@ async function loadCloud(email:string):Promise<void>{
 function markPending(){localStorage.setItem(cloudKey('pending'),JSON.stringify({version,updatedAt:new Date().toISOString()}));notify('saving');}
 export function queueEntries(entries:HourEntry[]){
   if(!initialized||state==='blocked'||managedEmail()!==activeEmail)throw new Error('Cloud saving is blocked. Export your backup before continuing.');
-  localStorage.setItem(cloudKey('entries'),JSON.stringify(entries));
-  pendingEntries=entries;generation++;markPending();void flush();
+  localStorage.setItem(cloudKey('pending'),JSON.stringify({version,updatedAt:new Date().toISOString()}));
+  try {localStorage.setItem(cloudKey('entries'),JSON.stringify(entries));}
+  catch(error){notify('blocked');throw error;}
+  pendingEntries=entries;generation++;notify('saving');void flush();
 }
 export function queueLearning(kind:string,payload:unknown){
   if(!initialized||state==='blocked'||managedEmail()!==activeEmail)throw new Error('Cloud saving is blocked. Export your backup before continuing.');
@@ -108,7 +119,10 @@ async function flush(){
         const canonical=await readWorkspace();
         if(canonical.version!==version)throw new Error('Concurrent change requires review');
         serverIds=new Set(canonical.entries.map((entry:HourEntry)=>entry.id));
-        if(generation===currentGeneration)localStorage.setItem(cloudKey('entries'),JSON.stringify(canonical.entries));
+        if(generation===currentGeneration){
+          localStorage.setItem(cloudKey('entries'),JSON.stringify(canonical.entries));
+          if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('fieldwork:entries-changed'));
+        }
       }
       for(const [kind,payload] of [...pendingLearning]){
         pendingLearning.delete(kind);

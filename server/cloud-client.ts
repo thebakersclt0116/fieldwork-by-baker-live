@@ -23,6 +23,9 @@ export async function cloudRequest(path: string, token: string | null, options: 
     const detail = payload && typeof payload === 'object' && 'message' in payload ? String(payload.message) : '';
     if (detail.includes('VERSION_CONFLICT')) throw new CloudError('VERSION_CONFLICT',409);
     if (detail.includes('APPROVED_EDIT_REASON_REQUIRED')) throw new CloudError('APPROVED_EDIT_REASON_REQUIRED',400);
+    if (detail.includes('STORAGE_LIMIT')) throw new CloudError('STORAGE_LIMIT',413);
+    if (detail.includes('ORIGINAL_NOT_VERIFIED')) throw new CloudError('ORIGINAL_NOT_VERIFIED',409);
+    if (detail.includes('IMPORT_NOT_PREPARED') || detail.includes('INVALID_IMPORT') || detail.includes('INVALID_DOCUMENT') || detail.includes('INVALID_HASH')) throw new CloudError('INVALID_ARCHIVE_RECORD',400);
     throw new CloudError(response.status===401||response.status===403?'AUTH_REQUIRED':'CLOUD_REQUEST_FAILED',response.status===401||response.status===403?401:502);
   }
   return payload;

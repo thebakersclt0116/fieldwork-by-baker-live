@@ -1,4 +1,4 @@
-export const managedAccountsEnabled = import.meta.env.VITE_MANAGED_ACCOUNTS === 'true';
+export const managedAccountsEnabled = import.meta.env?.VITE_MANAGED_ACCOUNTS === 'true';
 export const MANAGED_SESSION_KEY = 'bakerManagedSession';
 interface ManagedTokens { refreshToken: string; expiresAt: number }
 export interface ManagedAccount {
@@ -24,8 +24,20 @@ export function renewManagedSession(): Promise<ManagedAccount> {
     if (!saved?.refreshToken) throw new Error('Sign in again to renew your session.');
     const { response,payload } = await accountRequest({action:'refresh',refreshToken:saved.refreshToken});
     if (!response.ok || !payload.token || !payload.refreshToken || !payload.user?.email) throw new Error('Sign in again to renew your session.');
+    const current = JSON.parse(localStorage.getItem(MANAGED_SESSION_KEY)||'null') as ManagedTokens|null;
+    if(current?.refreshToken!==saved.refreshToken)throw new Error('Account changed during renewal.');
     saveManagedTokens(payload);
+    localStorage.setItem('bakerSessionToken',payload.token);
+    localStorage.setItem('authUser',JSON.stringify({...payload.user,authProvider:'supabase',initials:payload.user.name.split(' ').map(part=>part[0]).join('').toUpperCase().slice(0,2)}));
+    if(typeof window!=='undefined')window.dispatchEvent(new Event('fieldwork:session-changed'));
     return payload;
   })().finally(()=>{renewing=null;});
   return renewing;
+}
+export async function currentManagedToken(): Promise<string> {
+  const saved = JSON.parse(localStorage.getItem(MANAGED_SESSION_KEY) || 'null') as ManagedTokens|null;
+  if(saved && saved.expiresAt <= Math.floor(Date.now()/1000)+90) return (await renewManagedSession()).token;
+  const token=localStorage.getItem('bakerSessionToken');
+  if(!token)throw new Error('Sign in again.');
+  return token;
 }

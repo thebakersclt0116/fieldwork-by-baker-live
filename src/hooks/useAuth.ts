@@ -55,6 +55,7 @@ function storeSession(user: AuthUser, token: string): void {
   localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.removeItem(SESSION_UPGRADE_KEY);
+  window.dispatchEvent(new Event('fieldwork:session-changed'));
 }
 
 export function getStoredAccessToken(): string | null {
@@ -75,6 +76,23 @@ export function saveUpgradedSession(user: AuthUser, token: string): void {
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(()=>{
+    const sync=()=>setUser(getStoredAuthUser());
+    const timer=window.setInterval(()=>{
+      if(getStoredAuthUser()?.authProvider!=='supabase')return;
+      try {
+        const session=JSON.parse(localStorage.getItem(MANAGED_SESSION_KEY)||'null');
+        if(session?.expiresAt<=Math.floor(Date.now()/1000)+90)void renewManagedSession().catch(()=>{
+          // Preserve all drafts if renewal fails; protected requests fail closed.
+          sync();
+        });
+      }catch{/* A malformed session is rejected by the next protected request. */}
+    },60000);
+    window.addEventListener('fieldwork:session-changed',sync);
+    window.addEventListener('storage',sync);
+    return ()=>{window.clearInterval(timer);window.removeEventListener('fieldwork:session-changed',sync);window.removeEventListener('storage',sync);};
+  },[]);
 
   useEffect(() => {
     try {

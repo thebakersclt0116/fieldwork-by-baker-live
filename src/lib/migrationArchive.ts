@@ -1,8 +1,10 @@
 import { buildStoreZip } from './downloadZip';
 import { getCurrentUserEmail, loadEntries, saveEntries } from './fieldworkStore';
 import { auditCsv, planMerge, selectionProblem, sha256, type AuditEntry, type Mapping, type ImportOptions, type MigrationPreview, type SourceTable } from './detailedMigration';
+import {managedEmail,waitForCloudSave,cloudKey} from './cloudWorkspace';
+import {archiveCloudOriginal,cloudDocuments,cloudBatches,saveCloudJournal,readCloudOriginal} from './cloudArchive';
 
-export type SourceDocument = { id: string; owner: string; hash: string; filename: string; mime: string; size: number; savedAt: string; kind: 'detailed-source' | 'supporting-document'; bytes: Uint8Array };
+export type SourceDocument = { id: string; owner: string; hash: string; filename: string; mime: string; size: number; savedAt: string; kind: 'detailed-source' | 'supporting-document'; bytes: Uint8Array; cloudSaved?: boolean };
 export type AuditBatch = { id: string; owner: string; createdAt: string; sourceHash: string; filename: string; mapping: Mapping; options: ImportOptions; sourceRows: number; results: MigrationPreview['rows']; before: AuditEntry[]; addedIds: string[]; archivedSummaryIds: string[]; state: 'prepared' | 'committed' | 'failed'; note: string };
 const normalized = (v: string) => v.trim().toLowerCase();
 function requireOwner(owner: string) {
@@ -32,19 +34,40 @@ async function put<T extends { owner: string }>(store: string, record: T): Promi
   try { await new Promise<void>((resolve, reject) => { const tx = db.transaction(store, 'readwrite'); tx.objectStore(store).put(record); tx.oncomplete = () => resolve(); tx.onabort = () => reject(new Error('Archive write failed, possibly because storage is full. Nothing may be discarded; download a backup first.')); tx.onerror = () => reject(tx.error); }); }
   finally { db.close(); }
 }
-export const listDocuments = (owner: string) => all<SourceDocument>('documents', owner);
-export const listBatches = (owner: string) => all<AuditBatch>('batches', owner);
+export async function listDocuments(owner:string):Promise<SourceDocument[]>{
+  const local=await all<SourceDocument>('documents',owner);
+  if(managedEmail()!==normalized(owner))return local.filter(doc=>!doc.id.startsWith('managed:'));
+  const own=local.filter(doc=>doc.id.startsWith('managed:'));const remote=await cloudDocuments(normalized(owner));
+  const docs=new Map(remote.map(doc=>[doc.hash,doc]));for(const doc of own)docs.set(doc.hash,{...doc,cloudSaved:docs.has(doc.hash)});return [...docs.values()];
+}
+export async function listBatches(owner:string):Promise<AuditBatch[]>{
+  if(managedEmail()===normalized(owner))return cloudBatches(normalized(owner));
+  return (await all<AuditBatch>('batches',owner)).filter(batch=>!batch.id.startsWith('managed:'));
+}
+async function saveBatch(batch:AuditBatch){await put('batches',batch);if(managedEmail()===batch.owner)await saveCloudJournal(batch);}
+export async function documentBytes(doc:SourceDocument):Promise<Uint8Array>{
+  requireOwner(doc.owner);const bytes=doc.bytes.byteLength===doc.size?new Uint8Array(doc.bytes):await readCloudOriginal(doc);
+  if(await sha256(bytes)!==doc.hash)throw new Error('Original-file integrity check failed. Download stopped; keep your source.');
+  requireOwner(doc.owner);return bytes;
+}
+export async function downloadOriginal(doc:SourceDocument){downloadBytes(doc.filename,await documentBytes(doc),doc.mime||'application/octet-stream');}
 export async function archiveFile(file: File, owner: string, kind: SourceDocument['kind']): Promise<SourceDocument> {
   requireOwner(owner);
-  if (file.size > 25 * 1024 * 1024) throw new Error('Maximum source file size is 25 MB. Split the export into date ranges; no file has been truncated.');
+  if (file.size < 1 || file.size > 25 * 1024 * 1024) throw new Error('Choose a nonempty source file of 25 MB or smaller. Split larger exports into date ranges; no file has been truncated.');
   const bytes = new Uint8Array(await file.arrayBuffer()), hash = await sha256(bytes);
-  const doc: SourceDocument = { id: `${normalized(owner)}:${hash}`, owner: normalized(owner), hash, filename: file.name, mime: file.type, size: file.size, kind, savedAt: new Date().toISOString(), bytes };
+  const managed=managedEmail()===normalized(owner);
+  const mime=file.type||({pdf:'application/pdf',csv:'text/csv',json:'application/json',txt:'text/plain',tsv:'text/plain',zip:'application/zip'}[file.name.split('.').at(-1)?.toLowerCase()||'']||'application/octet-stream');
+  const doc: SourceDocument = { id: `${managed?'managed:':''}${normalized(owner)}:${hash}`, owner: normalized(owner), hash, filename: file.name, mime, size: file.size, kind, savedAt: new Date().toISOString(), bytes };
   const existing = (await listDocuments(owner)).find(r => r.hash === hash);
-  if (existing) return existing;
+  if (existing) {
+    if(managed&&!existing.cloudSaved){await archiveCloudOriginal({...existing,bytes});await put('documents',{...existing,bytes,cloudSaved:true});}
+    return {...existing,bytes,cloudSaved:managed?true:undefined};
+  }
   await put('documents', doc);
   const readback = (await listDocuments(owner)).find(r => r.hash === hash);
   if (!readback || await sha256(new Uint8Array(readback.bytes)) !== hash) throw new Error('Original-file readback verification failed. Stop before deleting source records.');
-  return doc;
+  if(managed){await archiveCloudOriginal(doc);await put('documents',{...doc,cloudSaved:true});}
+  return {...doc,cloudSaved:managed?true:undefined};
 }
 export function downloadBytes(name: string, data: string | Uint8Array, mime: string) {
   const part = typeof data === 'string' ? data : new Uint8Array(data);
@@ -79,18 +102,22 @@ export async function commitMigration(args: { owner: string; doc: SourceDocument
     if (Math.abs(total - detail) > 0.02) throw new Error(`${month}: summary ${total.toFixed(2)} h does not reconcile to detailed ${detail.toFixed(2)} h. Import all source entries or resolve the discrepancy before replacing it.`);
   }
   if (!merge.add.length) throw new Error('No new entries to commit. Exact source-ID duplicates were left unchanged.');
-  const batch: AuditBatch = { id: `${normalized(args.owner)}:${crypto.randomUUID()}`, owner: normalized(args.owner), createdAt: new Date().toISOString(), sourceHash: args.doc.hash, filename: args.doc.filename, mapping: args.mapping, options: args.options, sourceRows: args.table.rows.length, results: args.preview.rows, before, addedIds: merge.add.map(e => e.id), archivedSummaryIds: [...replacing], state: 'prepared', note: (args.allowPartial ? 'EXPLICIT PARTIAL IMPORT. ' : 'All valid sessions from this file selected. ') + 'Source preserved before tracking mutation. Whole-account completeness still requires source reconciliation.' };
-  await put('batches', batch);
+  const batch: AuditBatch = { id: `${managedEmail()===normalized(args.owner)?"managed:":""}${normalized(args.owner)}:${crypto.randomUUID()}`, owner: normalized(args.owner), createdAt: new Date().toISOString(), sourceHash: args.doc.hash, filename: args.doc.filename, mapping: args.mapping, options: args.options, sourceRows: args.table.rows.length, results: args.preview.rows, before, addedIds: merge.add.map(e => e.id), archivedSummaryIds: [...replacing], state: 'prepared', note: (args.allowPartial ? 'EXPLICIT PARTIAL IMPORT. ' : 'All valid sessions from this file selected. ') + 'Source preserved before tracking mutation. Whole-account completeness still requires source reconciliation.' };
+  await saveBatch(batch);
   const after = [...before.filter(e => !replacing.has(e.id)), ...merge.add].sort((a, b) => `${b.date} ${b.startTime}`.localeCompare(`${a.date} ${a.startTime}`));
   try {
     requireOwner(args.owner);
     if (JSON.stringify(loadEntries(args.owner)) !== JSON.stringify(before)) throw new Error('Entries changed in another tab. Re-preview before importing.');
     saveEntries(after, args.owner);
-    if (JSON.stringify(loadEntries(args.owner)) !== JSON.stringify(after)) { saveEntries(before, args.owner); throw new Error('Tracked-entry readback failed; prior records restored.'); }
-    await put('batches', { ...batch, state: 'committed', note: `${args.allowPartial ? 'EXPLICIT PARTIAL IMPORT. ' : 'Selected-file import complete. '}${merge.add.length} tracked allocations verified. Historical approvals remain source evidence, not new Baker signatures.` });
+    if(managedEmail()===normalized(args.owner)){
+      await waitForCloudSave();
+      const saved=loadEntries(args.owner) as AuditEntry[];
+      if(after.length!==saved.length||after.some(entry=>!saved.some(current=>current.id===entry.id&&current.duration===entry.duration&&current.notes===entry.notes&&current.date===entry.date)))throw new Error('Cloud record readback needs review. Both import snapshots remain preserved.');
+    }else if (JSON.stringify(loadEntries(args.owner)) !== JSON.stringify(after)) { saveEntries(before, args.owner); throw new Error('Tracked-entry readback failed; prior records restored.'); }
+    await saveBatch({ ...batch, state: 'committed', note: `${args.allowPartial ? 'EXPLICIT PARTIAL IMPORT. ' : 'Selected-file import complete. '}${merge.add.length} tracked allocations verified. Historical approvals remain source evidence, not new Baker signatures.` });
   } catch (err) {
     // If tracking was written but final journal write failed, preserve both snapshots for recovery.
-    try { await put('batches', { ...batch, state: 'failed', note: 'Check tracked entries against the preserved before/after snapshots before retrying.' }); } catch { /* prepared journal is still available */ }
+    try { await saveBatch({ ...batch, state: 'failed', note: 'Check tracked entries against the preserved before/after snapshots before retrying.' }); } catch { /* prepared journal is still available */ }
     throw err;
   }
   window.dispatchEvent(new CustomEvent('fieldwork:entries-changed'));
@@ -104,14 +131,14 @@ export async function downloadAuditArchive(owner: string): Promise<void> {
   requireOwner(owner); const entries = loadEntries(owner) as AuditEntry[];
   const documents = await listDocuments(owner), batches = await listBatches(owner), enc = new TextEncoder();
   const files: Array<{ name: string; data: Uint8Array }> = [
-    { name: 'records.json', data: enc.encode(JSON.stringify({ format: 'baker-audit-v1', owner, exportedAt: new Date().toISOString(), entries, batches }, null, 2)) },
+    { name: 'records.json', data: enc.encode(JSON.stringify({ format: 'baker-audit-v1', owner, exportedAt: new Date().toISOString(), entries, batches, learning:managedEmail()===normalized(owner)?Object.fromEntries(Object.keys(localStorage).filter(key=>key.startsWith(cloudKey('',normalized(owner)))).map(key=>[key,localStorage.getItem(key)])):undefined }, null, 2)) },
     { name: 'entry-ledger.csv', data: enc.encode(auditCsv(entries)) },
     { name: 'entry-ledger.html', data: enc.encode(auditHtml(entries)) },
-    { name: 'README.txt', data: enc.encode('This is a FULL-ACCOUNT audit export. It may contain confidential fieldwork data. Review before sharing.\nOpen entry-ledger.html in a browser to read or print to PDF. CSV cells are formula-escaped for safety; exact source text remains in records.json and originals.\nOriginal files are preserved byte-for-byte; manifest.json records their names and SHA-256 hashes. These hashes detect changes against this manifest but are NOT trusted timestamps or supervisor signatures.\nrecords.json includes complete current records, source rows, exceptions, migration decisions, and pre-import snapshots. Source records whose live entries were removed remain in batch history.\nReconcile source entry count and all monthly/organization totals before leaving the original platform. Missing original narratives cannot be reconstructed from monthly totals.\nThis archive is browser-local until you download it. Store this ZIP securely outside the browser. Baker does not promise cloud backup here.\n') },
+    { name: 'README.txt', data: enc.encode('This is a FULL-ACCOUNT audit export. It may contain confidential fieldwork data. Review before sharing.\nOpen entry-ledger.html in a browser to read or print to PDF. CSV cells are formula-escaped for safety; exact source text remains in records.json and originals.\nOriginal files are preserved byte-for-byte; manifest.json records their names and SHA-256 hashes. These hashes detect changes against this manifest but are NOT trusted timestamps or supervisor signatures.\nrecords.json includes complete current records, source rows, exceptions, migration decisions, and pre-import snapshots. Source records whose live entries were removed remain in batch history.\nReconcile source entry count and all monthly/organization totals before leaving the original platform. Missing original narratives cannot be reconstructed from monthly totals.\nStore this ZIP securely outside the browser and independently of your Fieldwork account. Verify its manifest and open the records before discarding any source. Cloud account copies are not an independent backup.\n') },
   ];
   for (const doc of documents) {
-    if (await sha256(new Uint8Array(doc.bytes)) !== doc.hash) throw new Error(`Original-file integrity check failed for ${doc.filename}. Export stopped; do not discard the source.`);
-    files.push({ name: `originals/${doc.hash}/${doc.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`, data: new Uint8Array(doc.bytes) });
+    const original=await documentBytes(doc);
+    files.push({ name: `originals/${doc.hash}/${doc.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`, data: original });
   }
   if (files.reduce((n, f) => n + f.data.byteLength, 0) > 150 * 1024 * 1024) throw new Error('Archive exceeds the 150 MB browser export safety limit. Download individual originals and your entry ledger; no records were truncated.');
   const manifest = { format: 'baker-audit-manifest-v1', createdAt: new Date().toISOString(), entries: entries.length, originalDocuments: documents.map(({ bytes: _bytes, ...d }) => d), files: await Promise.all(files.map(async f => ({ path: f.name, bytes: f.data.byteLength, sha256: await sha256(f.data) }))), unresolvedBatches: batches.filter(b => b.state !== 'committed').map(b => b.id) };

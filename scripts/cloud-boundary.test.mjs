@@ -11,6 +11,8 @@ await build({entryPoints:['api/workspace.ts'],outfile:join(dir,'workspace.mjs'),
 const {default:workspace}=await import(pathToFileURL(join(dir,'workspace.mjs')));
 await build({entryPoints:['api/account.ts'],outfile:join(dir,'account.mjs'),bundle:true,platform:'node',format:'esm'});
 const {default:account}=await import(pathToFileURL(join(dir,'account.mjs')));
+await build({entryPoints:['api/archive.ts'],outfile:join(dir,'archive.mjs'),bundle:true,platform:'node',format:'esm'});
+const {default:archive}=await import(pathToFileURL(join(dir,'archive.mjs')));
 await build({entryPoints:['api/_auth.ts'],outfile:join(dir,'auth.mjs'),bundle:true,platform:'node',format:'esm'});
 const {requireAccountSession,canUsePaidTools}=await import(pathToFileURL(join(dir,'auth.mjs')));
 process.env.SUPABASE_URL='https://synthetic-project.supabase.co';
@@ -79,4 +81,23 @@ test('managed protected APIs ignore claimed roles and do not grant legacy email-
 });
 test('managed protected APIs fail closed when the provider cannot verify the account',async()=>{
  globalThis.fetch=async()=>Response.json({id:owner,email:'a@example.com',email_confirmed_at:null});assert.equal(await requireAccountSession(req(null)),null);
+});
+test('original uploads cannot choose another account path or overwrite an original',async()=>{
+ const seen=[];globalThis.fetch=async(url,options)=>{seen.push({url,options});return url.endsWith('/user')?user():Response.json(true);};
+ const result=res();const hash='a'.repeat(64);await archive(req({action:'prepare',hash,ownerId:'another-account',path:'other/original'}),result);
+ assert.equal(result.code,200);assert.equal(result.body.url,'https://synthetic-project.supabase.co/storage/v1/object/fieldwork-originals/'+owner+'/'+hash);
+ assert.deepEqual(JSON.parse(seen[1].options.body),{p_hash:hash});assert.ok(seen.every(call=>call.options.headers.Authorization==='Bearer synthetic-user-jwt'));
+});
+test('original completion rejects changed bytes and never records a successful archive',async()=>{
+ let writes=0;globalThis.fetch=async(url)=>{if(url.endsWith('/user'))return user();if(url.includes('/storage/'))return new Response('changed original');writes++;return Response.json(null);};
+ const result=res();await archive(req({action:'complete',hash:'a'.repeat(64),filename:'fixture.txt',size:16,mime:'text/plain',kind:'supporting-document'}),result);
+ assert.equal(result.code,409);assert.equal(writes,0);assert.equal(result.body.code,'ORIGINAL_NOT_VERIFIED');
+});
+test('private original download expires after 60 seconds and remains limited to its verified owner',async()=>{
+ const hash='b'.repeat(64);globalThis.fetch=async(url,options)=>{if(url.endsWith('/user'))return user();assert.equal(url,'https://synthetic-project.supabase.co/storage/v1/object/sign/fieldwork-originals/'+owner+'/'+hash);assert.deepEqual(JSON.parse(options.body),{expiresIn:60});return Response.json({signedURL:'/object/sign/fieldwork-originals/'+owner+'/'+hash+'?token=synthetic'});};
+ const result=res();await archive(req({action:'download',hash}),result);assert.equal(result.code,200);assert.ok(result.body.url.includes('/'+owner+'/'+hash+'?'));
+});
+test('archive list ignores claimed account identifiers and never exposes originals or upload tokens',async()=>{
+ globalThis.fetch=async(url)=>{if(url.endsWith('/user'))return user();assert.ok(url.includes('owner_id=eq.'+owner));return Response.json([]);};
+ const result=res();await archive({...req(null,'GET'),query:{ownerId:'another-account'}},result);assert.equal(result.code,200);assert.deepEqual(result.body,{rows:[],nextCursor:null});
 });
