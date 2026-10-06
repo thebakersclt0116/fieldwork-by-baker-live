@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
-import { cloudState, subscribeCloud, initializeCloud, exportCloudDraft } from '@/lib/cloudWorkspace';
+import { cloudState, subscribeCloud, initializeCloud, exportCloudDraft, useCloudCopy } from '@/lib/cloudWorkspace';
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoading, hasAppAccess, user } = useAuth();
@@ -29,7 +29,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!hasAppAccess) return <Navigate to="/login" replace />;
   if(user?.authProvider==='supabase'){
-    if(status==='blocked')return <div role="alert" className="p-6"><h1 className="text-xl font-semibold">Your changes need review</h1><p className="my-3">Cloud saving did not finish, or another device changed these records. Your local draft has been retained. Export it before resolving the conflict.</p><button onClick={exportCloudDraft} className="rounded border p-3">Download local backup</button></div>;
+    if(status==='blocked')return <div role="alert" className="p-6"><h1 className="text-xl font-semibold">Your changes need review</h1><p className="my-3">Cloud saving did not finish, or another device changed these records. Your local draft has been retained. Export it before resolving the conflict.</p><button onClick={exportCloudDraft} className="rounded border p-3">Download local backup</button><button onClick={()=>{void useCloudCopy().then(()=>setLoadedEmail(user.email)).catch(()=>{});}} className="ml-3 rounded border p-3">Use cloud records and keep a local recovery copy</button></div>;
     if(loadedEmail!==user.email)return <div role="status" className="p-6">Loading your saved records…</div>;
     return <><div role="status" aria-live="polite" className="px-6 py-2 text-sm">{status==='saving'?'Saving your changes…':'Saved to your account'}</div>{children}</>;
   }

@@ -126,3 +126,13 @@ export function exportCloudDraft(){
   const url=URL.createObjectURL(new Blob([JSON.stringify({email,exportedAt:new Date().toISOString(),records},null,2)],{type:'application/json'}));
   const link=document.createElement('a');link.href=url;link.download='fieldwork-unsaved-backup.json';link.click();URL.revokeObjectURL(url);
 }
+// Explicit recovery keeps an independent browser copy before replacing the working cache.
+export async function useCloudCopy():Promise<void>{
+  if(running)throw new Error('A save is still pending');
+  const email=managedEmail();if(!email)return;
+  const records:Record<string,string|null>={};const prefix=cloudKey('',email);
+  for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith(prefix))records[key.slice(prefix.length)]=localStorage.getItem(key);}
+  localStorage.setItem(`fieldwork:recovery:${encodeURIComponent(email)}:${Date.now()}`,JSON.stringify(records));
+  localStorage.removeItem(cloudKey('pending',email));initialized=false;
+  await initializeCloud(email);
+}

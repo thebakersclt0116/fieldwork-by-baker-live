@@ -9,6 +9,26 @@ export default async function handler(req: any, res: any) {
     const body = req.body || {};
     const action = body.action;
     cloudConfiguration();
+    if (action === 'recover') {
+      const email=String(body.email||'').trim().toLowerCase();
+      if(!/^\S+@\S+\.\S+$/.test(email)||email.length>254)return send(400,{code:'INVALID_ACCOUNT_INPUT'});
+      // Client input cannot choose where recovery credentials are delivered.
+      await cloudRequest('/auth/v1/recover?redirect_to='+encodeURIComponent('https://www.fieldworkbybaker.com/reset-password'),null,{method:'POST',body:JSON.stringify({email})});
+      return send(202,{message:'If an account exists, a recovery email will be sent.'});
+    }
+    if (action === 'reset-password') {
+      const password=typeof body.password==='string'?body.password:'';
+      if(password.length<8||password.length>1024)return send(400,{code:'INVALID_ACCOUNT_INPUT'});
+      const authorization=String(req.headers?.authorization||'');
+      if(!authorization.startsWith('Bearer '))throw new CloudError('AUTH_REQUIRED',401);
+      const token=authorization.slice(7);
+      await verifyCloudUser(token);
+      await cloudRequest('/auth/v1/user',token,{method:'PUT',body:JSON.stringify({password})});
+      // Do not return recovery credentials or turn this flow into a paid session.
+      let sessionsRevoked=true;
+      try {await cloudRequest('/auth/v1/logout?scope=global',token,{method:'POST'});} catch {sessionsRevoked=false;}
+      return send(200,{passwordChanged:true,sessionsRevoked});
+    }
     if (action === 'signup' || action === 'login' || action === 'refresh') {
       const email = String(body.email || '').trim().toLowerCase();
       const password = String(body.password || '');

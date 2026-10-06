@@ -17,6 +17,17 @@ process.env.SUPABASE_URL='https://synthetic-project.supabase.co';
 process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_synthetic_public_test_key';
 const owner='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const originalFetch=globalThis.fetch;after(()=>{globalThis.fetch=originalFetch;});
+test('recovery email uses only the canonical reset destination and returns no account details',async()=>{
+ let called=false;globalThis.fetch=async(url,options)=>{called=true;assert.ok(String(url).includes(encodeURIComponent('https://www.fieldworkbybaker.com/reset-password')));assert.deepEqual(JSON.parse(options.body),{email:'candidate@example.com'});return new Response('{}',{status:200});};
+ const result=res();await account({method:'POST',body:{action:'recover',email:'candidate@example.com',redirectTo:'https://attacker.invalid'}},result);
+ assert.ok(called);assert.equal(result.code,202);assert.equal(result.body.token,undefined);assert.equal(result.body.user,undefined);
+});
+test('password reset requires provider-verified identity and never returns recovery credentials',async()=>{
+ const calls=[];globalThis.fetch=async(url,options)=>{calls.push({url,options});if(options.method==='PUT')assert.deepEqual(JSON.parse(options.body),{password:'synthetic-new-password'});return new Response(JSON.stringify(String(url).endsWith('/user')&&options.method!=='PUT'?{id:owner,email:'candidate@example.com',email_confirmed_at:'2026-01-01'}:{}),{status:200});};
+ const missing=res();await account({method:'POST',headers:{},body:{action:'reset-password',password:'synthetic-new-password'}},missing);assert.equal(missing.code,401);assert.equal(calls.length,0);
+ const result=res();await account({method:'POST',headers:{authorization:'Bearer synthetic-recovery'},body:{action:'reset-password',password:'synthetic-new-password',role:'owner'}},result);
+ assert.equal(result.code,200);assert.equal(result.body.passwordChanged,true);assert.equal(result.body.token,undefined);assert.equal(calls.length,3);assert.ok(calls[2].url.includes('scope=global'));
+});
 function res(){return {code:0,headers:{},body:null,status(n){this.code=n;return this;},setHeader(k,v){this.headers[k]=v;},json(v){this.body=v;}};}
 const req=(body,method='POST')=>({method,headers:{authorization:'Bearer synthetic-user-jwt'},body});
 const user=()=>Response.json({id:owner,email:'a@example.com',email_confirmed_at:'2026-10-06T00:00:00Z'});

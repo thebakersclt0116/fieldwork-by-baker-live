@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import {managedAccountsEnabled} from '@/lib/managedSession';
 
 function safeReturnPath(value: string | null): string {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
@@ -143,6 +144,7 @@ export default function Login() {
                 {!isLoggingIn && <ArrowRight size={16} />}
               </button>
             </form>
+            {managedAccountsEnabled&&<Link to="/forgot-password" className="mt-4 inline-block text-sm font-semibold text-[#D94D62]">Forgot your password?</Link>}
 
             <p className="mt-6 text-xs leading-relaxed text-[#A8998E] text-center">
               Supervisors do not sign in here. They use the private invite link issued by the supervisee or platform owner.

@@ -32,3 +32,9 @@ test('successful save reconciles authoritative revision and approval state befor
  const done=settled(cloud);cloud.queueEntries([{id:'one',status:'VERIFIED',duration:1,date:'2026-01-01'}]);await done;
  assert.equal(writes,1);assert.equal(cloud.cloudState(),'saved');assert.equal(values.has(cloud.cloudKey('pending')),false);assert.equal(JSON.parse(values.get(cloud.cloudKey('entries')))[0].status,'PENDING');
 });
+test('explicit conflict recovery keeps a separate copy of the unsaved draft before loading cloud records',async()=>{
+ const {cloud,values}=await setup();values.set(cloud.cloudKey('pending'),'{}');values.set(cloud.cloudKey('entries'),JSON.stringify([{id:'unsaved'}]));
+ globalThis.fetch=async()=>response(snapshot(3,[{id:'cloud-entry',duration:1,date:'2026-01-01'}]));
+ await cloud.useCloudCopy();const backup=[...values.entries()].find(([key])=>key.startsWith('fieldwork:recovery:'));
+ assert.ok(backup);assert.equal(JSON.parse(JSON.parse(backup[1]).entries)[0].id,'unsaved');assert.equal(JSON.parse(values.get(cloud.cloudKey('entries')))[0].id,'cloud-entry');assert.equal(cloud.cloudState(),'saved');
+});
