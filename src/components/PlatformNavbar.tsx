@@ -65,8 +65,10 @@ export default function PlatformNavbar({ isDark, onToggleDark }: { isDark: boole
                           <div className="truncate text-xs text-[#A8998E]">{user?.email}</div>
                         </div>
                         <Link to="/dashboard" className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#6B5D54] hover:bg-[#FFF5F7] dark:text-[#CFC4BE] dark:hover:bg-white/5"><Sparkles size={15} /> Fieldwork workspace</Link>
+                        <Link to="/settings" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#6B5D54] hover:bg-[#FFF5F7] dark:text-[#CFC4BE] dark:hover:bg-white/5">Account settings</Link>
                         <Link to="/pricing" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#6B5D54] hover:bg-[#FFF5F7] dark:text-[#CFC4BE] dark:hover:bg-white/5">Membership & billing</Link>
-                        <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#6B5D54] hover:bg-[#FFF5F7] hover:text-[#E85D70] dark:text-[#CFC4BE] dark:hover:bg-white/5"><LogOut size={15} /> Sign out</button>
+                        <Link to="/settings" className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#6B5D54] dark:text-[#CFC4BE]">Account settings</Link>
+                  <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#6B5D54] hover:bg-[#FFF5F7] hover:text-[#E85D70] dark:text-[#CFC4BE] dark:hover:bg-white/5"><LogOut size={15} /> Sign out</button>
                       </motion.div>
                     </>
                   )}

@@ -1,3 +1,5 @@
+import TimeInput from '@/components/TimeInput';
+import { formatTime } from '@/lib/timeDisplay';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -225,11 +227,9 @@ export default function LogHoursTab() {
               </label>
               <div className="relative">
                 <Clock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C9BDB5]" />
-                <input
-                  type="time"
+                <TimeInput label="Start time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E2DAD5] bg-white text-[#332C28] text-sm focus:border-[#F97B8A] focus:ring-4 focus:ring-[rgba(233,93,112,0.1)] transition-all outline-none"
+                  onChange={(value) => setStartTime(value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E2DAD5] bg-white text-[#332C28] text-sm focus:border-[#F97B8A] focus:ring-4 focus:ring-[rgba(233,93,112,0.1)] transition-all outline-none"
                 />
               </div>
             </div>
@@ -239,11 +239,9 @@ export default function LogHoursTab() {
               </label>
               <div className="relative">
                 <Clock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C9BDB5]" />
-                <input
-                  type="time"
+                <TimeInput label="End time"
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E2DAD5] bg-white text-[#332C28] text-sm focus:border-[#F97B8A] focus:ring-4 focus:ring-[rgba(233,93,112,0.1)] transition-all outline-none"
+                  onChange={(value) => setEndTime(value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E2DAD5] bg-white text-[#332C28] text-sm focus:border-[#F97B8A] focus:ring-4 focus:ring-[rgba(233,93,112,0.1)] transition-all outline-none"
                 />
               </div>
             </div>
@@ -461,7 +459,7 @@ export default function LogHoursTab() {
                       {entry.activityType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase())}
                     </p>
                     <p className="text-xs text-[#A8998E]">
-                      {entry.startTime} — {entry.endTime}
+                      {formatTime(entry.startTime)} — {formatTime(entry.endTime)}
                     </p>
                   </div>
                 </div>
