@@ -1,0 +1,58 @@
+name: Restored Domain Verification
+on:
+  push:
+    branches: [baker-cloud-readiness-20261006]
+    paths: ['.github/workflows/post-domain-verification.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Test restored domain and genuine authenticated Brain response
+        run: |
+          mkdir -p /tmp/fieldwork-live-check
+          node --input-type=module <<'JS'
+          import dns from 'node:dns/promises';
+          import fs from 'node:fs/promises';
+          import {randomUUID} from 'node:crypto';
+          const origin='https://www.fieldworkbybaker.com';
+          const report={checkedAt:new Date().toISOString(),origin,dns:{},health:{},brain:{}};
+          for(const type of ['NS','A']){try{report.dns[type]=await dns.resolve('fieldworkbybaker.com',type);}catch(e){report.dns[type]={error:e.code};}}
+          const health=await fetch(origin+'/api/health?verify='+Date.now(),{signal:AbortSignal.timeout(15000)});
+          const h=await health.json();report.health={status:health.status,deployedCommit:h.deployedCommit,storageMode:h.storageMode,cloudStorageConnected:h.cloudStorageConnected,liveBillingEnabled:h.liveBillingEnabled,stripeMode:h.stripeMode};
+          if(!health.ok)throw new Error('Custom domain health is unavailable.');
+          const account=await fetch(origin+'/api/free-signup',{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(15000),body:JSON.stringify({email:'baker-domain-qa-'+randomUUID()+'@example.com',name:'Baker Domain QA',password:randomUUID()+randomUUID()})});
+          const session=await account.json();if(!account.ok||!session.token)throw new Error('Normal signed trial signup failed. No authentication bypass used.');
+          try{
+            const r=await fetch(origin+'/api/baker-ai',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.token},signal:AbortSignal.timeout(65000),body:JSON.stringify({mode:'bcba-brain',message:'Explain duration versus latency with one fictional educational example of each.',context:{diagnostic:true},history:[]})});
+            const p=await r.json();report.brain={status:r.status,liveModelResponded:p.liveModelResponded===true,provider:p.provider||null,code:p.code||null,upstreamStatus:p.upstreamStatus??null,error:p.error||null,answer:r.ok&&p.liveModelResponded===true?String(p.answer).slice(0,2000):null};
+          }catch(e){report.brain={status:'request-failed',errorType:e.name};}
+          await fs.writeFile('/tmp/fieldwork-live-check/restored-domain-report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+          JS
+      - name: Install browser testing dependencies only
+        run: |
+          mkdir -p /tmp/baker-browser-tools
+          npm install --prefix /tmp/baker-browser-tools @playwright/test@1.61.1 --no-audit --no-fund
+          ln -s /tmp/baker-browser-tools/node_modules node_modules
+          ./node_modules/.bin/playwright install chromium
+      - name: Real public-domain import, exact narratives, audit ZIP and reconciliation tests
+        env:
+          BAKER_TEST_ORIGIN: https://www.fieldworkbybaker.com
+        run: ./node_modules/.bin/playwright test --config=scripts/detailed-playwright.config.mjs
+      - name: Collect application source without runtime secrets and safe synthetic evidence
+        if: always()
+        run: |
+          mkdir -p /tmp/fieldwork-live-check
+          zip -qr /tmp/fieldwork-live-check/application-source.zip src server api scripts public config package.json tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts index.html -x '*/_runtime-secret*' '*/.env*' '*/node_modules/*' '*/.git/*' '*.mp4' '*.mov' '*.png' '*.jpg' '*.jpeg' '*.webp' '*.svg' '*.ttf' '*.woff*'
+          cp -r audit-test-artifacts/* /tmp/fieldwork-live-check/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: restored-domain-verification
+          path: /tmp/fieldwork-live-check
+          retention-days: 7
