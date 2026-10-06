@@ -93,6 +93,7 @@ test('simulated storage exhaustion never reports success or destroys prior track
   await commit(page);
   await expect(page.getByRole('status')).toContainText('storage quota exhausted');
   expect(await readRecords(page)).toEqual([]);
+  await page.goto('/audit-history');
   await expect(page.getByText('synthetic-source.json', { exact: true })).toBeVisible();
 });
 test('explicit monthly-summary data cannot be imported as fabricated individual sessions', async ({ page }) => {
