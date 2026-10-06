@@ -2,7 +2,7 @@ name: Ripley PDF Release
 on:
   push:
     branches: [baker-ripley-detailed-pdf-20261006, simplify-ripley-import, main]
-    paths: ['src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
+    paths: ['vite.config.ts', 'src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
   workflow_dispatch:
 permissions:
   contents: write

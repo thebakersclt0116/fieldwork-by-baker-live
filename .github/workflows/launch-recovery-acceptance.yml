@@ -2,7 +2,7 @@ name: Launch Recovery Acceptance
 on:
   push:
     branches: [baker-launch-recovery-20261005, simplify-ripley-import, main]
-    paths: ['src/**', 'server/**', 'api/**', 'config/**', 'scripts/*recovery*', '.github/workflows/launch-recovery-acceptance.yml']
+    paths: ['vite.config.ts', 'src/**', 'server/**', 'api/**', 'config/**', 'scripts/*recovery*', '.github/workflows/launch-recovery-acceptance.yml']
   workflow_dispatch:
 permissions:
   contents: write
