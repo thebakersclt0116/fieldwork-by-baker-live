@@ -83,6 +83,12 @@ try{
   await page.waitForFunction(()=>document.body.innerText.includes('No tracked entries were added.'));assert.equal((await page.evaluate(email=>JSON.parse(localStorage.getItem(`fieldworkByBaker:v1:${email}:entries`)||'[]'),email)).length,6);checks.push('missing PDF pages fail closed without changing tracked entries');
   await page.locator('input[type=file][accept]').setInputFiles({name:'monthly-summary.pdf',mimeType:'application/pdf',buffer:await fixture('January',false,true)});
   await page.waitForFunction(()=>document.body.innerText.includes('not a supported detailed Ripley'));assert.equal((await page.evaluate(email=>JSON.parse(localStorage.getItem(`fieldworkByBaker:v1:${email}:entries`)||'[]'),email)).length,6);checks.push('monthly summaries are rejected as individual history');
+  await page.locator('input[type=file][accept]').setInputFiles([{name:'valid-first.pdf',mimeType:'application/pdf',buffer:pdf},{name:'invalid-second.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.7 invalid fixture')}]);
+  await page.waitForTimeout(2000);
+  const partialButton=page.getByRole('button',{name:'Prepare PDF review',exact:true});
+  assert.ok(await partialButton.count()===0 || await partialButton.isDisabled(),'A failed batch must not expose a valid prefix as ready for import');
+  assert.equal((await page.evaluate(email=>JSON.parse(localStorage.getItem(`fieldworkByBaker:v1:${email}:entries`)||'[]'),email)).length,6);
+  checks.push('a corrupt later file cannot silently turn a bulk import into a partial import');
   await page.setViewportSize({width:390,height:844});await page.goto(origin+'/import');await page.getByRole('heading',{name:'Bring every session. Pick up where you left off.'}).waitFor();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));await page.screenshot({path:'pdf-release-evidence/guide-mobile.png',fullPage:true});checks.push('mobile import guide has no horizontal overflow');
   assert.deepEqual(errors,[]);checks.push('no browser runtime errors');
