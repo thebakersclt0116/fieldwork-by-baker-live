@@ -1,4 +1,5 @@
 import type { ActivityType, EntryStatus, FieldworkType, HourEntry } from '@/types';
+import { managedEmail, cloudKey, queueEntries, queueLearning } from './cloudWorkspace.ts';
 
 export const EMILY_EMAIL = 'ayalaemily52@gmail.com';
 const PREFIX = 'fieldworkByBaker:v1';
@@ -15,6 +16,7 @@ function normalizeEmail(email: string): string {
 }
 
 function storageKey(email: string, kind: 'entries' | 'supervisors'): string {
+  if (managedEmail() === normalizeEmail(email)) return cloudKey(kind,normalizeEmail(email));
   return `${PREFIX}:${normalizeEmail(email)}:${kind}`;
 }
 
@@ -47,6 +49,7 @@ export function loadEntries(email = getCurrentUserEmail() || ''): HourEntry[] {
 
 export function saveEntries(entries: HourEntry[], email = getCurrentUserEmail() || ''): void {
   if (!email) return;
+  if (managedEmail() === normalizeEmail(email)) {queueEntries(entries);return;}
   localStorage.setItem(storageKey(email, 'entries'), JSON.stringify(entries));
 }
 
@@ -81,6 +84,7 @@ export function addEntry(entry: HourEntry, email = getCurrentUserEmail() || ''):
 
 export function clearEntries(email = getCurrentUserEmail() || ''): void {
   if (!email) return;
+  if (managedEmail() === normalizeEmail(email)) {queueEntries([]);return;}
   localStorage.removeItem(storageKey(email, 'entries'));
 }
 
@@ -98,6 +102,7 @@ export function loadSupervisors(email = getCurrentUserEmail() || ''): StoredSupe
 
 export function saveSupervisors(supervisors: StoredSupervisor[], email = getCurrentUserEmail() || ''): void {
   if (!email) return;
+  if (managedEmail() === normalizeEmail(email)) queueLearning('supervisors',supervisors);
   localStorage.setItem(storageKey(email, 'supervisors'), JSON.stringify(supervisors));
 }
 

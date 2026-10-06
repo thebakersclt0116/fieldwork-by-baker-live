@@ -11,6 +11,8 @@ await build({entryPoints:['api/workspace.ts'],outfile:join(dir,'workspace.mjs'),
 const {default:workspace}=await import(pathToFileURL(join(dir,'workspace.mjs')));
 await build({entryPoints:['api/account.ts'],outfile:join(dir,'account.mjs'),bundle:true,platform:'node',format:'esm'});
 const {default:account}=await import(pathToFileURL(join(dir,'account.mjs')));
+await build({entryPoints:['api/_auth.ts'],outfile:join(dir,'auth.mjs'),bundle:true,platform:'node',format:'esm'});
+const {requireAccountSession,canUsePaidTools}=await import(pathToFileURL(join(dir,'auth.mjs')));
 process.env.SUPABASE_URL='https://synthetic-project.supabase.co';
 process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_synthetic_public_test_key';
 const owner='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -59,4 +61,11 @@ test('refresh obtains a rotated session and rechecks identity and paid state',as
 test('logout revokes the verified current session without revoking other devices',async()=>{
  let endpoint;globalThis.fetch=async(url)=>{endpoint=url;return url.endsWith('/user')?user():new Response(null,{status:204});};
  const response=res();await account(req({action:'logout'}),response);assert.equal(response.code,200);assert.ok(endpoint.endsWith('/logout?scope=local'));
+});
+test('managed protected APIs ignore claimed roles and do not grant legacy email-based beta privileges',async()=>{
+ globalThis.fetch=async(url)=>url.endsWith('/user')?Response.json({id:owner,email:'ayalaemily52@gmail.com',email_confirmed_at:'2026-10-06T00:00:00Z'}):Response.json([{display_name:'Synthetic User',role:'professional',subscription_status:'canceled',subscription_tier:'professional',trial_ends_at:null}]);
+ const session=await requireAccountSession(req(null));assert.equal(session.role,'free');assert.equal(session.accountId,owner);assert.equal(canUsePaidTools(session),false);
+});
+test('managed protected APIs fail closed when the provider cannot verify the account',async()=>{
+ globalThis.fetch=async()=>Response.json({id:owner,email:'a@example.com',email_confirmed_at:null});assert.equal(await requireAccountSession(req(null)),null);
 });

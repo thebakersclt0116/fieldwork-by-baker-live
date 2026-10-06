@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowRight, BarChart3, Check, Clock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { managedAccountsEnabled } from '@/lib/managedSession';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function SignUp() {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -32,6 +34,7 @@ export default function SignUp() {
     setLoading(true);
     const success = await registerFree(name, email, password);
     setLoading(false);
+    if(success==='verify-email'){setPassword('');setVerificationSent(true);return;}
     if (!success) {
       setError('Trial account creation is temporarily unavailable. Please try again.');
       return;
@@ -58,7 +61,9 @@ export default function SignUp() {
         <div className="p-8 lg:p-12 flex items-center">
           <form onSubmit={submit} className="w-full max-w-md mx-auto">
             <h2 className="font-serif text-3xl font-semibold text-[#332C28] mb-2">Create your trial account</h2>
-            <p className="text-sm text-[#A8998E] mb-7">Your 3-day full-access trial starts when this account is created.</p>
+            <p className="text-sm text-[#A8998E] mb-7">{managedAccountsEnabled ? 'Your trial starts after you verify your email.' : 'Your 3-day full-access trial starts when this account is created.'}</p>
+
+            {verificationSent && <div role="status" className="mb-5 rounded-xl bg-[#F0F8F3] px-4 py-3 text-sm text-[#285C3D]">Check your email for the verification link. After verifying, <Link to="/login" className="font-semibold underline">sign in</Link> to start your trial.</div>}
 
             {error && <div className="mb-5 rounded-xl bg-[#FFF5F7] border border-[#FFC1CC] px-4 py-3 text-sm text-[#C9445A]">{error}</div>}
 

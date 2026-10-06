@@ -1,4 +1,4 @@
-import { requireSession, signSession } from './_auth.js';
+import { requireAccountSession, signSession } from './_auth.js';
 
 type StripeSession = {
   id?: string;
@@ -22,7 +22,7 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const current = requireSession(req, ['free', 'paid', 'professional', 'owner']);
+  const current = await requireAccountSession(req, ['free', 'paid', 'professional', 'owner']);
   if (!current) return send(res, 401, { error: 'Sign in to apply this purchase.' });
 
   const checkoutSessionId = String(req.body?.sessionId || '').trim();

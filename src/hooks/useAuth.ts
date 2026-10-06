@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { managedAccountsEnabled, MANAGED_SESSION_KEY, accountRequest, saveManagedTokens, renewManagedSession } from '@/lib/managedSession';
 
 export type SubscriptionTier = 'individual' | 'professional' | 'enterprise' | 'none';
 export type BillingCycle = 'monthly' | 'annual';
 
 export interface AuthUser {
+  authProvider?: 'supabase';
   name: string;
   email: string;
   role: 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
@@ -25,6 +27,7 @@ function getInitials(name: string): string {
 }
 
 function normalizeUser(user: AuthUser): AuthUser {
+  if (user.authProvider === 'supabase') return user;
   if (user.email.trim().toLowerCase() !== EMILY_EMAIL) return user;
   return {
     ...user,
@@ -79,6 +82,19 @@ export function useAuth() {
       const storedToken = localStorage.getItem(TOKEN_KEY);
       if (storedUser && storedToken) {
         const normalized = normalizeUser(JSON.parse(storedUser) as AuthUser);
+        if (normalized.authProvider === 'supabase') {
+          let mounted = true;
+          renewManagedSession().then((account)=>{
+            if (!mounted) return;
+            const nextUser: AuthUser = {...account.user,authProvider:'supabase',initials:getInitials(account.user.name)};
+            storeSession(nextUser,account.token);
+            setUser(nextUser);
+          }).catch(()=>{
+            if (!mounted) return;
+            localStorage.removeItem(USER_KEY);localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(MANAGED_SESSION_KEY);setUser(null);
+          }).finally(()=>{if(mounted)setIsLoading(false);});
+          return ()=>{mounted=false;};
+        }
         if (isReservedBetaEmail(normalized.email) && !isStableBetaToken(storedToken)) {
           localStorage.removeItem(USER_KEY);
           localStorage.removeItem(TOKEN_KEY);
@@ -101,6 +117,12 @@ export function useAuth() {
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
+      if (managedAccountsEnabled) {
+        const {response,payload}=await accountRequest({action:'login',email,password});
+        if (!response.ok || !payload.token || !payload.refreshToken || !payload.user?.name || !payload.user.email) return false;
+        const nextUser: AuthUser={...payload.user,authProvider:'supabase',initials:getInitials(payload.user.name)};
+        saveManagedTokens(payload);storeSession(nextUser,payload.token);setUser(nextUser);return true;
+      }
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,8 +158,12 @@ export function useAuth() {
     } catch { return false; }
   }, []);
 
-  const registerFree = useCallback(async (name: string, email: string, password: string): Promise<boolean> => {
+  const registerFree = useCallback(async (name: string, email: string, password: string): Promise<boolean|'verify-email'> => {
     try {
+      if (managedAccountsEnabled) {
+        const {response,payload}=await accountRequest({action:'signup',name,email,password});
+        return response.status===202 && payload.verificationRequired ? 'verify-email' : false;
+      }
       const response = await fetch('/api/free-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -164,6 +190,11 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(() => {
+    if (getStoredAuthUser()?.authProvider === 'supabase') {
+      const token=getStoredAccessToken();
+      if(token) void fetch('/api/account',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({action:'logout'}),keepalive:true}).catch(()=>{});
+      localStorage.removeItem(MANAGED_SESSION_KEY);
+    }
     setUser(null);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
@@ -171,7 +202,7 @@ export function useAuth() {
   }, []);
 
   const accessToken = getStoredAccessToken();
-  const isEmilyBeta = user?.email.trim().toLowerCase() === EMILY_EMAIL;
+  const isEmilyBeta = user?.authProvider !== 'supabase' && user?.email.trim().toLowerCase() === EMILY_EMAIL;
   const isOwner = user?.role === 'owner';
   const activeTrial = Boolean(user?.trialEndsAt && user.trialEndsAt > Math.floor(Date.now() / 1000));
   const trialExpired = Boolean(user?.trialEndsAt && user.trialEndsAt <= Math.floor(Date.now() / 1000));

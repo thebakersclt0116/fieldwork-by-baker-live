@@ -27,6 +27,7 @@ export default function PlatformHome() {
               <Link to="/signup" className="rounded-2xl bg-[#E85D70] px-6 py-3.5 text-center text-sm font-bold text-white shadow-lg shadow-[#E85D70]/20 transition hover:-translate-y-0.5">Start My BCBA Journey</Link>
               <Link to="/roadmap" className="rounded-2xl border border-[#E2DAD5] bg-white px-6 py-3.5 text-center text-sm font-bold text-[#5F5149] shadow-sm transition hover:-translate-y-0.5 dark:border-white/10 dark:bg-white/5 dark:text-[#F3ECE7]">Explore the Platform</Link>
             </div>
+            <p className="mt-5 text-sm font-semibold text-[#5F5149] dark:text-[#CFC4BE]">iOS and Android apps coming soon.</p>
             <div className="mt-10 grid gap-3 sm:grid-cols-2">
               {['Follow a personalized BCBA roadmap', 'Get instant support from Baker Brain', 'Prepare confidently inside Exam Lab', 'Find your people inside Baker Commons'].map((item) => <div key={item} className="flex items-center gap-2 text-sm font-medium text-[#6B5D54] dark:text-[#CFC4BE]"><CheckCircle2 size={17} className="text-[#5FA37E]" /> {item}</div>)}
             </div>

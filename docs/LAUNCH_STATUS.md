@@ -44,3 +44,7 @@ These are implementation and service prerequisites, not merely missing environme
 ## Cloud groundwork
 
 Managed account and workspace API boundaries, private storage schema, version-checked entry and learning saves, immutable revision history and rollback-only fictional database tests are prepared. The frontend still uses legacy authentication/local persistence. Nine cloud boundary tests and four hardening tests pass locally. Do not enable cloud authentication until verification email, session lifecycle, UI hydration/saving, backups and independent-device checks pass.
+
+## Managed workspace implementation (not enabled for public rollout)
+
+The frontend now hydrates protected entries and learning records before opening member routes. Managed accounts use separate caches and do not import legacy browser records. Entry writes use workspace version checks, learning saves use per-record versions, and unknown save outcomes retain local drafts and block further writes. A local JSON backup can be exported from the conflict screen. Multi-page loads reject changing workspace versions. Four client persistence tests cover legacy preservation, interrupted saves, reload protection and authoritative approval reconciliation. This feature remains disabled until real independent-device, recovery, private-original storage and billing/review flows are verified.

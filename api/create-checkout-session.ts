@@ -1,4 +1,4 @@
-import { requireSession } from './_auth.js';
+import { requireAccountSession } from './_auth.js';
 
 type PlanId = 'individual_monthly' | 'professional_monthly' | 'professional_annual';
 
@@ -35,7 +35,7 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req, ['free', 'paid', 'professional', 'owner']);
+  const session = await requireAccountSession(req, ['free', 'paid', 'professional', 'owner']);
   if (!session) return send(res, 401, { error: 'Sign in before upgrading.' });
 
   const planId = String(req.body?.plan || '') as PlanId;
