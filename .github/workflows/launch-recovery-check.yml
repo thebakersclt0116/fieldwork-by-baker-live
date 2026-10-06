@@ -1,0 +1,66 @@
+name: Launch Recovery Check
+on:
+  push:
+    branches: [baker-launch-recovery-20261005]
+    paths: ['.github/workflows/launch-recovery-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Public configuration and scoped source evidence
+        run: |
+          mkdir -p /tmp/baker-recovery-evidence
+          node --input-type=module <<'JS'
+          import fs from 'node:fs/promises';
+          import dns from 'node:dns/promises';
+          const report={checkedAt:new Date().toISOString(),domain:{},health:{},catalogue:{}};
+          for(const type of ['NS','A']){try{report.domain[type]=await dns.resolve('fieldworkbybaker.com',type);}catch(e){report.domain[type]={error:e.code};}}
+          for(const host of ['www.fieldworkbybaker.com','fieldwork-by-baker-testing.vercel.app']){
+            try{const r=await fetch('https://'+host+'/api/health?check='+Date.now(),{signal:AbortSignal.timeout(15000)});const p=await r.json();report.health[host]={status:r.status,commit:p.deployedCommit,stripeMode:p.stripeMode,aiGatewayAuthAvailable:p.aiGatewayAuthAvailable,secureSessionSigningAvailable:p.secureSessionSigningAvailable};}catch(e){report.health[host]={error:e.cause?.code||e.name};}
+          }
+          try{const r=await fetch('https://ai-gateway.vercel.sh/v1/models',{signal:AbortSignal.timeout(15000)});const p=await r.json();report.catalogue={status:r.status,models:(p.data||[]).map(m=>m.id).filter(id=>/^openai\/gpt-5/.test(id)).slice(0,40)};}catch(e){report.catalogue={error:e.name};}
+          await fs.writeFile('/tmp/baker-recovery-evidence/public-state.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+          JS
+          zip -q /tmp/baker-recovery-evidence/server-review.zip api/auth.ts api/free-signup.ts api/_auth.ts api/_gateway.ts api/baker-ai.ts api/health.ts api/create-checkout-session.ts api/checkout-complete.ts server/baker-brain-safe.ts server/supervisor-notifications.ts scripts/fieldwork-regression-check.mjs src/hooks/useAuth.ts src/pages/BakerBrainHub.tsx src/pages/UpgradeSuccess.tsx src/pages/AdminLaunchCheck.tsx
+      - name: Inspect registrar verification page with a real browser
+        run: |
+          mkdir -p /tmp/baker-recovery-browser
+          npm install --prefix /tmp/baker-recovery-browser playwright --no-audit --no-fund
+          /tmp/baker-recovery-browser/node_modules/.bin/playwright install chromium
+          cd /tmp/baker-recovery-browser
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          import fs from 'node:fs/promises';
+          const browser=await chromium.launch({headless:true});const page=await browser.newPage();
+          const result={checkedAt:new Date().toISOString(),attemptedResend:false};
+          try{
+            await page.goto('http://fieldworkbybaker.com/',{waitUntil:'domcontentloaded',timeout:20000});await page.waitForTimeout(1500);
+            result.title=await page.title();
+            let target;
+            for(const frame of page.frames()){
+              const button=frame.getByText('Resend my verification email',{exact:true});
+              if(await button.count() && await button.first().isVisible()){target=button.first();break;}
+            }
+            if(target){
+              await target.click({timeout:10000});result.attemptedResend=true;await page.waitForTimeout(2000);
+              const text=(await page.locator('body').innerText()).toLowerCase();
+              result.confirmed=/verification email (has been|was) (sent|resent)|email (has been|was) (sent|resent) successfully/.test(text);
+              result.interactiveChallenge=await page.locator('iframe[src*="captcha"],input[name*="captcha"]').count()>0;
+            } else {result.reason='No visible public resend control found. Registrar account action is required.';}
+          }catch(e){result.error=String(e.name||'browser-error');}
+          await fs.writeFile('/tmp/baker-recovery-evidence/domain-resend.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));await browser.close();
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-recovery-evidence
+          path: /tmp/baker-recovery-evidence
+          retention-days: 3
