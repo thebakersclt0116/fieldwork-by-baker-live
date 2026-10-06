@@ -43,7 +43,7 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-[calc(100dvh-72px)] bg-[#FFFCF9] px-4 py-10 flex items-center">
+    <div className="signup-page min-h-[calc(100dvh-72px)] bg-[#FFFCF9] px-4 py-10 flex items-center">
       <div className="max-w-6xl w-full mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] bg-white rounded-3xl overflow-hidden border border-[#F2EDEA] shadow-[0_24px_80px_rgba(51,44,40,0.08)]">
         <div className="p-8 lg:p-12 bg-gradient-to-br from-[#FFF5F7] via-[#FFFCF9] to-[#FBF3EB]">
           <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#E85D70] mb-7"><Check size={14} /> 3-day full-access trial</div>
@@ -79,7 +79,7 @@ export default function SignUp() {
             <label className="flex items-start gap-3 text-sm text-[#6B5D54] mb-6"><input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="mt-1" /><span>I agree to the <Link to="/terms" className="font-semibold text-[#E85D70] hover:underline">Terms of Service</Link> and <Link to="/privacy" className="font-semibold text-[#E85D70] hover:underline">Privacy Policy</Link>.</span></label>
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-3 rounded-xl disabled:opacity-50">{loading ? 'Starting your trial…' : 'Start 3-Day Free Trial'}{!loading && <ArrowRight size={16} />}</button>
-            <p className="text-center text-sm text-[#A8998E] mt-5">Already have authorized beta access? <Link to="/login" className="text-[#E85D70] font-medium hover:underline">Sign in</Link></p>
+            <p className="text-center text-sm text-[#A8998E] mt-5">Already have an account? <Link to="/login" className="text-[#E85D70] font-medium hover:underline">Sign in</Link></p>
           </form>
         </div>
       </div>
