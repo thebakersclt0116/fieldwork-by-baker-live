@@ -25,7 +25,7 @@ jobs:
       - name: Run Emily fieldwork regression checks
         run: node scripts/fieldwork-regression-check.mjs
       - name: Launch security and precision checks
-        run: node --experimental-strip-types --test scripts/launch-hardening.test.mjs
+        run: node --experimental-strip-types --test scripts/launch-hardening.test.mjs scripts/cloud-boundary.test.mjs
       - name: Build production frontend
         run: npm run build
       - name: Bundle production API routes

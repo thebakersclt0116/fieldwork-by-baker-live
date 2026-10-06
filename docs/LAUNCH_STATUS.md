@@ -8,7 +8,7 @@ Hosting project: Fieldwork by Baker / fieldwork-by-baker-testing.
 
 ## Verified in this launch review
 
-The public health endpoint still reports browser-local storage, disconnected cloud storage, test Stripe credentials, disabled live billing and false publicLaunchReady. The Vercel connector returns 403 for the team; an existing Safari dashboard session can view the project. Project storage has no connected database. AI Gateway shows onboarding and $0 credit. The configured openai/gpt-5.6-sol model appears in the public gateway model catalog; listing is not proof of account access or successful generation.
+The public health endpoint still reports browser-local storage, disconnected cloud storage, test Stripe credentials, disabled live billing and false publicLaunchReady. The Vercel connector returns 403 for the team; an existing Safari dashboard session can view the project. Supabase Free project hfsngrpvxhrjahziwrdq is created; private schema is installed but app connection is pending. Vercel Pro is active, AI credit shows $5 and auto-reload is off. The configured openai/gpt-5.6-sol model appears in the public gateway model catalog; listing is not proof of account access or successful generation.
 
 The private source fixture was validated locally only. It recovered 35 sessions, 62 hours, 19.75 restricted and 42.25 unrestricted hours, 55.75 independent and 6.25 supervised hours, 60 observation minutes, all narratives present, a page continuation, and four overlaps. No original bytes, narratives or personal details are included in this repository or CI.
 
@@ -37,6 +37,10 @@ Local Chromium execution is blocked by the macOS sandbox (MachPortRendezvousServ
 6. Review and notification backend: durable current-revision checks and immutable history; assigned supervisor scope; real transactional email with truthful delivery state. Existing signed links remain browser snapshots and cannot establish durable approval.
 7. Backup retention, independent copies, restore drill, monitoring and budget alerts; record actual restored results.
 8. Final regression: representative candidate/supervisor/paid-user workflows, every meaningful control, adverse PDF and network cases, mobile/keyboard/contrast, exact production commit and custom-domain checks.
-9. Hosting cost/data scope: spending authorization and whether client-identifiable/health information is permitted are pending. Select providers and required agreements accordingly; no compliance certification is asserted.
+9. Hosting cost/data scope: $20/month hosting plus $5 AI is authorized; tighter hosting overage control and whether client-identifiable/health information is permitted are pending. Select providers and required agreements accordingly; no compliance certification is asserted.
 
 These are implementation and service prerequisites, not merely missing environment variable names. Do not enable billing or change publicLaunchReady based on green safe-failure tests.
+
+## Cloud groundwork
+
+Managed account and workspace API boundaries, private storage schema, version-checked entry and learning saves, immutable revision history and rollback-only fictional database tests are prepared. The frontend still uses legacy authentication/local persistence. Nine cloud boundary tests and four hardening tests pass locally. Do not enable cloud authentication until verification email, session lifecycle, UI hydration/saving, backups and independent-device checks pass.

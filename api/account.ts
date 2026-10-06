@@ -8,13 +8,13 @@ export default async function handler(req: any, res: any) {
   try {
     const body = req.body || {};
     const action = body.action;
-    const { key } = cloudConfiguration();
+    cloudConfiguration();
     if (action === 'signup' || action === 'login') {
       const email = String(body.email || '').trim().toLowerCase();
       const password = String(body.password || '');
       const name = String(body.name || '').trim();
       if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254 || password.length < 8 || password.length > 1024 || (action === 'signup' && (name.length < 2 || name.length > 120))) return send(400, { code: 'INVALID_ACCOUNT_INPUT' });
-      const payload: any = await cloudRequest(action === 'signup' ? '/auth/v1/signup' : '/auth/v1/token?grant_type=password', key, {
+      const payload: any = await cloudRequest(action === 'signup' ? '/auth/v1/signup' : '/auth/v1/token?grant_type=password', null, {
         method: 'POST', body: JSON.stringify(action === 'signup' ? { email, password, data: { name } } : { email, password }),
       });
       // A signup must require email confirmation; never create a trial from unverified input.

@@ -12,7 +12,7 @@ const {default:workspace}=await import(pathToFileURL(join(dir,'workspace.mjs')))
 await build({entryPoints:['api/account.ts'],outfile:join(dir,'account.mjs'),bundle:true,platform:'node',format:'esm'});
 const {default:account}=await import(pathToFileURL(join(dir,'account.mjs')));
 process.env.SUPABASE_URL='https://synthetic-project.supabase.co';
-process.env.SUPABASE_ANON_KEY='synthetic-public-test-key';
+process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_synthetic_public_test_key';
 const owner='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const originalFetch=globalThis.fetch;after(()=>{globalThis.fetch=originalFetch;});
 function res(){return {code:0,headers:{},body:null,status(n){this.code=n;return this;},setHeader(k,v){this.headers[k]=v;},json(v){this.body=v;}};}

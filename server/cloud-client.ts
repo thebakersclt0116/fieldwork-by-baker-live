@@ -4,18 +4,19 @@ export class CloudError extends Error {
 }
 export function cloudConfiguration() {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) throw new CloudError('CLOUD_NOT_CONFIGURED');
+  if (!key.startsWith('sb_publishable_')) throw new CloudError('INVALID_CLOUD_CONFIGURATION');
   const parsed = new URL(url);
   if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.supabase.co') || parsed.username || parsed.password || parsed.pathname !== '/') throw new CloudError('INVALID_CLOUD_CONFIGURATION');
   return { url: parsed.origin, key };
 }
-export async function cloudRequest(path: string, token: string, options: RequestInit = {}) {
+export async function cloudRequest(path: string, token: string | null, options: RequestInit = {}) {
   const { url, key } = cloudConfiguration();
   if (!path.startsWith('/rest/v1/') && !path.startsWith('/auth/v1/') && !path.startsWith('/storage/v1/')) throw new CloudError('INVALID_CLOUD_PATH',400);
   let response: Response;
   try {
-    response = await fetch(url + path, { ...options, signal: AbortSignal.timeout(15000), headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${token}`, ...options.headers } });
+    response = await fetch(url + path, { ...options, signal: AbortSignal.timeout(15000), headers: { 'Content-Type': 'application/json', apikey: key, ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers } });
   } catch { throw new CloudError('CLOUD_UNAVAILABLE'); }
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
