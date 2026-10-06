@@ -98,6 +98,18 @@ try{
   assert.ok((await overlap.innerText()).includes('Source session 1 · 8:30 AM–10:30 AM · PDF page 1'));
   assert.ok((await overlap.innerText()).includes('Source session 2 · 9:00 AM–10:00 AM · PDF page 1'));
   checks.push('overlaps identify exact shared minutes, both source sessions, narratives and PDF pages');
+  await page.goto(origin+'/settings');
+  await page.getByLabel('24-hour · 14:30',{exact:true}).check();
+  await page.getByRole('button',{name:'Save settings',exact:true}).click();
+  await page.reload();assert.ok(await page.getByLabel('24-hour · 14:30',{exact:true}).isChecked());
+  await page.goto(origin+'/import/ripley');
+  await upload([{name:'overlapping-fictional.pdf',mimeType:'application/pdf',buffer:await fixture('January',false,false,true)}]);
+  assert.ok((await page.getByRole('region',{name:'Overlapping times'}).innerText()).includes('overlap 09:00–10:00 (60 minutes)'));
+  await page.goto(origin+'/settings');
+  await page.getByLabel('12-hour · 2:30 PM (default)',{exact:true}).check();
+  await page.getByRole('button',{name:'Save settings',exact:true}).click();
+  checks.push('account time settings persist on reload and change overlap display without changing original hours');
+
   await page.setViewportSize({width:390,height:844});await page.goto(origin+'/import');await page.getByRole('heading',{name:'Bring every session. Pick up where you left off.'}).waitFor();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));await page.screenshot({path:'pdf-release-evidence/guide-mobile.png',fullPage:true});checks.push('mobile import guide has no horizontal overflow');
   assert.deepEqual(errors,[]);checks.push('no browser runtime errors');
