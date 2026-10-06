@@ -9,13 +9,14 @@ export default async function handler(req: any, res: any) {
     const body = req.body || {};
     const action = body.action;
     cloudConfiguration();
-    if (action === 'signup' || action === 'login') {
+    if (action === 'signup' || action === 'login' || action === 'refresh') {
       const email = String(body.email || '').trim().toLowerCase();
       const password = String(body.password || '');
       const name = String(body.name || '').trim();
-      if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254 || password.length < 8 || password.length > 1024 || (action === 'signup' && (name.length < 2 || name.length > 120))) return send(400, { code: 'INVALID_ACCOUNT_INPUT' });
-      const payload: any = await cloudRequest(action === 'signup' ? '/auth/v1/signup' : '/auth/v1/token?grant_type=password', null, {
-        method: 'POST', body: JSON.stringify(action === 'signup' ? { email, password, data: { name } } : { email, password }),
+      const refreshToken = typeof body.refreshToken === 'string' ? body.refreshToken : '';
+      if (action === 'refresh' ? refreshToken.length < 8 || refreshToken.length > 8192 : !/^\S+@\S+\.\S+$/.test(email) || email.length > 254 || password.length < 8 || password.length > 1024 || (action === 'signup' && (name.length < 2 || name.length > 120))) return send(400, { code: 'INVALID_ACCOUNT_INPUT' });
+      const payload: any = await cloudRequest(action === 'signup' ? '/auth/v1/signup' : action === 'refresh' ? '/auth/v1/token?grant_type=refresh_token' : '/auth/v1/token?grant_type=password', null, {
+        method: 'POST', body: JSON.stringify(action === 'signup' ? { email, password, data: { name } } : action === 'refresh' ? { refresh_token: refreshToken } : { email, password }),
       });
       // A signup must require email confirmation; never create a trial from unverified input.
       if (action === 'signup') {
@@ -27,12 +28,20 @@ export default async function handler(req: any, res: any) {
       const profiles: any = await cloudRequest('/rest/v1/profiles?select=display_name,email,role,trial_ends_at,subscription_tier,subscription_status&id=eq.' + identity.id, payload.access_token);
       const profile = profiles?.[0];
       if (!profile) throw new CloudError('ACCOUNT_NOT_READY');
-      const activeSubscription = ['active','trialing'].includes(profile.subscription_status);
+      const activeSubscription = ['active','trialing'].includes(profile.subscription_status) && ['individual','professional'].includes(profile.subscription_tier);
       const role = ['owner','supervisor'].includes(profile.role) ? profile.role : activeSubscription ? (profile.subscription_tier === 'professional' ? 'professional' : 'paid') : 'free';
       return send(200, { token: payload.access_token, refreshToken: payload.refresh_token, expiresAt: payload.expires_at,
         user: { name: profile.display_name, email: identity.email, role,
           subscription: activeSubscription ? profile.subscription_tier : 'none',
           trialEndsAt: profile.trial_ends_at ? Math.floor(Date.parse(profile.trial_ends_at)/1000) : undefined } });
+    }
+    if (action === 'logout') {
+      const authorization = String(req.headers?.authorization || '');
+      if (!authorization.startsWith('Bearer ')) throw new CloudError('AUTH_REQUIRED',401);
+      const token = authorization.slice(7);
+      await verifyCloudUser(token);
+      await cloudRequest('/auth/v1/logout?scope=local',token,{method:'POST'});
+      return send(200,{signedOut:true});
     }
     return send(400, { code: 'INVALID_ACCOUNT_ACTION' });
   } catch (error) {

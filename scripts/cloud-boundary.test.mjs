@@ -49,3 +49,14 @@ test('login derives entitlements from protected profile data after verifying ide
  globalThis.fetch=async(url)=>url.includes('/token?')?Response.json({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:123}):url.endsWith('/user')?user():Response.json([{display_name:'Example User',role:'professional',subscription_tier:'professional',subscription_status:'canceled',trial_ends_at:null}]);
  const response=res();await account(req({action:'login',email:'a@example.com',password:'synthetic-password',role:'owner'}),response);assert.equal(response.code,200);assert.equal(response.body.user.role,'free');assert.equal(response.body.user.subscription,'none');
 });
+test('refresh obtains a rotated session and rechecks identity and paid state',async()=>{
+ let sent;globalThis.fetch=async(url,options)=>{
+  if(url.includes('grant_type=refresh_token')){sent=JSON.parse(options.body);assert.equal(options.headers.Authorization,undefined);return Response.json({access_token:'rotated-access',refresh_token:'rotated-refresh',expires_at:456});}
+  return url.endsWith('/user')?user():Response.json([{display_name:'Example User',role:'free',subscription_tier:'individual',subscription_status:'active'}]);
+ };
+ const response=res();await account(req({action:'refresh',refreshToken:'synthetic-refresh'}),response);assert.deepEqual(sent,{refresh_token:'synthetic-refresh'});assert.equal(response.code,200);assert.equal(response.body.refreshToken,'rotated-refresh');assert.equal(response.body.user.role,'paid');
+});
+test('logout revokes the verified current session without revoking other devices',async()=>{
+ let endpoint;globalThis.fetch=async(url)=>{endpoint=url;return url.endsWith('/user')?user():new Response(null,{status:204});};
+ const response=res();await account(req({action:'logout'}),response);assert.equal(response.code,200);assert.ok(endpoint.endsWith('/logout?scope=local'));
+});
