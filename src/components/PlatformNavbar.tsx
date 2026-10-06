@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Brain, Compass, FlaskConical, Library, LogOut, Menu, Moon, Route, Sparkles, Sun, Users, X } from 'lucide-react';
+import { Brain, Compass, FlaskConical, Library, LogOut, Menu, Moon, Route, Sparkles, Sun, Upload, Users, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const coreNav = [
@@ -10,6 +10,7 @@ const coreNav = [
   { label: 'Baker Commons', href: '/commons', icon: Users },
   { label: 'Baker Brain', href: '/baker-brain', icon: Brain },
   { label: 'Exam Lab', href: '/exam-lab', icon: FlaskConical },
+  { label: 'Import', href: '/import', icon: Upload },
   { label: 'Resource Vault', href: '/resources', icon: Library },
 ];
 

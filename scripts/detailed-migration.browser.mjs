@@ -24,7 +24,7 @@ test.beforeEach(async ({ page, request }) => {
   await page.addInitScript(({ user, token }) => {
     localStorage.setItem('authUser', JSON.stringify(user)); localStorage.setItem('bakerSessionToken', token); localStorage.setItem('theme', 'dark');
   }, { user, token });
-  await page.goto('/import');
+  await page.goto('/import/ripley');
   await expect(page.getByRole('heading', { name: 'Every entry. The original details. A record you can keep.' })).toBeVisible();
 });
 async function upload(page, contents = csv) {
@@ -62,7 +62,7 @@ test('full source import, signed normal trial on live, audit ledger and exact or
   await zip.saveAs('audit-test-artifacts/synthetic-audit-example.zip');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: 'audit-test-artifacts/audit-ledger-mobile-dark.png', fullPage: true });
-  await page.goto('/import'); await upload(page);
+  await page.goto('/import/ripley'); await upload(page);
   await expect(page.getByText('Exact duplicates: 2.', { exact: false })).toBeVisible();
   await page.getByLabel('I reviewed the source rows, scope, flags and totals.', { exact: false }).check();
   await expect(page.getByRole('button', { name: 'Import selected entries', exact: true })).toBeDisabled();

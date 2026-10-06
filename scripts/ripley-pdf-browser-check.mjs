@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 import {PDFDocument,StandardFonts} from 'pdf-lib';
 
 // Entirely fictional fixture. No private user file, client narrative, credential or original account is committed or logged.
-async function fixture(month='January', omitLast=false, summaryOnly=false){
+async function fixture(month='January', omitLast=false, summaryOnly=false, overlaps=false){
   const pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
   const first=pdf.addPage([612,792]);
   const draw=(page,s,x,y,size=7,strong=false)=>{const f=strong?bold:font;page.drawText(s,{x:x-f.widthOfTextAtSize(s,size)/2,y:792-y-size,size,font:f});};
@@ -31,7 +31,7 @@ async function fixture(month='January', omitLast=false, summaryOnly=false){
     first.drawText(note,{x:47,y:792-y-48,font,size:7});
   };
   session(335,28,'8:30 AM','10:30 AM',[0,2,0,0,0,0],'Synthetic narrative one: analyzed fictional practice data.');
-  session(420,27,'9:00 AM','10:00 AM',[0,0,0,0,1,0],'Synthetic narrative two: group review with a fictional supervisor.');
+  session(420,overlaps?28:27,'9:00 AM','10:00 AM',[0,0,0,0,1,0],'Synthetic narrative two: group review with a fictional supervisor.');
   session(660,26,'9:00 AM','9:15 AM',[0,0,0.25,0,0,15],'Synthetic narrative three continues onto the next page');
   if(!omitLast){const last=pdf.addPage([612,792]);draw(last,'Period - Ripley',70,15);draw(last,'Page 2 of 2',540,770);
     last.drawText('and retains this exact continuation sentence.',{x:47,y:792-55,font,size:7});
@@ -62,6 +62,8 @@ try{
   for(let i=0;i<4;i++){await guides.nth(i).scrollIntoViewIfNeeded();await guides.nth(i).evaluate(img=>img.decode());assert.ok(await guides.nth(i).evaluate(img=>img.naturalWidth>0));}
   await page.getByRole('button',{name:'Enlarge step 1:',exact:false}).click();await page.getByRole('dialog').waitFor();await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog').count(),0);checks.push('all guide images load; enlargement and Escape work');
   await page.screenshot({path:'pdf-release-evidence/guide-desktop.png',fullPage:false});
+  assert.equal(await page.locator('input[type=file]').count(),0);
+  await page.getByRole('link',{name:'Import from Ripley',exact:true}).click();
   const pdf=await fixture(),feb=await fixture('February');
   const upload=async files=>{await page.locator('input[type=file][accept]').setInputFiles(files);await page.getByRole('heading',{name:'3. Review & reconcile before adding hours',exact:true}).waitFor({timeout:60000});};
   await upload([{name:'January-fictional.pdf',mimeType:'application/pdf',buffer:pdf},{name:'February-fictional.pdf',mimeType:'application/pdf',buffer:feb}]);
@@ -77,7 +79,7 @@ try{
   checks.push('six individual sessions persist with exact narratives, page provenance, categories and supervision');
   await page.goto(origin+'/audit-history');await page.getByRole('heading',{name:'Entry-by-entry audit ledger'}).waitFor();
   const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Download full audit ZIP',exact:true}).click();const download=await downloadPromise;const zip=await fs.readFile(await download.path());assert.ok(zip.includes(pdf)&&zip.includes(feb),'Exact original PDFs must be in ZIP');checks.push('audit archive preserves both original PDF byte streams');
-  await page.goto(origin+'/import');await upload([{name:'January-reprinted.pdf',mimeType:'application/pdf',buffer:pdf},{name:'February-reprinted.pdf',mimeType:'application/pdf',buffer:feb}]);
+  await page.goto(origin+'/import/ripley');await upload([{name:'January-reprinted.pdf',mimeType:'application/pdf',buffer:pdf},{name:'February-reprinted.pdf',mimeType:'application/pdf',buffer:feb}]);
   assert.ok((await page.locator('body').innerText()).includes('Exact duplicates: 6.'));await page.getByLabel('I reviewed the source rows, scope, flags and totals.',{exact:false}).check();assert.ok(await page.getByRole('button',{name:'Import selected entries',exact:true}).isDisabled());checks.push('repeat imports are detected and cannot add duplicate hours');
   await page.locator('input[type=file][accept]').setInputFiles({name:'missing-last-page.pdf',mimeType:'application/pdf',buffer:await fixture('January',true)});
   await page.waitForFunction(()=>document.body.innerText.includes('No tracked entries were added.'));assert.equal((await page.evaluate(email=>JSON.parse(localStorage.getItem(`fieldworkByBaker:v1:${email}:entries`)||'[]'),email)).length,6);checks.push('missing PDF pages fail closed without changing tracked entries');
@@ -89,6 +91,13 @@ try{
   assert.ok(await partialButton.count()===0 || await partialButton.isDisabled(),'A failed batch must not expose a valid prefix as ready for import');
   assert.equal((await page.evaluate(email=>JSON.parse(localStorage.getItem(`fieldworkByBaker:v1:${email}:entries`)||'[]'),email)).length,6);
   checks.push('a corrupt later file cannot silently turn a bulk import into a partial import');
+  await upload([{name:'overlapping-fictional.pdf',mimeType:'application/pdf',buffer:await fixture('January',false,false,true)}]);
+  await page.getByRole('heading',{name:'Where times overlap',exact:true}).waitFor();
+  const overlap=page.getByRole('region',{name:'Overlapping times'});
+  assert.ok((await overlap.innerText()).includes('2026-01-28 · overlap 9:00 AM–10:00 AM (60 minutes)'));
+  assert.ok((await overlap.innerText()).includes('Source session 1 · 8:30 AM–10:30 AM · PDF page 1'));
+  assert.ok((await overlap.innerText()).includes('Source session 2 · 9:00 AM–10:00 AM · PDF page 1'));
+  checks.push('overlaps identify exact shared minutes, both source sessions, narratives and PDF pages');
   await page.setViewportSize({width:390,height:844});await page.goto(origin+'/import');await page.getByRole('heading',{name:'Bring every session. Pick up where you left off.'}).waitFor();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));await page.screenshot({path:'pdf-release-evidence/guide-mobile.png',fullPage:true});checks.push('mobile import guide has no horizontal overflow');
   assert.deepEqual(errors,[]);checks.push('no browser runtime errors');

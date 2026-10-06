@@ -80,6 +80,7 @@ export default function App() {
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
         <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><DetailedMigration /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/import/ripley" element={<ProtectedRoute><PaidFeatureRoute><DetailedMigration /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/audit-history" element={<ProtectedRoute><DetailedMigration /></ProtectedRoute>} />
         <Route path="/import-monthly" element={<Navigate to="/import" replace />} />
         <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />

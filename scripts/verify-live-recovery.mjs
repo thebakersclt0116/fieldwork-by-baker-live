@@ -39,7 +39,7 @@ try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message.slice(0,180)));
   await page.addInitScript(({user,token})=>{localStorage.setItem('authUser',JSON.stringify({...user,initials:'QA'}));localStorage.setItem('bakerSessionToken',token);localStorage.setItem('theme','dark');},{user:account.user,token:account.token});
   await page.goto(origin+'/import',{waitUntil:'domcontentloaded',timeout:30000});
-  await page.getByRole('heading',{name:'Every entry. The original details. A record you can keep.'}).waitFor({timeout:15000});
+  await page.getByRole('heading',{name:'Bring every session. Pick up where you left off.'}).waitFor({timeout:15000});
   await page.getByText('Temporary recovery address.',{exact:true}).waitFor();
   const paths=[];
   for(const path of ['/audit-history','/baker-brain','/upgrade']){await page.goto(origin+path,{waitUntil:'domcontentloaded'});await page.waitForTimeout(800);if(new URL(page.url()).origin!==origin)throw new Error('Recovery origin unexpectedly redirected.');paths.push(path);}
