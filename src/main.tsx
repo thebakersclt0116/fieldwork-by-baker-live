@@ -4,7 +4,6 @@ import './index.css'
 import './dark-mode.css'
 import App from './App.tsx'
 
-const CANONICAL_HOST = 'www.fieldworkbybaker.com'
 const VERCEL_HOST = 'fieldwork-by-baker-testing.vercel.app'
 const EMILY_EMAIL = 'ayalaemily52@gmail.com'
 const OWNER_EMAIL = 'justin@bakerholdings.co'
@@ -22,12 +21,9 @@ function installInitialTheme(): void {
 }
 
 function redirectToCanonicalHost(): boolean {
-  if (window.location.hostname !== VERCEL_HOST) return false
-  const target = new URL(window.location.href)
-  target.protocol = 'https:'
-  target.host = CANONICAL_HOST
-  window.location.replace(target.toString())
-  return true
+  // Keep the existing Vercel origin usable during a registrar/DNS outage. No credentials or local records are copied between origins.
+  if (window.location.hostname === VERCEL_HOST) console.info('Baker recovery origin: browser records are isolated from the usual custom domain.');
+  return false;
 }
 
 function storedReservedBetaEmail(): string | null {

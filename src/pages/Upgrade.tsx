@@ -46,14 +46,16 @@ export default function Upgrade() {
   const { user, isOwner, hasPaidFeatures, activeTrial, trialEndsAt } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState('');
+  const [billingEnabled, setBillingEnabled] = useState(false);
   const [stripeMode, setStripeMode] = useState<'checking' | 'live' | 'test' | 'configured' | 'unconfigured'>('checking');
 
   useEffect(() => {
     let active = true;
     fetch('/api/health?billing=1', { cache: 'no-store' })
       .then((response) => response.json())
-      .then((payload: { stripeCheckoutConfigured?: boolean; stripeMode?: string }) => {
+      .then((payload: { stripeCheckoutConfigured?: boolean; stripeMode?: string; liveBillingEnabled?: boolean }) => {
         if (!active) return;
+        setBillingEnabled(payload.liveBillingEnabled === true && payload.stripeMode === 'live');
         if (!payload.stripeCheckoutConfigured) setStripeMode('unconfigured');
         else if (payload.stripeMode === 'live') setStripeMode('live');
         else if (payload.stripeMode === 'test') setStripeMode('test');
@@ -64,6 +66,7 @@ export default function Upgrade() {
   }, []);
 
   const startCheckout = async (plan: PlanId) => {
+    if (!billingEnabled) { setError('Paid checkout is paused while the account and billing backend is connected. No payment has been created.'); return; }
     const token = getStoredAccessToken();
     if (!token) {
       window.location.href = '/login';
@@ -106,10 +109,12 @@ export default function Upgrade() {
         {stripeMode !== 'checking' && stripeMode !== 'live' && (
           <div className={`max-w-3xl mx-auto mb-7 rounded-2xl border px-5 py-4 text-sm text-center ${stripeMode === 'test' ? 'border-[#F1D8B9] bg-[#FFF9F2] text-[#8A5D36]' : 'border-[#F0D5DA] bg-[#FFF7F8] text-[#C9445A]'}`}>
             {stripeMode === 'test'
-              ? 'Stripe is connected in TEST MODE. Checkout is safe to test, but it will not create real production charges until a live Stripe secret key is installed.'
+              ? 'Stripe is connected in TEST MODE. Public checkout is disabled; test payments cannot unlock production access.'
               : 'Stripe Checkout is not ready for production charges on this deployment yet.'}
           </div>
         )}
+
+        {!billingEnabled && <div role="status" className="mx-auto mb-6 max-w-3xl rounded-2xl border border-[#F1D8B9] bg-[#FFF9F2] p-4 text-center text-sm text-[#8A5D36] dark:border-amber-500/30 dark:bg-amber-900/15 dark:text-amber-100"><strong>Paid checkout is temporarily paused.</strong> The launch prices are reserved below. We are connecting durable accounts and subscription renewal/cancellation handling before accepting payments. No card is charged while checkout is paused. <a href="/audit-history" className="font-semibold underline">Your existing local audit records and downloads remain accessible.</a></div>}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
           {plans.map((plan) => (
@@ -119,8 +124,8 @@ export default function Upgrade() {
               <div className="flex items-baseline gap-1 mb-3"><span className="font-mono text-3xl text-[#E85D70]">{plan.price}</span><span className="text-sm text-[#A8998E]">{plan.cadence}</span></div>
               <p className="text-sm text-[#6B5D54] leading-relaxed mb-5">{plan.description}</p>
               <ul className="space-y-2 mb-6 flex-1">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-[#4D423C]"><Check size={15} className="text-[#5FA37E] mt-0.5 shrink-0" />{feature}</li>)}</ul>
-              <button onClick={() => void startCheckout(plan.id)} disabled={Boolean(loadingPlan) || isOwner || (hasPaidFeatures && !activeTrial)} className="w-full rounded-xl bg-[#332C28] text-white py-3 text-sm font-semibold disabled:opacity-40">
-                {loadingPlan === plan.id ? 'Opening Stripe…' : isOwner ? 'Owner unlocked' : activeTrial ? 'Choose this plan now' : hasPaidFeatures ? 'Paid plan active' : stripeMode === 'test' ? 'Open Stripe test checkout' : 'Continue to Stripe'}
+              <button onClick={() => void startCheckout(plan.id)} disabled={!billingEnabled || Boolean(loadingPlan) || isOwner || (hasPaidFeatures && !activeTrial)} className="w-full rounded-xl bg-[#332C28] text-white py-3 text-sm font-semibold disabled:opacity-40">
+                {loadingPlan === plan.id ? 'Opening Stripe…' : isOwner ? 'Owner unlocked' : !billingEnabled ? 'Checkout reopening soon' : activeTrial ? 'Choose this plan now' : hasPaidFeatures ? 'Paid plan active' : stripeMode === 'test' ? 'Open Stripe test checkout' : 'Continue to Stripe'}
               </button>
             </div>
           ))}

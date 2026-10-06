@@ -5,8 +5,8 @@ export async function getAiGatewayToken(): Promise<string | null> {
   try {
     const token = await getVercelOidcToken();
     return token || null;
-  } catch (error) {
-    console.error('Unable to retrieve Vercel OIDC token', error);
+  } catch {
+    console.error('Unable to retrieve Vercel OIDC token', { code: 'OIDC_TOKEN_UNAVAILABLE' });
     return null;
   }
 }

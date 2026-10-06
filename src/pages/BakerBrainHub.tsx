@@ -28,6 +28,8 @@ type BrainResponse = {
   citations: Array<{ label: string; url: string }>;
   artifact: Artifact | null;
   provider?: string;
+  liveModelResponded?: boolean;
+  code?: string;
 };
 
 type Message = {
@@ -63,7 +65,8 @@ export default function BakerBrainHub() {
   const [messages, setMessages] = useState<Message[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [status, setStatus] = useState('ONLINE');
+  const [status, setStatus] = useState('READY TO ASK');
+  const [retryQuestion, setRetryQuestion] = useState('');
   const [savedArtifact, setSavedArtifact] = useState('');
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -133,10 +136,12 @@ export default function BakerBrainHub() {
     setIsThinking(true);
     setStatus('THINKING');
     setSavedArtifact('');
+    setRetryQuestion('');
 
     try {
       const response = await fetch('/api/baker-ai', {
         method: 'POST',
+        signal: AbortSignal.timeout(55000),
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           mode: 'bcba-brain',
@@ -146,7 +151,7 @@ export default function BakerBrainHub() {
         }),
       });
       const payload = await response.json() as BrainResponse & { error?: string };
-      if (!response.ok || !payload.answer) throw new Error(payload.error || 'Baker Brain could not answer that.');
+      if (!response.ok || !payload.answer || payload.liveModelResponded !== true || !payload.provider?.startsWith('openai/')) throw new Error(payload.error || 'Baker Brain did not return a live model response. Please retry.');
       setMessages((current) => [...current, {
         id: `a_${Date.now()}`,
         role: 'assistant',
@@ -154,9 +159,11 @@ export default function BakerBrainHub() {
         response: payload,
         createdAt: new Date().toISOString(),
       }]);
-      setStatus('ONLINE');
+      setStatus('LIVE MODEL RESPONDED');
     } catch (error) {
-      setStatus('RETRY');
+      setStatus('LIVE AI UNAVAILABLE');
+      setRetryQuestion(message);
+      setInput(message);
       setMessages((current) => [...current, {
         id: `e_${Date.now()}`,
         role: 'assistant',
@@ -220,6 +227,7 @@ export default function BakerBrainHub() {
           </aside>
 
           <main className="flex min-h-[calc(100dvh-104px)] flex-col rounded-[28px] border border-white/10 bg-[#161311]/85 shadow-2xl backdrop-blur-2xl">
+            {retryQuestion && <div role="alert" className="m-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">The live model did not complete this answer. Your question remains below. <button type="button" disabled={isThinking} className="ml-2 font-bold underline disabled:opacity-50" onClick={() => void send(retryQuestion)}>Retry question</button></div>}
             <header className="border-b border-white/10 px-5 py-4 sm:px-7">
               <div className="flex items-center justify-between gap-4"><div><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[#FF8EA0]"><Sparkles size={13} /> BCBA INTELLIGENCE CORE</div><h1 className="mt-1 font-serif text-2xl font-semibold sm:text-3xl">Ask anything about your BCBA journey.</h1></div><div className="relative hidden h-14 w-14 shrink-0 items-center justify-center sm:flex"><div className="absolute inset-0 rounded-full bg-[#E85D70]/25 blur-xl" /><div className={`relative h-10 w-10 rounded-full border border-[#FF91A0]/40 bg-gradient-to-br from-[#FF8EA0] via-[#E85D70] to-[#7A2F3C] shadow-[0_0_38px_rgba(232,93,112,.45)] ${isThinking ? 'animate-pulse' : ''}`}><div className="absolute inset-[7px] rounded-full border border-white/30" /></div></div></div>
             </header>

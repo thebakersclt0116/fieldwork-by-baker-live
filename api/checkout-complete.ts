@@ -2,6 +2,7 @@ import { requireSession, signSession } from './_auth.js';
 
 type StripeSession = {
   id?: string;
+  livemode?: boolean;
   status?: string;
   payment_status?: string;
   mode?: string;
@@ -29,6 +30,10 @@ export default async function handler(req: any, res: any) {
   const secret = process.env.STRIPE_SECRET_KEY;
   if (!secret) return send(res, 503, { error: 'Stripe is not configured on this deployment.' });
 
+  const previewTest = process.env.VERCEL_ENV === 'preview' && process.env.BAKER_ALLOW_TEST_CHECKOUT === 'true';
+  if (!secret.startsWith('sk_live_') && !previewTest) return send(res, 503, { error: 'Test payments cannot unlock production access.', code: 'LIVE_BILLING_NOT_CONFIGURED' });
+  if (!previewTest) return send(res, 503, { error: 'Durable subscription verification must be connected before live access is granted.', code: 'BILLING_BACKEND_REQUIRED' });
+
   try {
     const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(checkoutSessionId)}`, {
       headers: { Authorization: `Bearer ${secret}` },
@@ -36,6 +41,7 @@ export default async function handler(req: any, res: any) {
     const stripeSession = await response.json() as StripeSession & { error?: { message?: string } };
     if (!response.ok) return send(res, 502, { error: stripeSession.error?.message || 'Could not verify Stripe Checkout.' });
 
+    if (stripeSession.mode !== 'subscription' || stripeSession.livemode !== !previewTest) return send(res, 400, { error: 'Checkout mode does not match this deployment.', code: 'CHECKOUT_MODE_MISMATCH' });
     const paid = stripeSession.status === 'complete' && stripeSession.payment_status === 'paid';
     if (!paid) return send(res, 402, { error: 'Stripe has not marked this Checkout Session as paid.' });
 

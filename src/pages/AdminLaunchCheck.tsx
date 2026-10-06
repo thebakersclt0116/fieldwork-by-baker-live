@@ -31,6 +31,8 @@ export default function AdminLaunchCheck() {
         stripeCheckoutConfigured?: boolean;
         stripeMode?: string;
       };
+      next.push({ key: 'storage', label: 'Durable cloud records', state: 'fail', detail: 'The current entry and original-document stores are browser-local. Cloud accounts, document storage and verified backups must be connected before public paid launch.' });
+      next.push({ key: 'billing-lifecycle', label: 'Recurring subscription lifecycle', state: 'fail', detail: 'A live key alone is not sufficient. Durable customer identity, renewal/cancellation webhooks, and entitlement reconciliation must be connected before accepting live subscriptions.' });
       next.push({
         key: 'gateway',
         label: 'AI Gateway',
@@ -63,6 +65,7 @@ export default function AdminLaunchCheck() {
     try {
       const response = await fetch('/api/baker-ai', {
         method: 'POST',
+        signal: AbortSignal.timeout(55000),
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
           mode: 'bcba-brain',
@@ -71,12 +74,12 @@ export default function AdminLaunchCheck() {
           history: [],
         }),
       });
-      const payload = await response.json() as { answer?: string; provider?: string; error?: string };
+      const payload = await response.json() as { answer?: string; provider?: string; error?: string; liveModelResponded?: boolean };
       next.push({
         key: 'brain',
         label: 'Baker Brain live response',
-        state: response.ok && Boolean(payload.answer) ? 'pass' : 'fail',
-        detail: response.ok && payload.answer
+        state: response.ok && Boolean(payload.answer) && payload.liveModelResponded === true && Boolean(payload.provider?.startsWith('openai/')) ? 'pass' : 'fail',
+        detail: response.ok && payload.answer && payload.liveModelResponded === true && payload.provider?.startsWith('openai/')
           ? 'Real authenticated AI response received from ' + (payload.provider || 'configured model') + ': “' + payload.answer.slice(0, 180) + (payload.answer.length > 180 ? '…' : '') + '”'
           : payload.error || 'Baker Brain did not return an answer.',
       });

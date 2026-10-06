@@ -1,12 +1,14 @@
 import { canUsePaidTools, requireSession } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
 import { createBakerBrainFallback, runBakerBrain } from '../server/baker-brain-safe.js';
+import { safeAiFailure } from '../server/ai-gateway-client.js';
 
 const MODEL = 'openai/gpt-5.6-sol';
 
 export const config = { maxDuration: 60 };
 
 function send(res: any, status: number, body: unknown) {
+  res.setHeader('Cache-Control', 'private, no-store');
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
 }
 
@@ -125,9 +127,11 @@ export default async function handler(req: any, res: any) {
     const gatewayToken = await getAiGatewayToken();
     return send(res, 200, {
       service: 'Baker AI + Baker Brain',
-      status: 'ready',
+      status: gatewayToken ? 'configured' : 'unavailable',
+      liveModelVerified: false,
+      verification: 'A successful authenticated POST with liveModelResponded=true is required; GET only checks configuration.',
       model: MODEL,
-      version: 'baker-brain-v1-2026-09-14',
+      version: 'baker-brain-recovery-v2',
       gatewayAuthAvailable: Boolean(gatewayToken),
       modes: ['fieldwork-entry', 'bcba-brain'],
       entryStructure: ['organization', 'supervisor', 'time-range', 'independent-supervised', 'restricted-unrestricted', 'individual-group', 'client-observation'],
@@ -145,11 +149,12 @@ export default async function handler(req: any, res: any) {
 
   const mode = String(req.body?.mode || 'fieldwork-entry');
   if (mode === 'bcba-brain') {
+    if (session.role === 'supervisor') return send(res, 403, { error: 'Use the signed supervisor co-pilot for this invitation.', code: 'SUPERVISOR_SCOPE_REQUIRED' });
     const message = String(req.body?.message || '').trim();
     if (message.length < 2) return send(res, 400, { error: 'Ask Baker Brain a BCBA question.' });
     if (message.length > 12000) return send(res, 400, { error: 'That message is too long for one Baker Brain turn.' });
     const gatewayToken = await getAiGatewayToken();
-    if (!gatewayToken) return send(res, 503, { error: 'Baker Brain AI is temporarily unavailable.' });
+    if (!gatewayToken) return send(res, 503, { error: 'Baker Brain cannot authenticate with its AI service.', code: 'AI_AUTH_REQUIRED', liveModelResponded: false });
     try {
       const result = await runBakerBrain({
         message,
@@ -160,11 +165,9 @@ export default async function handler(req: any, res: any) {
       });
       return send(res, 200, result);
     } catch (error) {
-      console.error('Baker Brain request failed', error);
-      return send(res, 200, {
-        ...createBakerBrainFallback(message),
-        warning: 'The live Baker Brain model was temporarily unavailable. No user data was lost.',
-      });
+      const failure = safeAiFailure(error);
+      console.error('Baker Brain request failed', { code: failure.code, upstreamStatus: failure.upstreamStatus });
+      return send(res, 503, { ...createBakerBrainFallback(message), ...failure, status: 'degraded', provider: 'unavailable' });
     }
   }
 

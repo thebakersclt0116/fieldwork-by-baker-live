@@ -1,3 +1,5 @@
+import { AiGatewayError, requestStructuredGateway } from './ai-gateway-client.js';
+
 const MODEL = 'openai/gpt-5.6-sol';
 
 const PLATFORM_ROUTES = [
@@ -8,7 +10,8 @@ const PLATFORM_ROUTES = [
   { label: 'Exam Lab', href: '/exam-lab', purpose: 'Full 185-question BCBA practice simulation, content-area diagnostics and weak-area plans.' },
   { label: 'Resource Vault', href: '/resources', purpose: 'Study guides, templates, flashcards, worksheets and Baker-created resources.' },
   { label: 'Fieldwork Workspace', href: '/dashboard', purpose: 'Track supervised fieldwork, restricted/unrestricted hours, supervisors, organizations and compliance.' },
-  { label: 'Import', href: '/import', purpose: 'Import Ripley and other supported fieldwork records.' },
+  { label: 'Import', href: '/import', purpose: 'Import complete original session rows from supported detailed CSV/TSV/JSON exports. Monthly PDFs are supporting evidence, not detailed histories.' },
+  { label: 'Audit History', href: '/audit-history', purpose: 'Read individual narratives and original source fields; download the portable audit archive.' },
   { label: 'Export Center', href: '/export', purpose: 'Export fieldwork documentation and official-form workflows.' },
 ];
 
@@ -44,7 +47,7 @@ export function createBakerBrainFallback(message: string) {
     : '';
   const answer = fieldwork
     ? `${privacyLead}Baker Brain’s live teaching model is temporarily unavailable. For fieldwork classification, document only what occurred, the organization and responsible supervisor, exact time or duration, whether supervision occurred, and enough detail for your qualified supervisor to review. Your supervisor and current BACB guidance—not Baker—determine whether an activity is acceptable.`
-    : `${privacyLead}Baker Brain’s live teaching model is temporarily unavailable, so I’m not going to invent a lesson or recommendation. Your saved progress is safe. Please try this question again shortly, or continue in Exam Lab and Resource Vault while the live model reconnects.`;
+    : `${privacyLead}Baker Brain’s live teaching model is temporarily unavailable, so I’m not going to invent a lesson or recommendation. Your existing local records are separate from this AI request; keep independent backups. Please try this question again shortly, or continue in Exam Lab and Resource Vault while the live model reconnects.`;
   const actions = examNavigation
     ? [
         { label: 'Open Exam Lab', href: '/exam-lab', reason: 'Take a simulation and review weak areas.' },
@@ -59,22 +62,10 @@ export function createBakerBrainFallback(message: string) {
     mode: fieldwork ? 'FIELDWORK' : examNavigation ? 'EXAM_COACH' : 'NAVIGATE',
     actions,
     followUps: ['Try this question again.', 'Show me where to continue studying.'],
-    citations: fieldwork ? [OFFICIAL_SOURCES[1]] : [],
+    citations: fieldwork ? [OFFICIAL_SOURCES[3]] : [],
     artifact: null,
     provider: 'safe-fallback',
   };
-}
-
-function extractOutputText(payload: any): string {
-  if (typeof payload?.output_text === 'string') return payload.output_text;
-  if (!Array.isArray(payload?.output)) return '';
-  for (const item of payload.output) {
-    if (!Array.isArray(item?.content)) continue;
-    for (const content of item.content) {
-      if (typeof content?.text === 'string') return content.text;
-    }
-  }
-  return '';
 }
 
 export async function runBakerBrain(args: {
@@ -105,7 +96,8 @@ PLATFORM NAVIGATION:
 These are the available destinations: ${JSON.stringify(PLATFORM_ROUTES)}
 - If a user asks where to do something, include an action with the correct href.
 - You may recommend multiple destinations when a workflow spans features.
-- You cannot claim to click or change data yourself; actions are links the UI can present.
+- You cannot claim to click, save, migrate or change data yourself; actions are links the UI can present.
+- Existing fieldwork records and audit documents are currently browser-local, not cloud-backed. Never claim that backups, synchronization or audit acceptance have been verified. Original detailed session narratives cannot be reconstructed from monthly totals.
 
 OFFICIAL SOURCES:
 ${JSON.stringify(OFFICIAL_SOURCES)}
@@ -159,43 +151,29 @@ Return structured JSON only. Keep answer useful but readable. Actions should use
   };
 
   const history = args.history
+    .filter((item) => item && typeof item === 'object')
     .slice(-10)
     .map((item) => `${item.role === 'assistant' ? 'BAKER BRAIN' : 'USER'}: ${String(item.content || '').slice(0, 1800)}`)
     .join('\n\n');
 
-  const response = await fetch('https://ai-gateway.vercel.sh/v1/responses', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${args.gatewayToken}`,
-      'Content-Type': 'application/json',
-      'ai-reporting-tags': 'product:baker-brain,feature:bcba-professor-v1',
-      'ai-reporting-user': args.userEmail,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      instructions,
-      input: `USER CONTEXT:\n${JSON.stringify(args.context).slice(0, 12000)}\n\nRECENT CONVERSATION:\n${history || 'No previous messages.'}\n\nCURRENT USER MESSAGE:\n${args.message}`,
-      reasoning: { effort: 'medium' },
-      text: { format: { type: 'json_schema', name: 'baker_brain_response_v1', strict: true, schema } },
-    }),
+  const result = await requestStructuredGateway({
+    token: args.gatewayToken, model: MODEL, instructions,
+    input: `USER CONTEXT:\n${JSON.stringify(args.context ?? {}).slice(0,12000)}\n\nRECENT CONVERSATION:\n${history || 'No previous messages.'}\n\nCURRENT USER MESSAGE:\n${args.message}`,
+    schemaName: 'baker_brain_response_v1', schema, feature: 'product:baker-brain,feature:launch-recovery',
   });
-
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500);
-    console.error('Baker Brain gateway error', response.status, detail);
-    throw new Error('Baker Brain is temporarily unavailable.');
+  const parsed = result.data as any;
+  if (!parsed || typeof parsed.answer !== 'string' || !parsed.answer.trim() || parsed.answer.length > 32000 || !['TEACH','NAVIGATE','PLAN','QUIZ','RESOURCE','FIELDWORK','EXAM_COACH'].includes(parsed.mode)) throw new AiGatewayError('AI_INVALID_RESPONSE');
+  if (parsed.artifact !== null && parsed.artifact !== undefined) {
+    const a = parsed.artifact;
+    if (typeof a !== 'object' || !['Lesson','Study guide','Flashcards','Quiz','Checklist','Study plan','Comparison sheet'].includes(a.type) || !['title','topic','summary'].every(k => typeof a[k] === 'string') || !Array.isArray(a.sections) || !a.sections.every((s: unknown) => typeof s === 'string')) throw new AiGatewayError('AI_INVALID_RESPONSE');
   }
-
-  const payload = await response.json();
-  const output = extractOutputText(payload);
-  const parsed = JSON.parse(output || '{}');
   const allowedRoutes = new Set(PLATFORM_ROUTES.map((route) => route.href));
   parsed.actions = Array.isArray(parsed.actions)
-    ? parsed.actions.filter((action: any) => allowedRoutes.has(String(action?.href))).slice(0, 6)
+    ? parsed.actions.filter((action: any) => action && typeof action.label === 'string' && typeof action.reason === 'string' && allowedRoutes.has(String(action.href))).slice(0, 6)
     : [];
   parsed.followUps = Array.isArray(parsed.followUps) ? parsed.followUps.map(String).slice(0, 5) : [];
   parsed.citations = Array.isArray(parsed.citations)
     ? parsed.citations.filter((citation: any) => OFFICIAL_SOURCES.some((source) => source.url === citation?.url)).slice(0, 5)
     : [];
-  return { ...parsed, provider: MODEL };
+  return { ...parsed, provider: MODEL, liveModelResponded: true, transport: result.transport }; 
 }

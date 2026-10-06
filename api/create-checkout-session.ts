@@ -20,12 +20,12 @@ function send(res: any, status: number, body: unknown) {
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
 }
 
-function originFor(req: any): string {
-  const explicit = process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL;
-  if (explicit) return explicit.replace(/\/$/, '');
-  const proto = String(req.headers?.['x-forwarded-proto'] || 'https').split(',')[0].trim();
-  const host = String(req.headers?.['x-forwarded-host'] || req.headers?.host || '').split(',')[0].trim();
-  return host ? `${proto}://${host}` : 'https://fieldwork-by-baker-testing.vercel.app';
+function originFor(_req: any): string {
+  const canonical = 'https://www.fieldworkbybaker.com';
+  if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_URL && /^[a-zA-Z0-9.-]+\.vercel\.app$/.test(process.env.VERCEL_URL)) return 'https://' + process.env.VERCEL_URL;
+  const configured = process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL;
+  if (!configured) return canonical;
+  try { const url = new URL(configured); return url.origin === canonical ? canonical : canonical; } catch { return canonical; }
 }
 
 export default async function handler(req: any, res: any) {
@@ -48,6 +48,10 @@ export default async function handler(req: any, res: any) {
       code: 'STRIPE_NOT_CONFIGURED',
     });
   }
+
+  const previewTest = process.env.VERCEL_ENV === 'preview' && process.env.BAKER_ALLOW_TEST_CHECKOUT === 'true';
+  if (!secret.startsWith('sk_live_') && !previewTest) return send(res, 503, { error: 'Live billing is not connected yet. No payment was created.', code: 'LIVE_BILLING_NOT_CONFIGURED' });
+  if (!previewTest) return send(res, 503, { error: 'Subscription billing is paused until durable accounts and renewal/cancellation processing are connected. No payment was created.', code: 'BILLING_BACKEND_REQUIRED' });
 
   const origin = originFor(req);
   const params = new URLSearchParams();
