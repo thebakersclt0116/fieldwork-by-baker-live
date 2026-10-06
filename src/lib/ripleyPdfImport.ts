@@ -2,14 +2,15 @@ import type { PdfTextPage, PdfReport, PdfSession } from './ripleyPdfLayout.ts';
 import { parseRipleyPdfLayout } from './ripleyPdfLayout.ts';
 import { parseSource, sha256, type SourceTable } from './detailedMigration.ts';
 
-/** Extract locally in PDF.js. No document bytes are sent to an AI provider or server. */
+/** Extract locally with a matching, bundled PDF.js worker. No document bytes go to AI or a server. */
 export async function readRipleyPdf(bytes: Uint8Array, progress?: (page:number,total:number)=>void):Promise<PdfReport> {
   if(bytes.byteLength>25*1024*1024)throw new Error('Each PDF must be 25 MB or smaller. Export one month at a time.');
   if(!new TextDecoder().decode(bytes.slice(0,1024)).includes('%PDF-'))throw new Error('The selected file is not a valid PDF.');
   const pdfjs=await import('pdfjs-dist/legacy/build/pdf.mjs');
   const worker=await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
   pdfjs.GlobalWorkerOptions.workerSrc=worker.default;
-  const task=pdfjs.getDocument({data:new Uint8Array(bytes),isEvalSupported:false,disableFontFace:true,useSystemFonts:false,useWorkerFetch:false,stopAtErrors:true});
+  // PDF.js 6 removed the old isEvalSupported option. Use its checked public parameters, not an any cast.
+  const task=pdfjs.getDocument({data:new Uint8Array(bytes),disableFontFace:true,useSystemFonts:false,useWorkerFetch:false,stopAtErrors:true,enableXfa:false});
   let timedOut=false;
   const timer=setTimeout(()=>{timedOut=true;void task.destroy();},90000);
   try {
