@@ -16,6 +16,7 @@ Verified locally on **2026-10-06**, against the proposed `codex/fieldwork-digita
 | Existing Fieldwork regression script | Passed | Required workflows and source-level integration contracts remain present; this is not a live end-to-end browser test. |
 | Targeted ESLint and `git diff --check` | Passed | Changed account, sync, root storage, routing, and relevant interface code pass the reviewed style checks. |
 | App spec parse and assertions | Passed | One 1-GiB API instance, private managed database binding, no auto deployment/migration job, and closed signup/billing gates. |
+| [GitHub release workflow](https://github.com/thebakersclt0116/fieldwork-by-baker-live/actions/runs/37416382942) on `4baf1052` | Passed | Independently installs the committed lockfile, runs cloud/source checks and both builds, bundles API routes, and exercises actual PDF upload/worker acceptance in isolated Chromium. |
 
 Import/source command:
 
@@ -52,6 +53,6 @@ Keep the existing production deployment until the connected release is verified.
 
 The existing PDF browser acceptance script retains real browser file uploads, the bundled worker, exact original-byte export checks, duplicate checks, missing-page rejection, and complete-batch rejection. Its local-only fixture now mocks the verified-session API instead of creating a trusted profile in localStorage. Its live mode requires an explicitly designated, verified QA account and exact workspace through secure CI inputs; it does not create a trial account or send signup email. Live records must be confirmed in cloud storage. The workflow installs the committed lockfile with Node 24 and `npm ci`.
 
-The adapted browser script has not been run against either a local browser or production in this session. It remains a required release check; a source/build pass does not substitute for that check.
+The adapted browser script passed isolated Chromium acceptance in the GitHub workflow linked above. That fixture mocks the session and health responses only on its loopback origin; the PDF bytes, parser, bundled worker, original-file export, and incomplete-batch checks are real. No production-domain QA run has occurred. Real cloud cookies, device migration, and production PDF readback remain deployment checks.
 
 The merged PDF evidence comparison uses canonical JSON: object key ordering after cloud readback cannot produce a false duplicate conflict, while changed source values and array order still require review. New original-file captures have independent IDs. Equal-byte legacy archive ID collisions retain both primary records and preserve the distinct metadata in verified, deterministic linked copies; they never replace original evidence.
