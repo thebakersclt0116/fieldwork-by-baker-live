@@ -1,52 +1,44 @@
-# Launch status
+# Fieldwork launch status
 
-Status: NOT READY FOR PAID PUBLIC LAUNCH.
+Status: public paid launch remains blocked pending end-to-end acceptance.
 
-Baseline production commit: `4a7ac89d6a96f7698ec6662a427bda537f5ccce8`.
 Live domain: https://www.fieldworkbybaker.com
-Hosting project: Fieldwork by Baker / fieldwork-by-baker-testing.
+Vercel project: Fieldwork By Baker / fieldwork-by-baker-testing.
+Production currently includes the iOS and Android apps coming soon announcement. Account/backend changes remain on the launch-readiness-hardening preview branch.
 
-## Verified in this launch review
+## Service setup verified
 
-The public health endpoint still reports browser-local storage, disconnected cloud storage, test Stripe credentials, disabled live billing and false publicLaunchReady. The Vercel connector returns 403 for the team; an existing Safari dashboard session can view the project. Supabase Free project hfsngrpvxhrjahziwrdq is created; private schema is installed but app connection is pending. Vercel Pro is active, AI credit shows $5 and auto-reload is off. The configured openai/gpt-5.6-sol model appears in the public gateway model catalog; listing is not proof of account access or successful generation.
+Vercel Pro is active. The approved $5 AI credit is funded with auto-reload off. Supabase Free project hfsngrpvxhrjahziwrdq is healthy. Stable session signing and Supabase connection values are saved in Production and Preview. Resend Free is connected; its sender domain, DKIM and SPF records are all verified. Supabase custom SMTP is enabled with a stored password, sender noreply@fieldworkbybaker.com, smtp.resend.com:465 and user resend. Supabase site URL is https://www.fieldworkbybaker.com and the sole recovery redirect is its /reset-password route.
 
-The private source fixture was validated locally only. It recovered 35 sessions, 62 hours, 19.75 restricted and 42.25 unrestricted hours, 55.75 independent and 6.25 supervised hours, 60 observation minutes, all narratives present, a page continuation, and four overlaps. No original bytes, narratives or personal details are included in this repository or CI.
+Managed account UI is enabled only in Preview for acceptance. Production signup has not been switched to managed accounts. Real test email destination: thebakersclt@gmail.com. No passwords are stored in this document.
 
-## This change
+## Implemented
 
-- Quick Log retains exact elapsed minute fractions and formats two decimals for display.
-- Supervisor feedback cannot target an entry outside the invitation snapshot.
-- Authentication and review responses use private/no-store caching.
-- Learning profiles, exam attempts/results, Brain history, plans and saved resources use account-specific browser keys. Legacy shared keys are retained untouched and are not automatically assigned to an account. This is browser isolation, not server authorization or cloud persistence.
-- Build no longer writes a random signing credential into a tracked source file. BAKER_SESSION_SECRET must be configured as a stable server environment secret before rolling out this branch. Beta key-based login remains unchanged; public signup/invitations fail closed when the stable secret is missing.
-- Dependency lock is repaired and uses the official npm registry; CI uses npm ci. Old workflow steps that rewrote feature branches are removed. AI release acceptance requires liveModelResponded, not merely an answer string.
+Managed signup requires delivered email confirmation; login and renewal verify the provider identity and derive permissions from protected profiles. Password recovery uses the fixed canonical destination, removes the recovery token from the address bar, and requests refresh-session revocation after reset. Concurrent renewals share one rotating refresh token; a logout/account change cannot silently restore the old session. Existing beta key login and browser records remain separate.
 
-## Validation on this branch
+Managed workspaces hydrate before member pages open. Entries use workspace compare-and-swap, learning records use record versions, and paged reads reject concurrent changes. Unknown save outcomes retain local drafts and block further writes. Explicit recovery preserves a separate draft copy before loading cloud records. Successful saves reconcile server revisions and approval state. Legacy shared learning records are never silently assigned to an account.
 
-54 automated data, transport, authorization and precision checks pass; existing workflow regressions pass. TypeScript/Vite production build passes; all 12 API routes bundle successfully. npm ci succeeds against the repaired lock. Audit retains six high findings in the build-time braces/chokidar/fast-glob/micromatch/Tailwind dependency chain. The reported patched braces version is not available from the official registry at verification time; forced Tailwind major migration was not performed. A postcss-selector-parser override resolves its reported advisory and the application builds successfully.
+Private originals use immutable owner paths, 25 MB file limits, bounded upload reservations, a 150 MB account archive cap and a 750 MB project archive cap to preserve free-tier headroom. Successful archives verify actual stored bytes against SHA-256. Downloads require owner access and expire after 60 seconds. Original metadata and import-journal events cannot be overwritten by clients. Imports preserve their prepared snapshot and wait for cloud entry saving before recording completion. Full audit ZIP export retrieves and checks originals, journals, records and account learning caches; it must be saved independently of Fieldwork.
 
-Local Chromium execution is blocked by the macOS sandbox (MachPortRendezvousServer permission denied). Browser acceptance must run in GitHub CI or the authorized browser; it is not counted as passed here.
+Exact elapsed-minute fractions are retained before aggregation. Supervisor snapshot feedback cannot target unassigned entries. Authentication/review responses are private and not cached. Build credentials are never generated into tracked code. The dependency lock uses the official npm registry and CI installs with npm ci. AI acceptance requires a real model response.
 
-## Remaining launch blockers
+## Actual verification
 
-1. Durable verified identity: public signup currently does not store users/passwords; ordinary sign-in handles only two beta accounts. Replace this with managed identity, email verification, recovery, expiring/revocable sessions and authoritative account state.
-2. Central database and private source storage: implement owner/supervisor relationships, entries/revisions/approvals, import jobs and dedupe, learning records and resource persistence. Test independent accounts and devices. Current localStorage and IndexedDB are the only record stores.
-3. Backup-first migration: explicit export and verification of counts, hours, categories, narratives and original hashes; conflict-safe migration without silent overwrite. Never upload private historical data without owner-confirmed scope. Existing beta browser records must survive rollout.
-4. Actual AI: initialize the team gateway with approved credits/access; verify real signed-user conversations and all generated resource flows. Add durable per-user quotas, request-size limits and total usage budgets. Never count unavailable/fallback as live success.
-5. Billing: connect approved existing live prices, verified customers, raw-body signed webhooks, idempotency/order reconciliation and portal. Derive paid permissions from durable state. Keep public billing blocked until these checks pass. No real-money test without specific authorization.
-6. Review and notification backend: durable current-revision checks and immutable history; assigned supervisor scope; real transactional email with truthful delivery state. Existing signed links remain browser snapshots and cannot establish durable approval.
-7. Backup retention, independent copies, restore drill, monitoring and budget alerts; record actual restored results.
-8. Final regression: representative candidate/supervisor/paid-user workflows, every meaningful control, adverse PDF and network cases, mobile/keyboard/contrast, exact production commit and custom-domain checks.
-9. Hosting cost/data scope: $20/month hosting plus $5 AI is authorized; tighter hosting overage control and whether client-identifiable/health information is permitted are pending. Select providers and required agreements accordingly; no compliance certification is asserted.
+Production frontend build passes. Focused account, cloud persistence, archive boundary, authorization and precision checks pass. All four CI workflows passed on the preceding recovery commit; the current archive/session update is being checked separately. The first private schema and entry-write transactions passed account isolation, protected-role, forged-approval, stale-write and immutable-history database checks.
 
-These are implementation and service prerequisites, not merely missing environment variable names. Do not enable billing or change publicLaunchReady based on green safe-failure tests.
+The private archive migration is installed in Supabase. Its rollback-only fictional database test passed upload reservation/retry, missing-file rejection, immutable import history and cross-account original/journal isolation. No actual file bytes or historical records were uploaded in that database check.
 
-## Cloud groundwork
+The private source fixture was validated locally only: 35 sessions, 62 hours, 19.75 restricted / 42.25 unrestricted, 55.75 independent / 6.25 supervised, 60 observation minutes, full narratives, a page continuation and four overlaps. No original bytes, narratives or personal details are published in this repository or CI.
 
-Managed account and workspace API boundaries, private storage schema, version-checked entry and learning saves, immutable revision history and rollback-only fictional database tests are prepared. The frontend still uses legacy authentication/local persistence. Nine cloud boundary tests and four hardening tests pass locally. Do not enable cloud authentication until verification email, session lifecycle, UI hydration/saving, backups and independent-device checks pass.
+## Remaining acceptance and implementation
 
-## Managed workspace implementation (not enabled for public rollout)
+- Real delivered verification/recovery emails, independent-device sign-in, session renewal and full cloud save/download/restore tests.
+- Durable assigned-supervisor review of the exact current entry revision, immutable approval history and truthful email notification state.
+- Live AI conversation/resource checks and durable per-account/project generation budgets.
+- Live Stripe prices, verified customers, signed raw-body webhooks, idempotency/order reconciliation and portal; paid permissions must come from durable state. Live billing remains disabled. No real-money test is authorized.
+- Independent backup retention and a recorded restore drill; monitoring, meaningful budget alerts and hosting overage choice.
+- Mobile, keyboard, contrast, meaningful-control and adverse PDF/network regression on the exact final production commit.
 
-The frontend now hydrates protected entries and learning records before opening member routes. Managed accounts use separate caches and do not import legacy browser records. Entry writes use workspace version checks, learning saves use per-record versions, and unknown save outcomes retain local drafts and block further writes. A local JSON backup can be exported from the conflict screen. Multi-page loads reject changing workspace versions. Four client persistence tests cover legacy preservation, interrupted saves, reload protection and authoritative approval reconciliation. This feature remains disabled until real independent-device, recovery, private-original storage and billing/review flows are verified.
+Six high audit findings remain in the build-time braces/Tailwind dependency chain; the registry did not provide the reported patched braces version at verification. A forced Tailwind major migration was not attempted. The postcss-selector-parser override resolves its reported advisory and builds successfully.
 
-Password recovery routes and verified-user reset API are implemented behind the managed-account rollout flag. Recovery redirects are fixed to the canonical reset page, recovery tokens are held in memory and removed from the address bar, and the provider verifies the identity before changing a password. Global refresh-session revocation is requested after reset; partial revocation failures are reported separately from successful password changes. Custom SMTP and production redirect configuration, then real delivered-email testing, remain required.
+Do not declare publicLaunchReady or enable paid public rollout merely because safe-failure unit tests pass. No compliance certification is asserted; identifiable client/health-data scope and any required provider agreements remain to be resolved before accepting that data.

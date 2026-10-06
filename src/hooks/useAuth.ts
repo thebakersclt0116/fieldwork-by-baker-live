@@ -135,18 +135,19 @@ export function useAuth() {
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
-      if (managedAccountsEnabled) {
+      const managedLogin=async()=>{
         const {response,payload}=await accountRequest({action:'login',email,password});
         if (!response.ok || !payload.token || !payload.refreshToken || !payload.user?.name || !payload.user.email) return false;
         const nextUser: AuthUser={...payload.user,authProvider:'supabase',initials:getInitials(payload.user.name)};
         saveManagedTokens(payload);storeSession(nextUser,payload.token);setUser(nextUser);return true;
-      }
+      };
+      if(managedAccountsEnabled&&!isReservedBetaEmail(email))return managedLogin();
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (!response.ok) return false;
+      if (!response.ok) return managedAccountsEnabled?managedLogin():false;
       const payload = await response.json() as {
         user?: {
           name?: string;
