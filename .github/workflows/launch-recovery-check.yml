@@ -3,64 +3,48 @@ on:
   push:
     branches: [baker-launch-recovery-20261005]
     paths: ['.github/workflows/launch-recovery-check.yml']
-  workflow_dispatch:
 permissions:
   contents: read
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Public configuration and scoped source evidence
+      - name: Read public registrar controls and request resend only if available
         run: |
-          mkdir -p /tmp/baker-recovery-evidence
-          node --input-type=module <<'JS'
-          import fs from 'node:fs/promises';
-          import dns from 'node:dns/promises';
-          const report={checkedAt:new Date().toISOString(),domain:{},health:{},catalogue:{}};
-          for(const type of ['NS','A']){try{report.domain[type]=await dns.resolve('fieldworkbybaker.com',type);}catch(e){report.domain[type]={error:e.code};}}
-          for(const host of ['www.fieldworkbybaker.com','fieldwork-by-baker-testing.vercel.app']){
-            try{const r=await fetch('https://'+host+'/api/health?check='+Date.now(),{signal:AbortSignal.timeout(15000)});const p=await r.json();report.health[host]={status:r.status,commit:p.deployedCommit,stripeMode:p.stripeMode,aiGatewayAuthAvailable:p.aiGatewayAuthAvailable,secureSessionSigningAvailable:p.secureSessionSigningAvailable};}catch(e){report.health[host]={error:e.cause?.code||e.name};}
-          }
-          try{const r=await fetch('https://ai-gateway.vercel.sh/v1/models',{signal:AbortSignal.timeout(15000)});const p=await r.json();report.catalogue={status:r.status,models:(p.data||[]).map(m=>m.id).filter(id=>/^openai\/gpt-5/.test(id)).slice(0,40)};}catch(e){report.catalogue={error:e.name};}
-          await fs.writeFile('/tmp/baker-recovery-evidence/public-state.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
-          JS
-          zip -q /tmp/baker-recovery-evidence/server-review.zip api/auth.ts api/free-signup.ts api/_auth.ts api/_gateway.ts api/baker-ai.ts api/health.ts api/create-checkout-session.ts api/checkout-complete.ts server/baker-brain-safe.ts server/supervisor-notifications.ts scripts/fieldwork-regression-check.mjs src/hooks/useAuth.ts src/pages/BakerBrainHub.tsx src/pages/UpgradeSuccess.tsx src/pages/AdminLaunchCheck.tsx
-      - name: Inspect registrar verification page with a real browser
-        run: |
-          mkdir -p /tmp/baker-recovery-browser
-          npm install --prefix /tmp/baker-recovery-browser playwright --no-audit --no-fund
-          /tmp/baker-recovery-browser/node_modules/.bin/playwright install chromium
-          cd /tmp/baker-recovery-browser
+          mkdir -p /tmp/baker-domain-read /tmp/baker-domain-evidence
+          npm install --prefix /tmp/baker-domain-read playwright --no-audit --no-fund
+          /tmp/baker-domain-read/node_modules/.bin/playwright install chromium
+          cd /tmp/baker-domain-read
           node --input-type=module <<'JS'
           import {chromium} from 'playwright';
           import fs from 'node:fs/promises';
           const browser=await chromium.launch({headless:true});const page=await browser.newPage();
-          const result={checkedAt:new Date().toISOString(),attemptedResend:false};
+          const result={checkedAt:new Date().toISOString(),attemptedResend:false,challengePresent:false};
+          const scrub=s=>String(s||'').replace(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi,'[email omitted]').slice(0,140);
           try{
-            await page.goto('http://fieldworkbybaker.com/',{waitUntil:'domcontentloaded',timeout:20000});await page.waitForTimeout(1500);
-            result.title=await page.title();
+            await page.goto('http://fieldworkbybaker.com/',{waitUntil:'domcontentloaded',timeout:20000});await page.waitForTimeout(2000);
+            result.title=await page.title();result.controls=[];
             let target;
             for(const frame of page.frames()){
-              const button=frame.getByText('Resend my verification email',{exact:true});
-              if(await button.count() && await button.first().isVisible()){target=button.first();break;}
+              result.controls.push(...(await frame.locator('button,input[type=submit],input[type=button],a').evaluateAll(els=>els.map(e=>({tag:e.tagName,label:e.textContent||e.getAttribute('aria-label')||e.value||''}))).catch(()=>[])).filter(e=>/resend|verif|support/i.test(e.label)).map(e=>({tag:e.tag,label:scrub(e.label)})));
+              if(await frame.locator('iframe[src*="captcha"],input[name*="captcha"],.g-recaptcha,.h-captcha').count())result.challengePresent=true;
+              const choices=frame.getByRole('button',{name:/resend/i});
+              if(await choices.count() && await choices.first().isVisible())target=choices.first();
             }
-            if(target){
+            if(target && !result.challengePresent){
               await target.click({timeout:10000});result.attemptedResend=true;await page.waitForTimeout(2000);
-              const text=(await page.locator('body').innerText()).toLowerCase();
-              result.confirmed=/verification email (has been|was) (sent|resent)|email (has been|was) (sent|resent) successfully/.test(text);
-              result.interactiveChallenge=await page.locator('iframe[src*="captcha"],input[name*="captcha"]').count()>0;
-            } else {result.reason='No visible public resend control found. Registrar account action is required.';}
-          }catch(e){result.error=String(e.name||'browser-error');}
-          await fs.writeFile('/tmp/baker-recovery-evidence/domain-resend.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));await browser.close();
+              const texts=await Promise.all(page.frames().map(f=>f.locator('body').innerText().catch(()=>'')));
+              const text=texts.join(' ').toLowerCase();
+              result.confirmed=/verification email (has been|was) (sent|resent)|email (has been|was) (sent|resent) successfully|verification email sent/.test(text);
+              result.challengeAfterClick=/captcha|verify you are human|not a robot/.test(text);
+            }else result.reason=result.challengePresent?'Public resend requires a human verification challenge; no automated bypass attempted.':'No visible public resend button. Namecheap account access is required.';
+          }catch(e){result.error=e.name;}
+          await fs.writeFile('/tmp/baker-domain-evidence/registrar-action.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));await browser.close();
           JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: launch-recovery-evidence
-          path: /tmp/baker-recovery-evidence
+          name: registrar-action-evidence
+          path: /tmp/baker-domain-evidence
           retention-days: 3
