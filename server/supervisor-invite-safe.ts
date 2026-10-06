@@ -144,7 +144,7 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req);
+  const session = await requireSession(req);
   if (!session || !canUseSupervisorTools(session)) {
     return send(res, 401, { error: 'Professional supervisor workflow access is required.' });
   }

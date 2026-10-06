@@ -1,7 +1,8 @@
+import { useFieldworkEntries } from '@/hooks/useFieldworkEntries';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Brain, CalendarDays, CheckCircle2, Clock3, Compass, FileText, FlaskConical, Route, Sparkles, Users } from 'lucide-react';
-import { getCurrentUserEmail, loadEntries } from '@/lib/fieldworkStore';
+import { getCurrentUserEmail } from '@/lib/fieldworkStore';
 import { evaluateCompliance } from '@/lib/compliance2027';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -25,7 +26,7 @@ function loadProfile(): PathProfile {
 export default function MyPathV2() {
   const { user } = useAuth();
   const email = getCurrentUserEmail() || user?.email || '';
-  const entries = useMemo(() => loadEntries(email), [email]);
+  const [entries] = useFieldworkEntries(email);
   const compliance = useMemo(() => evaluateCompliance(entries), [entries]);
   const [profile, setProfile] = useState<PathProfile>(() => loadProfile());
   const [editing, setEditing] = useState(false);

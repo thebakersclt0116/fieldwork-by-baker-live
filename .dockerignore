@@ -1,0 +1,29 @@
+# Only cloud compilation inputs enter the build context. Vercel handlers,
+# browser bundles, local archives, generated runtime secrets, and git stay out.
+**
+!package.json
+!package-lock.json
+!tsconfig.cloud.json
+!scripts/
+!scripts/build-cloud.mjs
+!cloud/
+!cloud/**
+!shared/
+!shared/**
+!src/
+!src/types/
+!src/types/index.ts
+
+# Re-exclude private/local files and test artifacts under allowed directories.
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/node_modules
+**/dist-cloud
+**/tests
+**/__tests__
+**/*.test.*
+**/*.spec.*
+**/*.log
+**/*.tsbuildinfo

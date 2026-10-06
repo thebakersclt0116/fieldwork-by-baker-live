@@ -22,11 +22,11 @@ import {
   addEntry,
   getCurrentUserEmail,
   hoursBetween,
-  loadEntries,
   newId,
   saveEntries,
 } from '@/lib/fieldworkStore';
-import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { useFieldworkEntries } from '@/hooks/useFieldworkEntries';
 
 type WorkPresence = 'INDEPENDENT' | 'SUPERVISED';
 type SupervisionFormat = 'INDIVIDUAL' | 'GROUP';
@@ -76,7 +76,7 @@ function categoryChip(entry: DetailedHourEntry) {
 export default function MemberDashboard() {
   const { user, isFree, hasPaidFeatures, hasSupervisorFeatures, canExportOfficialForms } = useAuth();
   const email = getCurrentUserEmail() || user?.email || '';
-  const [entries, setEntries] = useState<DetailedHourEntry[]>(() => loadEntries(email) as DetailedHourEntry[]);
+  const [entries, setEntries] = useFieldworkEntries<DetailedHourEntry>(email);
   const [showManual, setShowManual] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState('08:30');
@@ -235,7 +235,7 @@ export default function MemberDashboard() {
     try {
       const response = await fetch('/api/supervisor-invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
         body: JSON.stringify({
           supervisorName: recipientName,
           supervisorEmail,

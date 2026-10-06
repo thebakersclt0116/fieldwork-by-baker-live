@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle2, Lock, Mic, MicOff, Send, Sparkles } from '
 import type { ActivityType, FieldworkType, HourEntry } from '@/types';
 import { evaluateCompliance } from '@/lib/compliance2027';
 import { appendEntries, hoursBetween, newId } from '@/lib/fieldworkStore';
-import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 
 type WorkPresence = 'INDEPENDENT' | 'SUPERVISED';
 type SupervisionFormat = 'INDIVIDUAL' | 'GROUP';
@@ -74,7 +74,7 @@ export default function BakerAIEntryAssistant({ email, entries, onEntriesChange 
     try {
       const response = await fetch('/api/baker-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
         body: JSON.stringify({
           text,
           date,

@@ -1,0 +1,126 @@
+# Deployment template: replace every <...> value with an observed account value.
+# Keep plaintext credentials out of this tracked file. Set secret values in DO.
+# Attach an existing Managed PostgreSQL cluster; this spec does not create one.
+# Read docs/digitalocean-launch.md before submitting the spec.
+name: fieldwork-cloud-api
+region: nyc
+
+vpc:
+  id: "<OBSERVED-NYC1-VPC-UUID>"
+
+databases:
+  - name: fieldwork-db
+    engine: PG
+    production: true
+    cluster_name: "<OBSERVED-MANAGED-PG-CLUSTER>"
+    db_name: "<OBSERVED-FIELDWORK-DATABASE>"
+    db_user: "<OBSERVED-FIELDWORK-DB-USER>"
+
+# Every value is runtime-only: Docker builds need neither DB access nor secrets.
+envs:
+  - key: FIELDWORK_DIGITALOCEAN_PROXY
+    scope: RUN_TIME
+    type: GENERAL
+    value: "true"
+  - key: NODE_ENV
+    scope: RUN_TIME
+    type: GENERAL
+    value: production
+  - key: DATABASE_URL
+    scope: RUN_TIME
+    type: SECRET
+    value: ${fieldwork-db.DATABASE_PRIVATE_URL}
+  - key: DATABASE_CA_CERT
+    scope: RUN_TIME
+    type: GENERAL
+    value: ${fieldwork-db.CA_CERT}
+  - key: PG_POOL_MAX
+    scope: RUN_TIME
+    type: GENERAL
+    value: "5"
+  - key: BETTER_AUTH_SECRET
+    scope: RUN_TIME
+    type: SECRET
+    value: "<SET-IN-DO>"
+  - key: FIELDWORK_APP_ORIGIN
+    scope: RUN_TIME
+    type: GENERAL
+    value: "<OBSERVED-HTTPS-FIELDWORK-ORIGIN>"
+  - key: RESEND_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: "<SET-IN-DO>"
+  - key: FIELDWORK_AUTH_FROM
+    scope: RUN_TIME
+    type: GENERAL
+    value: "<VERIFIED-RESEND-FROM-ADDRESS>"
+  - key: FIELDWORK_SIGNUP_ENABLED
+    scope: RUN_TIME
+    type: GENERAL
+    value: "false"
+  - key: FIELDWORK_LIVE_BILLING_ENABLED
+    scope: RUN_TIME
+    type: GENERAL
+    value: "false"
+  - key: FIELDWORK_STRIPE_WEBHOOK_VERIFIED
+    scope: RUN_TIME
+    type: GENERAL
+    value: "false"
+  - key: FIELDWORK_TEST_BILLING_ENABLED
+    scope: RUN_TIME
+    type: GENERAL
+    value: "false"
+  # Add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET as encrypted runtime secrets
+  # when configuring the reviewed billing lifecycle. Never commit key values.
+  # Optional. Configure the same secret in Vercel and DO before enabling it.
+  # Vercel must overwrite x-fieldwork-origin-secret on /api/cloud/* requests.
+  # The health probe is exempt; this never replaces authentication.
+  # - key: FIELDWORK_ORIGIN_SECRET
+  #   scope: RUN_TIME
+  #   type: SECRET
+  #   value: "<SET-IN-DO>"
+
+services:
+  - name: cloud-api
+    github:
+      repo: thebakersclt0116/fieldwork-by-baker-live
+      branch: codex/fieldwork-digitalocean-cloud
+      deploy_on_push: false
+    source_dir: /
+    dockerfile_path: cloud/Dockerfile
+    # The Docker CMD executes the same entry point as npm run cloud:start.
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb-fixed
+    http_port: 8080
+    envs:
+      - key: PORT
+        scope: RUN_TIME
+        type: GENERAL
+        value: "8080"
+    # Liveness deliberately succeeds before first migration. /ready is separate.
+    health_check:
+      http_path: /api/cloud/health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    termination:
+      drain_seconds: 10
+      grace_period_seconds: 30
+
+ingress:
+  rules:
+    - match:
+        path:
+          prefix: /api/cloud
+      component:
+        name: cloud-api
+        preserve_path_prefix: true
+
+# This app serves private account data, not cacheable frontend assets.
+disable_edge_cache: true
+
+# No migration job runs automatically. After private access is verified, run
+# FIELDWORK_MIGRATION_CONFIRM=apply npm run cloud:migrate in the app Console.
+# An opt-in PRE_DEPLOY job template is documented in docs/digitalocean-launch.md.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router';
 import { ShieldCheck } from 'lucide-react';
-import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 
 const EMILY_EMAIL = 'ayalaemily52@gmail.com';
 
@@ -26,7 +26,7 @@ export default function AdminSupervisorPreview() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            ...getAuthorizationHeaders(),
           },
           body: JSON.stringify({
             supervisorName: 'Supervisor Preview',

@@ -17,10 +17,10 @@ const pages: Record<LegalKey, {
     intro: 'Fieldwork by Baker is designed to help BCBA candidates organize fieldwork and study data while minimizing unnecessary collection of sensitive information.',
     sections: [
       { title: 'Information you provide', body: 'The app may process account details, fieldwork records, supervisor information, study progress, imported files, and messages you intentionally submit to Baker AI. Do not enter protected health information or unnecessary client-identifying information.' },
-      { title: 'Browser-local beta data', body: 'Some current beta features store fieldwork and personalization data in your browser. Clearing browser storage, changing devices, or using private browsing can remove browser-local records. Keep independent copies of records required for professional or regulatory purposes.' },
+      { title: 'Account and device storage', body: 'When cloud storage is connected, your verified account, fieldwork records, supervisors, original files, and import history are saved with DigitalOcean. Storage details shows whether this device has completed cloud verification. Your browser also keeps a working copy and recovery copies. Study progress, saved AI resources, and some preferences remain on the device. Clearing browser storage can remove unsynced work and device-only data. Keep independent copies of important records.' },
       { title: 'AI processing', body: 'When you use Baker AI or Baker Brain, the text and relevant app context needed to answer your request may be sent to the configured AI service. The platform is designed to minimize unrelated context and does not intentionally ask for client-identifying information.' },
       { title: 'Payments', body: 'Payments are processed by Stripe Checkout when Stripe is configured. Fieldwork by Baker does not collect or store full payment card numbers in the application.' },
-      { title: 'Contact', body: 'Questions about privacy can be sent through the Contact page. This policy will be updated as the platform adds persistent accounts, notifications, and other production services.' },
+      { title: 'Account email and contact', body: 'Account verification and password recovery messages use the configured email delivery provider. Questions about your account or privacy can be sent through the Contact page.' },
     ],
   },
   terms: {
@@ -40,10 +40,10 @@ const pages: Record<LegalKey, {
     title: 'Cookie & Local Storage Notice',
     eyebrow: 'Storage',
     icon: Cookie,
-    intro: 'The current app primarily relies on browser storage and secure session tokens to remember preferences and beta account state.',
+    intro: 'Essential session cookies keep you signed in. Browser storage holds your device copy of records, recovery information, preferences, and device-only features.',
     sections: [
       { title: 'What is stored', body: 'The app may store theme preference, signed-in session information, fieldwork entries, study progress, saved resources, exam progress, and other personalization data in browser storage.' },
-      { title: 'Why it is used', body: 'Browser storage keeps the app responsive and lets beta users continue where they left off. It is also why clearing site data can remove locally stored records.' },
+      { title: 'Why it is used', body: 'Browser storage keeps your workspace responsive and preserves work before cloud verification completes. Essential secure session cookies identify your account to the server. Clearing site data can sign you out and remove unsynced records and device-only features.' },
       { title: 'Your controls', body: 'You can clear browser storage through your browser settings. Before doing so, export or otherwise preserve any fieldwork information you need to retain.' },
     ],
   },
@@ -51,9 +51,9 @@ const pages: Record<LegalKey, {
     title: 'Security & Trust',
     eyebrow: 'Security',
     icon: LockKeyhole,
-    intro: 'Fieldwork by Baker uses signed application sessions, protected premium routes, server-side secrets, and Stripe-hosted checkout for payment details when payments are enabled.',
+    intro: 'Fieldwork by Baker checks account access on the server, protects account sessions, keeps service credentials on the server, and uses Stripe-hosted pages for payment details when payments are enabled.',
     sections: [
-      { title: 'What we do today', body: 'Sensitive server credentials are kept server-side. Premium API routes require signed authorization. Supervisor review links are signed. Stripe Checkout, when enabled, keeps card entry on Stripe-hosted payment pages.' },
+      { title: 'Account and record access', body: 'Connected accounts use revocable server sessions in secure HttpOnly cookies. Record APIs verify the account and workspace for every request. Password recovery revokes existing account sessions. Supervisor review links remain signed. Stripe Checkout, when enabled, keeps card entry on Stripe-hosted payment pages.' },
       { title: 'What we do not claim', body: 'The platform should not be described as HIPAA compliant, SOC 2 certified, or as having any other third-party certification unless and until that status has been formally established and documented.' },
       { title: 'Client privacy', body: 'Do not upload or enter unnecessary client-identifying information. Use initials or de-identified descriptions only when needed for fieldwork organization and allowed by your supervisor or organization.' },
       { title: 'Report an issue', body: 'If you discover a security or privacy issue, use the Contact page and include enough technical detail for the team to reproduce it without including client data.' },

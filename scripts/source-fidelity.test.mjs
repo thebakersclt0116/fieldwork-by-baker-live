@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildPreview, guessMapping, parseSource, planMerge } from '../src/lib/detailedMigration.ts';
+import { canonicalJson } from '../shared/cloudTypes.ts';
 const base = { 'Entry ID': 'qa-original', Date: '2026-09-12', 'Start time': '08:30', 'End time': '09:30', 'Total hours': '1', 'Fieldwork type': 'Supervised Fieldwork', 'Activity category': 'Unrestricted', Organization: 'Sample Organization', Supervisor: 'Sample Supervisor', 'Hour type': 'Independent', 'Description of activity': 'De-identified source record', 'Supervision minutes': '0', 'Observation minutes': '30', 'Contact type': 'Observation without feedback' };
 async function parse(entry = base) {
   const table = parseSource(JSON.stringify({ entries: [entry] }), 'source.json');
@@ -15,6 +16,34 @@ test('changes to unmapped source data are conflicts rather than silently ignored
   const a = (await parse({ ...base, 'Custom note': 'Original' })).entries;
   const b = (await parse({ ...base, 'Custom note': 'Correction' })).entries;
   assert.equal(planMerge(a, b).conflicts.length, 1); assert.equal(planMerge(a, b).duplicate.length, 0);
+});
+test('reimport after canonical cloud JSON ordering preserves duplicates and still detects changed source evidence', async () => {
+  const evidence = { supervisor: { name: 'Sample Supervisor', email: 'supervisor@example.com' }, session: { narrative: 'Exact original source text', pages: [2, 3] } };
+  const source = { ...base, 'Original PDF evidence': evidence };
+  const first = (await parse(source)).entries;
+  const downloaded = JSON.parse(canonicalJson({ entries: first, supervisors: [] })).entries;
+  const incoming = (await parse(source)).entries;
+  assert.equal(downloaded[0].id, incoming[0].id);
+  assert.notEqual(JSON.stringify(downloaded[0].migration.original), JSON.stringify(incoming[0].migration.original), 'the cloud round-trip must exercise reordered evidence keys');
+  const originalCloudCopy = JSON.stringify(downloaded);
+  const duplicate = planMerge(downloaded, incoming);
+  assert.equal(duplicate.duplicate.length, 1);
+  assert.equal(duplicate.conflicts.length, 0);
+  assert.equal(duplicate.add.length, 0);
+
+  for (const session of [
+    { ...evidence.session, narrative: 'Corrected original source text' },
+    { ...evidence.session, pages: [3, 2] },
+  ]) {
+    const changed = (await parse({ ...source, 'Original PDF evidence': { ...evidence, session } })).entries;
+    assert.equal(changed[0].id, downloaded[0].id);
+    assert.equal(changed[0].notes, downloaded[0].notes, 'the change is in original evidence, not the tracked narrative');
+    const conflict = planMerge(downloaded, changed);
+    assert.equal(conflict.conflicts.length, 1);
+    assert.equal(conflict.duplicate.length, 0);
+    assert.equal(conflict.add.length, 0);
+  }
+  assert.equal(JSON.stringify(downloaded), originalCloudCopy, 'duplicate review must not mutate the downloaded evidence');
 });
 test('numeric edit-form placeholder provenance stays explicit for human verification', async () => {
   const p = await parse({ ...base, __originalControls: [{ label: 'Unrestricted', value: '', placeholder: '1.00', shown: '1.00', usedPlaceholder: true }] });

@@ -1,7 +1,37 @@
 import type { ActivityType, EntryStatus, FieldworkType, HourEntry } from '@/types';
+import { getStoredAuthUser } from '../hooks/useAuth';
 
 export const EMILY_EMAIL = 'ayalaemily52@gmail.com';
 const PREFIX = 'fieldworkByBaker:v1';
+const editorAccess = new Map<string, boolean>();
+
+/** The authenticated workspace holds one editor lock for its browser tab lifetime. */
+export function setDeviceEditorAccess(email: string, allowed: boolean): void {
+  editorAccess.set(normalizeEmail(email), allowed);
+  window.dispatchEvent(new CustomEvent('fieldwork:editor-access-changed', { detail: { email: normalizeEmail(email), allowed } }));
+}
+
+export function getDeviceEditorAccess(email: string): boolean {
+  return editorAccess.get(normalizeEmail(email)) === true;
+}
+
+export function subscribeDeviceEditorAccess(notify: () => void): () => void {
+  window.addEventListener('fieldwork:editor-access-changed', notify);
+  return () => window.removeEventListener('fieldwork:editor-access-changed', notify);
+}
+
+export function assertDeviceEditorAccess(email: string, systemWrite = false): void {
+  const normalizedEmail = normalizeEmail(email);
+  if (getCurrentUserEmail() !== normalizedEmail) throw new Error('Your signed-in account changed. Reopen your workspace before editing.');
+  if (!getDeviceEditorAccess(normalizedEmail)) throw new Error('Editing is paused in this tab. Close the other Fieldwork tab or wait for your workspace to finish opening.');
+  if (systemWrite) return;
+  const raw = localStorage.getItem(`fieldworkByBaker:cloud-apply:v1:${normalizedEmail}`);
+  if (!raw) return;
+  let marker: { stage?: string };
+  try { marker = JSON.parse(raw) as { stage?: string }; }
+  catch { throw new Error('A saved-record recovery is incomplete. Use Storage details to recover it before editing.'); }
+  if (!marker || marker.stage !== 'applied') throw new Error('Your saved records are being restored. Wait for Storage details to finish before editing.');
+}
 
 export interface StoredSupervisor {
   id: string;
@@ -19,14 +49,8 @@ function storageKey(email: string, kind: 'entries' | 'supervisors'): string {
 }
 
 export function getCurrentUserEmail(): string | null {
-  try {
-    const raw = localStorage.getItem('authUser');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { email?: string };
-    return parsed.email ? normalizeEmail(parsed.email) : null;
-  } catch {
-    return null;
-  }
+  const user = getStoredAuthUser();
+  return user?.email ? normalizeEmail(user.email) : null;
 }
 
 export function isEmilyAccount(): boolean {
@@ -47,7 +71,9 @@ export function loadEntries(email = getCurrentUserEmail() || ''): HourEntry[] {
 
 export function saveEntries(entries: HourEntry[], email = getCurrentUserEmail() || ''): void {
   if (!email) return;
+  assertDeviceEditorAccess(email);
   localStorage.setItem(storageKey(email, 'entries'), JSON.stringify(entries));
+  window.dispatchEvent(new CustomEvent('fieldwork:local-records-changed', { detail: { email: normalizeEmail(email) } }));
 }
 
 function migrationIdentity(entry: HourEntry): string {
@@ -81,7 +107,9 @@ export function addEntry(entry: HourEntry, email = getCurrentUserEmail() || ''):
 
 export function clearEntries(email = getCurrentUserEmail() || ''): void {
   if (!email) return;
+  assertDeviceEditorAccess(email);
   localStorage.removeItem(storageKey(email, 'entries'));
+  window.dispatchEvent(new CustomEvent('fieldwork:local-records-changed', { detail: { email: normalizeEmail(email) } }));
 }
 
 export function loadSupervisors(email = getCurrentUserEmail() || ''): StoredSupervisor[] {
@@ -98,7 +126,26 @@ export function loadSupervisors(email = getCurrentUserEmail() || ''): StoredSupe
 
 export function saveSupervisors(supervisors: StoredSupervisor[], email = getCurrentUserEmail() || ''): void {
   if (!email) return;
+  assertDeviceEditorAccess(email);
   localStorage.setItem(storageKey(email, 'supervisors'), JSON.stringify(supervisors));
+  window.dispatchEvent(new CustomEvent('fieldwork:local-records-changed', { detail: { email: normalizeEmail(email) } }));
+}
+
+/** Called only after cloud reconciliation; original device snapshots are retained separately. */
+export function writeLocalRecordCache(data: { entries: HourEntry[]; supervisors: StoredSupervisor[] }, email: string): void {
+  assertDeviceEditorAccess(email, true);
+  const entriesKey = storageKey(email, 'entries'), supervisorsKey = storageKey(email, 'supervisors');
+  const beforeEntries = localStorage.getItem(entriesKey), beforeSupervisors = localStorage.getItem(supervisorsKey);
+  try {
+    localStorage.setItem(entriesKey, JSON.stringify(data.entries));
+    localStorage.setItem(supervisorsKey, JSON.stringify(data.supervisors));
+  } catch (error) {
+    if (beforeEntries === null) localStorage.removeItem(entriesKey); else localStorage.setItem(entriesKey, beforeEntries);
+    if (beforeSupervisors === null) localStorage.removeItem(supervisorsKey); else localStorage.setItem(supervisorsKey, beforeSupervisors);
+    throw error;
+  }
+  window.dispatchEvent(new CustomEvent('fieldwork:cloud-records-updated', { detail: { email: normalizeEmail(email) } }));
+  window.dispatchEvent(new CustomEvent('fieldwork:entries-changed', { detail: { email: normalizeEmail(email) } }));
 }
 
 export function newId(prefix = 'entry'): string {
@@ -115,7 +162,7 @@ export function normalizeDate(value: string): string {
   if (isoMatch) {
     return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
   }
-  const usMatch = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/);
+  const usMatch = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
   if (usMatch) {
     const year = usMatch[3].length === 2 ? `20${usMatch[3]}` : usMatch[3];
     return `${year}-${usMatch[1].padStart(2, '0')}-${usMatch[2].padStart(2, '0')}`;

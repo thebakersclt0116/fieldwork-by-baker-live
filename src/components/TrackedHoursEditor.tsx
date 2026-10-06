@@ -3,7 +3,7 @@ import { useLocation } from 'react-router';
 import { AlertTriangle, CheckCircle2, Edit3, Mail, Pencil, Save, X } from 'lucide-react';
 import type { ActivityCategory, ActivityType, HourEntry, ObservationMode, SupervisionFormat, WorkPresence } from '@/types';
 import { getCurrentUserEmail, hoursBetween, loadEntries, saveEntries } from '@/lib/fieldworkStore';
-import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 
 const EDITABLE_KEYS = [
   'date', 'startTime', 'endTime', 'duration', 'activityCategory', 'supervisorName', 'supervisorEmail',
@@ -221,7 +221,7 @@ export default function TrackedHoursEditor() {
 
         const response = await fetch('/api/supervisor-invite', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
           body: JSON.stringify({
             supervisorName: revised.supervisorName,
             supervisorEmail: revised.supervisorEmail,

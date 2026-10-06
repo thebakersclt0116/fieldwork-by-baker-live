@@ -4,7 +4,6 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PaidFeatureRoute from './components/PaidFeatureRoute';
 import PlatformHome from './pages/PlatformHome';
-import { useAuth } from './hooks/useAuth';
 
 const Features = lazy(() => import('./pages/Features'));
 const Pricing = lazy(() => import('./pages/Pricing'));
@@ -15,7 +14,7 @@ const FAQ = lazy(() => import('./pages/FAQ'));
 const Contact = lazy(() => import('./pages/Contact'));
 const SignUp = lazy(() => import('./pages/SignUp'));
 const Login = lazy(() => import('./pages/Login'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AccountRecovery = lazy(() => import('./pages/AccountRecovery'));
 const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
 const DetailedMigration = lazy(() => import('./pages/DetailedMigration'));
 const BakerAI = lazy(() => import('./pages/BakerAI'));
@@ -43,11 +42,6 @@ function RouteFallback() {
   );
 }
 
-function AccountDashboard() {
-  const { isOwner } = useAuth();
-  return isOwner ? <Dashboard /> : <MemberDashboard />;
-}
-
 export default function App() {
   return (
     <Layout>
@@ -67,6 +61,8 @@ export default function App() {
         <Route path="/security" element={<Legal />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<AccountRecovery />} />
+        <Route path="/reset-password" element={<AccountRecovery />} />
 
         <Route path="/my-path" element={<ProtectedRoute><PaidFeatureRoute><MyPathV2 /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/roadmap" element={<BCBARoadmap />} />
@@ -75,7 +71,7 @@ export default function App() {
         <Route path="/exam-lab" element={<ProtectedRoute><PaidFeatureRoute><ExamLab /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/resources" element={<ProtectedRoute><PaidFeatureRoute><ResourceVault /></PaidFeatureRoute></ProtectedRoute>} />
 
-        <Route path="/dashboard" element={<ProtectedRoute><PaidFeatureRoute><AccountDashboard /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
