@@ -1,3 +1,5 @@
+import {billingConfigured} from '../server/billing.js';
+import {sandboxBillingEnabled} from '../server/billing-entitlement.js';
 import { hasSessionSigningSecret } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
 
@@ -27,7 +29,8 @@ export default async function handler(req: any, res: any) {
     stripeMode,
     storageMode: 'browser-local',
     cloudStorageConnected: false,
-    liveBillingEnabled: false,
+    liveBillingEnabled: billingConfigured(),
+    testBillingEnabled: sandboxBillingEnabled(),
     publicLaunchReady: false,
     liveAiVerificationRequired: true,
     recoveryVersion: 'launch-recovery-v1',

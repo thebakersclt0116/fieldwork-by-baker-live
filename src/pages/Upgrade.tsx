@@ -53,9 +53,9 @@ export default function Upgrade() {
     let active = true;
     fetch('/api/health?billing=1', { cache: 'no-store' })
       .then((response) => response.json())
-      .then((payload: { stripeCheckoutConfigured?: boolean; stripeMode?: string; liveBillingEnabled?: boolean }) => {
+      .then((payload: { stripeCheckoutConfigured?: boolean; stripeMode?: string; liveBillingEnabled?: boolean; testBillingEnabled?: boolean }) => {
         if (!active) return;
-        setBillingEnabled(payload.liveBillingEnabled === true && payload.stripeMode === 'live');
+        setBillingEnabled((payload.liveBillingEnabled === true && payload.stripeMode === 'live') || payload.testBillingEnabled === true);
         if (!payload.stripeCheckoutConfigured) setStripeMode('unconfigured');
         else if (payload.stripeMode === 'live') setStripeMode('live');
         else if (payload.stripeMode === 'test') setStripeMode('test');
@@ -109,7 +109,7 @@ export default function Upgrade() {
         {stripeMode !== 'checking' && stripeMode !== 'live' && (
           <div className={`max-w-3xl mx-auto mb-7 rounded-2xl border px-5 py-4 text-sm text-center ${stripeMode === 'test' ? 'border-[#F1D8B9] bg-[#FFF9F2] text-[#8A5D36]' : 'border-[#F0D5DA] bg-[#FFF7F8] text-[#C9445A]'}`}>
             {stripeMode === 'test'
-              ? 'Stripe is connected in TEST MODE. Public checkout is disabled; test payments cannot unlock production access.'
+              ? billingEnabled ? 'Sandbox checkout is available for testing. Test payments do not activate production access.' : 'Stripe is connected in test mode. Checkout is paused while the live connection is completed.'
               : 'Stripe Checkout is not ready for production charges on this deployment yet.'}
           </div>
         )}

@@ -1,3 +1,4 @@
+import { effectiveSubscription } from '../server/billing-entitlement.js';
 import { getBearerToken } from './_auth.js';
 import { CloudError, cloudRequest, verifyCloudUser } from '../server/cloud-client.js';
 import { fillMonthlyVerification, type VerificationIdentity } from '../server/monthly-verification.js';
@@ -14,7 +15,9 @@ export default async function handler(req: any, res: any) {
     const user = await verifyCloudUser(token);
     const profiles: any = await cloudRequest('/rest/v1/profiles?id=eq.'+user.id+'&select=display_name,subscription_tier,subscription_status',token);
     const profile = profiles?.[0];
-    if (profile?.subscription_status !== 'active' || !['individual','professional','enterprise'].includes(profile?.subscription_tier)) throw new CloudError('PAID_SUBSCRIPTION_REQUIRED',403);
+    if (!profile) throw new CloudError('ACCOUNT_NOT_READY');
+    const entitlement = await effectiveSubscription(profile,user.id,token);
+    if (entitlement.status !== 'active' || !['individual','professional','enterprise'].includes(entitlement.tier)) throw new CloudError('PAID_SUBSCRIPTION_REQUIRED',403);
     const body = req.body || {};
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(body.month) || !['individual','organization'].includes(body.structure) || !['2022','2027'].includes(body.requirements) || !['SUPERVISED','CONCENTRATED'].includes(body.fieldworkType) || typeof body.organization !== 'string' || !body.organization.trim() || body.organization.length > 200) throw new CloudError('INVALID_FORM_INPUT',400);
     const filter = 'owner_id=eq.'+user.id;
@@ -36,12 +39,14 @@ export default async function handler(req: any, res: any) {
       (body.structure === 'organization' || entry.supervisorName === identity.supervisorName) &&
       (body.requirements === '2027' && body.structure === 'organization' || entry.fieldworkType === body.fieldworkType));
     if (!entries.length) throw new CloudError('NO_MONTHLY_ENTRIES',400);
+    if (entries.some(entry => entry.status === 'REJECTED')) throw new CloudError('REVIEW_REJECTED_ENTRIES',400);
     if (entries.some(entry => !Number.isFinite(entry.duration) || entry.duration < 0 || typeof entry.supervisionMinutes !== 'number' || !Number.isFinite(entry.supervisionMinutes) || entry.supervisionMinutes < 0 || entry.supervisionMinutes > entry.duration*60+0.01 || (entry.observationMinutes !== undefined && (!Number.isFinite(entry.observationMinutes) || entry.observationMinutes < 0 || entry.observationMinutes > entry.supervisionMinutes)))) throw new CloudError('REVIEW_HOUR_ALLOCATION',400);
     const totalMinutes = Math.round(entries.reduce((sum,entry) => sum+entry.duration*60,0));
     const supervisionMinutes = Math.round(entries.reduce((sum,entry) => sum+entry.supervisionMinutes,0));
     const observationMinutes = Math.round(entries.reduce((sum,entry) => sum+(entry.observationMinutes || 0),0));
     const pdf = await fillMonthlyVerification(identity,{totalMinutes,supervisionMinutes,observationMinutes},body.month,body.structure,body.requirements,body.fieldworkType);
     if (body.action === 'email') {
+      if (entitlement.mode !== 'live') throw new CloudError('SANDBOX_EMAIL_DISABLED',403);
       const recipient = String(body.supervisorEmail || '').trim().toLowerCase();
       if (!/^\S+@\S+\.\S+$/.test(recipient) || recipient.length > 254 || !/^[a-f0-9-]{36}$/.test(body.requestId || '') || body.confirmSharing !== true) throw new CloudError('SUPERVISOR_EMAIL_REQUIRED',400);
       const key = process.env.RESEND_API_KEY; const from = process.env.BAKER_NOTIFICATION_FROM;

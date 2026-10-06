@@ -104,6 +104,7 @@ export default function SupervisorView() {
   }, [feedbackUrl, message, note, session, status]);
 
   const askBaker = async () => {
+    if (managed) return;
     if (!session?.reviewEntry) {
       setAiError('Baker AI needs a review link tied to a specific entry.');
       return;
@@ -195,7 +196,7 @@ export default function SupervisorView() {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-[#5FA37E] text-sm font-semibold mb-2"><ShieldCheck size={17} /> {managed?'Verified supervisor access':'Secure supervisor beta access'}</div>
-            <h1 className="font-serif text-4xl font-semibold text-[#332C28] mb-2">Review fieldwork with Baker AI</h1>
+            <h1 className="font-serif text-4xl font-semibold text-[#332C28] mb-2">{managed ? 'Review fieldwork' : 'Review fieldwork with Baker AI'}</h1>
             <p className="text-[#6B5D54]">Invited as {session.supervisor.name}. This signed link is scoped to {session.superviseeEmail}.</p>
           </div>
           <div className="text-xs text-[#A8998E]">Expires {new Date(session.expiresAt).toLocaleDateString()}</div>
@@ -224,7 +225,7 @@ export default function SupervisorView() {
           </section>
 
           <div className="space-y-6">
-            <section className="rounded-3xl border border-[#EED4DA] bg-gradient-to-br from-[#FFF5F7] via-white to-[#FFF8F3] p-6 shadow-sm">
+            {!managed && <section className="rounded-3xl border border-[#EED4DA] bg-gradient-to-br from-[#FFF5F7] via-white to-[#FFF8F3] p-6 shadow-sm">
               <div className="flex items-start gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-[#E85D70] text-white flex items-center justify-center shrink-0"><Bot size={20} /></div>
                 <div>
@@ -272,7 +273,7 @@ export default function SupervisorView() {
                   <button onClick={applyAiDraft} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-semibold text-white"><Sparkles size={15} /> Use note & message draft</button>
                 </div>
               )}
-            </section>
+            </section>}
 
             <section className="bg-white rounded-3xl border border-[#F2EDEA] p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-5"><MessageSquare size={19} className="text-[#D4A574]" /><h2 className="font-serif text-xl font-semibold text-[#332C28]">Supervisor decision & comments</h2></div>

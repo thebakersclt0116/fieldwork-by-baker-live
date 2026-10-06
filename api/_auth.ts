@@ -1,3 +1,4 @@
+import { effectiveSubscription } from '../server/billing-entitlement.js';
 import {
   createHash,
   createHmac,
@@ -232,11 +233,12 @@ export async function requireAccountSession(
     const rows=await cloudRequest('/rest/v1/profiles?select=display_name,role,trial_ends_at,subscription_tier,subscription_status&id=eq.'+identity.id,token);
     if(!Array.isArray(rows)||!rows[0])return null;
     const profile=rows[0];
-    const active=['active','trialing'].includes(profile.subscription_status)&&['individual','professional'].includes(profile.subscription_tier);
-    const role:BakerRole=['owner','supervisor'].includes(profile.role)?profile.role:active?(profile.subscription_tier==='professional'?'professional':'paid'):'free';
+    const entitlement=await effectiveSubscription(profile,identity.id,token);
+    const active=['active','trialing'].includes(entitlement.status)&&['individual','professional'].includes(entitlement.tier);
+    const role:BakerRole=['owner','supervisor'].includes(profile.role)?profile.role:active?(entitlement.tier==='professional'?'professional':'paid'):'free';
     if(!roles.includes(role))return null;
     return {accountId:identity.id,authProvider:'supabase',email:identity.email,name:profile.display_name,role,
-      subscription:active?profile.subscription_tier:undefined,
+      subscription:active?entitlement.tier:undefined,
       trialEndsAt:profile.trial_ends_at?Math.floor(Date.parse(profile.trial_ends_at)/1000):undefined,
       exp:Math.floor(Date.now()/1000)+60};
   } catch {return null;}

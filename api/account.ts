@@ -1,3 +1,4 @@
+import { effectiveSubscription } from '../server/billing-entitlement.js';
 import { CloudError, cloudConfiguration, cloudRequest, verifyCloudUser } from '../server/cloud-client.js';
 
 // Managed identities are separate from legacy beta sessions. No role is accepted from a client.
@@ -48,11 +49,12 @@ export default async function handler(req: any, res: any) {
       const profiles: any = await cloudRequest('/rest/v1/profiles?select=display_name,email,role,trial_ends_at,subscription_tier,subscription_status&id=eq.' + identity.id, payload.access_token);
       const profile = profiles?.[0];
       if (!profile) throw new CloudError('ACCOUNT_NOT_READY');
-      const activeSubscription = ['active','trialing'].includes(profile.subscription_status) && ['individual','professional'].includes(profile.subscription_tier);
-      const role = ['owner','supervisor'].includes(profile.role) ? profile.role : activeSubscription ? (profile.subscription_tier === 'professional' ? 'professional' : 'paid') : 'free';
+      const entitlement = await effectiveSubscription(profile,identity.id,payload.access_token);
+      const activeSubscription = ['active','trialing'].includes(entitlement.status) && ['individual','professional'].includes(entitlement.tier);
+      const role = ['owner','supervisor'].includes(profile.role) ? profile.role : activeSubscription ? (entitlement.tier === 'professional' ? 'professional' : 'paid') : 'free';
       return send(200, { token: payload.access_token, refreshToken: payload.refresh_token, expiresAt: payload.expires_at,
         user: { name: profile.display_name, email: identity.email, role,
-          subscription: activeSubscription ? profile.subscription_tier : 'none', subscriptionStatus: profile.subscription_status,
+          subscription: activeSubscription ? entitlement.tier : 'none', subscriptionStatus: entitlement.status,
           trialEndsAt: profile.trial_ends_at ? Math.floor(Date.parse(profile.trial_ends_at)/1000) : undefined } });
     }
     if (action === 'logout') {

@@ -19,7 +19,7 @@ jobs:
           node-version: '22'
       - run: npm ci --registry=https://registry.npmjs.org/
       - name: Paid entitlement, PDF, recovery and record boundary tests
-        run: node --test scripts/monthly-verification.test.mjs scripts/managed-session.test.mjs scripts/cloud-boundary.test.mjs scripts/cloud-saving.test.mjs scripts/launch-hardening.test.mjs scripts/managed-review.test.mjs scripts/time-display.test.mjs
+        run: node --test scripts/billing.test.mjs scripts/monthly-verification.test.mjs scripts/managed-session.test.mjs scripts/cloud-boundary.test.mjs scripts/cloud-saving.test.mjs scripts/launch-hardening.test.mjs scripts/managed-review.test.mjs scripts/time-display.test.mjs
       - name: Build frontend
         run: npm run build
       - name: Bundle all server routes

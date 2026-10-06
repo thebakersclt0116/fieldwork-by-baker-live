@@ -6,7 +6,7 @@ import { Download, ExternalLink, FileDown, LockKeyhole, Printer, ShieldCheck } f
 import type { HourEntry } from '@/types';
 import { getCurrentUserEmail, loadEntries } from '@/lib/fieldworkStore';
 import { BACB_2027_SOURCES } from '@/lib/compliance2027';
-import { useAuth } from '@/hooks/useAuth';
+import { getStoredAuthUser, useAuth } from '@/hooks/useAuth';
 
 type FormRow = {
   month: string;
@@ -72,11 +72,11 @@ function downloadText(filename: string, content: string, type = 'text/csv;charse
 }
 
 export default function ExportCenter() {
-  const { canExportOfficialForms, user, activeTrial } = useAuth();
+  const { canExportOfficialForms, activeTrial } = useAuth();
   const email = getCurrentUserEmail() || '';
   const entries = useMemo(() => loadEntries(email), [email]);
   const rows = useMemo(() => buildMonthlyRows(entries), [entries]);
-  const [traineeName, setTraineeName] = useState(user?.name || '');
+  const [traineeName, setTraineeName] = useState(() => getStoredAuthUser()?.name || '');
   const [bacbId, setBacbId] = useState('');
   const [state, setState] = useState('');
   const [country, setCountry] = useState('United States');
@@ -103,7 +103,7 @@ export default function ExportCenter() {
       const signature = JSON.stringify(content);
       if (deliveryRequest.current?.content !== signature) deliveryRequest.current = {content:signature,id:crypto.randomUUID()};
       const response = await fetch('/api/monthly-verification',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({...content,requestId:deliveryRequest.current.id}),signal:AbortSignal.timeout(30000)});
-      if (!response.ok) { const result = await response.json(); throw new Error(result.code === 'PAID_SUBSCRIPTION_REQUIRED' ? 'An active paid subscription is required. Trial access does not include verification forms.' : result.code === 'FORM_EMAIL_LIMIT' ? 'You can send up to 10 verification emails in 24 hours. Download the PDF to share another copy.' : result.code === 'FORM_EMAIL_NOT_SENT' || result.code === 'FORM_EMAIL_NOT_CONFIRMED' ? 'The email was not confirmed. Retry with the same form and address.' : result.code === 'VERSION_CONFLICT' ? 'Your records changed. Reload and review the month before exporting.' : result.code === 'REVIEW_HOUR_ALLOCATION' ? 'Review missing or inconsistent supervision and observation minutes before exporting.' : 'Complete all identity fields, choose an organization, and save your records before retrying.'); }
+      if (!response.ok) { const result = await response.json(); throw new Error(result.code === 'PAID_SUBSCRIPTION_REQUIRED' ? 'An active paid subscription is required. Trial access does not include verification forms.' : result.code === 'SANDBOX_EMAIL_DISABLED' ? 'Supervisor emails require a live paid subscription. Sandbox accounts can test PDF downloads only.' : result.code === 'REVIEW_REJECTED_ENTRIES' ? 'Correct entries marked Needs changes before preparing the monthly form.' : result.code === 'FORM_EMAIL_LIMIT' ? 'You can send up to 10 verification emails in 24 hours. Download the PDF to share another copy.' : result.code === 'FORM_EMAIL_NOT_SENT' || result.code === 'FORM_EMAIL_NOT_CONFIRMED' ? 'The email was not confirmed. Retry with the same form and address.' : result.code === 'VERSION_CONFLICT' ? 'Your records changed. Reload and review the month before exporting.' : result.code === 'REVIEW_HOUR_ALLOCATION' ? 'Review missing or inconsistent supervision and observation minutes before exporting.' : 'Complete all identity fields, choose an organization, and save your records before retrying.'); }
       if (action === 'email') { const result = await response.json(); if (!result.emailAccepted) throw new Error('Email sending was not confirmed.'); setExportMessage(`The email service accepted your unsigned form for ${result.supervisorEmail}. Your supervisor must review, sign, and return it; you must also sign. Inbox delivery is not yet confirmed.`); return; }
       const url = URL.createObjectURL(await response.blob()); const anchor = document.createElement('a');
       anchor.href = url; anchor.download = `Fieldwork-${month}-unsigned-monthly-verification.pdf`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url),60000);
