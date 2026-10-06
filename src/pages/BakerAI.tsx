@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle2, Mic, MicOff, Send, ShieldCheck, Sparkles, 
 import type { ActivityType, FieldworkType, HourEntry } from '@/types';
 import { evaluateCompliance, BACB_2027_SOURCES } from '@/lib/compliance2027';
 import { appendEntries, getCurrentUserEmail, loadEntries, newId } from '@/lib/fieldworkStore';
-import { getStoredAccessToken } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken } from '@/hooks/useAuth';
 
 type AiResult = {
   date: string;
@@ -53,7 +53,7 @@ export default function BakerAI() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...getAuthorizationHeaders(),
         },
         body: JSON.stringify({
           text,

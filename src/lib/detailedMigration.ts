@@ -1,5 +1,6 @@
 import type { HourEntry, ActivityCategory, FieldworkType } from '../types';
 import type { PdfSession, PdfBucket } from './ripleyPdfLayout';
+import { canonicalJson } from '../../shared/cloudTypes.ts';
 
 export const MIGRATION_VERSION = 'entry-audit-v1';
 export const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
@@ -242,12 +243,22 @@ export function entryFingerprint(entry: AuditEntry): string {
     entry.organizationName || '', entry.supervisorName, entry.workPresence || '', entry.supervisionFormat || '', entry.notes || '',
     entry.supervisionMinutes ?? null, entry.observationMinutes ?? null, entry.individualSupervisionMinutes ?? null, entry.setting || '', entry.observationMode || '', entry.clientInitials || '']);
 }
+function sameOriginalEvidence(a: unknown, b: unknown): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  try {
+    // Cloud readback reorders object keys; array order and all source values remain evidence.
+    return canonicalJson(a) === canonicalJson(b);
+  } catch {
+    // Evidence that cannot be represented safely requires review, never silent deduplication.
+    return false;
+  }
+}
 export function planMerge(existing: AuditEntry[], incoming: AuditEntry[]) {
   const byId = new Map(existing.map(e => [e.id, e])), fingerprints = new Set(existing.map(entryFingerprint));
   const add: AuditEntry[] = [], duplicate: AuditEntry[] = [], conflicts: AuditEntry[] = [], possibleDuplicates: AuditEntry[] = [];
   for (const entry of incoming) {
     const prior = byId.get(entry.id), fingerprint = entryFingerprint(entry);
-    if (prior) { (entryFingerprint(prior) === fingerprint && JSON.stringify(prior.migration?.original) === JSON.stringify(entry.migration?.original) ? duplicate : conflicts).push(entry); continue; }
+    if (prior) { (entryFingerprint(prior) === fingerprint && sameOriginalEvidence(prior.migration?.original, entry.migration?.original) ? duplicate : conflicts).push(entry); continue; }
     // Identical values without a matching source ID are flagged, NOT silently discarded.
     if (fingerprints.has(fingerprint)) possibleDuplicates.push(entry);
     add.push(entry); byId.set(entry.id, entry); fingerprints.add(fingerprint);

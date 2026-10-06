@@ -1,52 +1,80 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-
-function safeReturnPath(value: string | null): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
-  return value;
-}
+import { AccountRequestError, safeReturnPath, sendVerificationEmail } from '@/lib/authClient';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, logout, user, isLoading, isAuthenticated, sessionError } = useAuth();
   const params = new URLSearchParams(location.search);
   const returnTo = safeReturnPath(params.get('return'));
   const sessionRefresh = params.get('reason') === 'session-refresh';
+  const signOutIncomplete = params.get('reason') === 'signout-incomplete';
+  const emailVerified = params.get('verified') === '1';
+  const verificationError = Boolean(params.get('error'));
+  const passwordReset = params.get('reset') === 'success';
   const [email, setEmail] = useState(() => {
-    try { return window.sessionStorage.getItem('bakerRefreshEmail') || ''; } catch { return ''; }
+    try {
+      const hint = window.sessionStorage.getItem('bakerRefreshEmail');
+      const raw = localStorage.getItem('authUser');
+      const oldProfile = raw ? JSON.parse(raw) as { email?: unknown } : null;
+      return hint || (typeof oldProfile?.email === 'string' ? oldProfile.email : '');
+    } catch { return ''; }
   });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const legacyAccount = (() => {
+    try { return localStorage.getItem('bakerSessionUpgradeRequired') === '1'; } catch { return false; }
+  })();
+
+  useEffect(() => {
+    if (emailVerified && !verificationError && !isLoading && isAuthenticated) navigate(returnTo, { replace: true });
+  }, [emailVerified, verificationError, isLoading, isAuthenticated, navigate, returnTo]);
+
+  const resendVerification = async () => {
+    setError('');
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError('Enter your email address to request a verification link.');
+    setSendingVerification(true);
+    try {
+      await sendVerificationEmail(email, returnTo);
+      setVerificationSent(true);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'We could not request a verification email. Please try again.');
+    } finally { setSendingVerification(false); }
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
+    setVerificationRequired(false);
+    setVerificationSent(false);
     if (!email.trim() || !password) {
       setError('Enter your account email and password.');
       return;
     }
 
     setIsLoggingIn(true);
-    const success = await login(email, password);
-    setIsLoggingIn(false);
-    if (!success) {
-      setError('We could not sign you in with those details. Check your email and password, then try again.');
-      return;
-    }
-
     try {
-      window.sessionStorage.removeItem('bakerRefreshEmail');
-      window.sessionStorage.removeItem('bakerReturnAfterLogin');
-    } catch {
-      // Navigation still proceeds when storage is unavailable.
-    }
-    navigate(returnTo, { replace: true });
+      const success = await login(email, password);
+      if (!success) return;
+      setPassword('');
+      try {
+        window.sessionStorage.removeItem('bakerRefreshEmail');
+        window.sessionStorage.removeItem('bakerReturnAfterLogin');
+      } catch { /* Navigation still proceeds when storage is unavailable. */ }
+      navigate(returnTo, { replace: true });
+    } catch (failure) {
+      setVerificationRequired(failure instanceof AccountRequestError && failure.code === 'EMAIL_NOT_VERIFIED');
+      setError(failure instanceof Error ? failure.message : 'We could not sign you in. Please try again.');
+    } finally { setIsLoggingIn(false); }
   };
 
   return (
@@ -85,22 +113,53 @@ export default function Login() {
 
             {sessionRefresh && (
               <div className="mb-5 rounded-xl bg-[#F4F7FF] border border-[#CFD8F7] px-4 py-3 text-sm leading-relaxed text-[#4B5EA8]">
-                <strong>Your Baker access is still active.</strong> We detected an older browser session and cleared it automatically. Sign in once and you&apos;ll return directly to Import.
+                <strong>Sign in to refresh your access.</strong> Your saved fieldwork records are still in this browser. After signing in, you&apos;ll return to your workspace.
+              </div>
+            )}
+
+            {legacyAccount && !sessionRefresh && (
+              <div className="mb-5 rounded-xl bg-[#F4F7FF] border border-[#CFD8F7] px-4 py-3 text-sm leading-relaxed text-[#4B5EA8]">
+                Your older browser account needs secure account verification. If you haven&apos;t created a verified account, <Link to={`/signup?return=${encodeURIComponent(returnTo)}`} className="font-semibold underline">create one with the same email</Link>. Your saved fieldwork records stay in this browser. Existing beta members can sign in below.
+              </div>
+            )}
+
+            {signOutIncomplete && (
+              <div className="mb-5 rounded-xl bg-[#FFF8ED] border border-[#EAD4AC] px-4 py-3 text-sm text-[#7A5A27]" role="alert">
+                The server could not confirm sign-out. Your session may still be active. <button type="button" onClick={() => { void logout(); }} className="font-semibold underline">Try signing out again</button>.
+              </div>
+            )}
+
+            {(passwordReset || (emailVerified && !verificationError)) && (
+              <div className="mb-5 rounded-xl bg-[#F0F8F3] border border-[#C4DEC9] px-4 py-3 text-sm text-[#376B47]" role="status">
+                {passwordReset ? 'Your password has been updated. Sign in with your new password.' : isLoading ? 'Verifying your account…' : 'Your email is verified. Sign in to open your workspace.'}
+              </div>
+            )}
+
+            {verificationError && (
+              <div className="mb-5 rounded-xl bg-[#FFF8ED] border border-[#EAD4AC] px-4 py-3 text-sm text-[#7A5A27]" role="alert">
+                That verification link is invalid or has expired. Enter your email below and request a new verification email.
+              </div>
+            )}
+
+            {isAuthenticated && !signOutIncomplete && !emailVerified && (
+              <div className="mb-5 rounded-xl bg-[#F0F8F3] border border-[#C4DEC9] px-4 py-3 text-sm text-[#376B47]">
+                You&apos;re signed in as {user?.email}. <Link to={returnTo} className="font-semibold underline">Open your workspace</Link> or <button type="button" onClick={() => { void logout(); }} className="font-semibold underline">sign out</button>.
               </div>
             )}
 
             {error && (
-              <div className="mb-5 rounded-xl bg-[#FFF5F7] border border-[#FFC1CC] px-4 py-3 text-sm text-[#C9445A]">
+              <div className="mb-5 rounded-xl bg-[#FFF5F7] border border-[#FFC1CC] px-4 py-3 text-sm text-[#C9445A]" role="alert">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-[#4D423C] mb-2">Email</label>
+                <label htmlFor="login-email" className="block text-sm font-medium text-[#4D423C] mb-2">Email</label>
                 <div className="relative">
                   <Mail size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8998E]" />
                   <Input
+                    id="login-email"
                     type="email"
                     autoComplete="email"
                     value={email}
@@ -112,10 +171,14 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#4D423C] mb-2">Password</label>
+                <div className="flex justify-between items-center gap-3 mb-2">
+                  <label htmlFor="login-password" className="block text-sm font-medium text-[#4D423C]">Password</label>
+                  <Link to="/forgot-password" className="text-xs font-medium text-[#E85D70] hover:underline">Forgot password?</Link>
+                </div>
                 <div className="relative">
                   <Lock size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8998E]" />
                   <Input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     value={password}
@@ -139,10 +202,22 @@ export default function Login() {
                 disabled={isLoggingIn}
                 className="btn-primary w-full py-3 rounded-xl disabled:opacity-60"
               >
-                {isLoggingIn ? 'Refreshing secure access…' : sessionRefresh ? 'Refresh Access & Return to Import' : 'Sign In'}
+                {isLoggingIn ? 'Signing in…' : sessionRefresh ? 'Refresh Access' : 'Sign In'}
                 {!isLoggingIn && <ArrowRight size={16} />}
               </button>
             </form>
+
+            {(verificationRequired || verificationError || verificationSent) && (
+              <div className="mt-5 text-sm text-[#7B6B62]">
+                {verificationSent ? <p role="status">If this account needs verification, an email will arrive shortly. Check your inbox and spam folder.</p> : (
+                  <button type="button" disabled={sendingVerification} onClick={() => { void resendVerification(); }} className="font-semibold text-[#E85D70] hover:underline disabled:opacity-50">
+                    {sendingVerification ? 'Requesting email…' : 'Resend verification email'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!error && sessionError && !isLoggingIn && <p className="mt-4 text-xs text-[#A8998E]" role="status">{sessionError}</p>}
 
             <p className="mt-6 text-xs leading-relaxed text-[#A8998E] text-center">
               Supervisors do not sign in here. They use the private invite link issued by the supervisee or platform owner.

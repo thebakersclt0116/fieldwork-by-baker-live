@@ -2,10 +2,13 @@ name: Ripley PDF Release
 on:
   push:
     branches: [baker-ripley-detailed-pdf-20261006, main]
-    paths: ['src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
+    paths: ['src/**', 'public/guides/**', 'api/**', 'server/**', 'cloud/**', 'shared/**', 'scripts/**', 'package.json', 'package-lock.json', 'tsconfig*.json', 'vercel.json', '.do/**', '.dockerignore', '.github/workflows/ripley-pdf-release.yml']
+  pull_request:
+    branches: [main]
+    paths: ['src/**', 'public/guides/**', 'api/**', 'server/**', 'cloud/**', 'shared/**', 'scripts/**', 'package.json', 'package-lock.json', 'tsconfig*.json', 'vercel.json', '.do/**', '.dockerignore', '.github/workflows/ripley-pdf-release.yml']
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: ripley-pdf-${{ github.ref }}
   cancel-in-progress: true
@@ -16,24 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '22' }
-      - name: Apply final source-integrity review on feature branch
-        if: github.ref == 'refs/heads/baker-ripley-detailed-pdf-20261006'
-        run: |
-          if test -f scripts/harden-pdf-batch.mjs; then
-            node scripts/harden-pdf-batch.mjs
-            git config user.name 'Baker PDF Release CI'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add src/pages/DetailedMigration.tsx scripts/ripley-pdf-browser-check.mjs
-            git rm scripts/harden-pdf-batch.mjs
-            git commit -m 'Block incomplete PDF batches and show source candidate before import'
-            git push origin HEAD:baker-ripley-detailed-pdf-20261006
-          fi
-          echo "Tested commit: $(git rev-parse HEAD)"
-      - name: Install exactly as current Vercel project
-        run: |
-          rm -f package-lock.json
-          npm install --registry=https://registry.npmjs.org/
+        with: { node-version: '24', cache: npm }
+      - name: Install the reviewed Vercel and cloud dependency lock
+        run: npm ci --registry=https://registry.npmjs.org/
       - name: Resolve real PDF reader and matching worker
         run: |
           node --input-type=module <<'JS'
@@ -46,6 +34,10 @@ jobs:
         run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs scripts/import-integrity.test.mjs
       - name: Production regression checks
         run: node scripts/fieldwork-regression-check.mjs
+      - name: Cloud account, storage, billing, and browser state integrity
+        run: npm run test:cloud
+      - name: Compile the DigitalOcean service
+        run: npm run cloud:build
       - name: Full TypeScript and Vite production build
         run: |
           rm -rf dist
@@ -55,14 +47,27 @@ jobs:
           mkdir -p /tmp/pdf-api-check
           for route in api/*.ts; do
             case "$route" in api/_*) continue ;; esac
-            ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/pdf-api-check/$(basename "$route" .ts).mjs"
+            ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node24 --outfile="/tmp/pdf-api-check/$(basename "$route" .ts).mjs"
           done
-      - name: Install isolated browser test dependencies
-        run: |
-          npm install --no-save --package-lock=false playwright@1.61.1 pdf-lib@1.17.1
-          npx playwright install chromium
+      - name: Install the browser for the locked acceptance test dependency
+        run: ./node_modules/.bin/playwright install --with-deps chromium
       - name: Actual PDF upload and browser-worker acceptance
         run: node scripts/ripley-pdf-browser-check.mjs
+      - name: Require an explicitly configured dedicated live QA account
+        if: github.ref == 'refs/heads/main'
+        env:
+          BAKER_PDF_QA_DEDICATED: ${{ vars.BAKER_PDF_QA_DEDICATED }}
+          BAKER_PDF_QA_EMAIL: ${{ secrets.BAKER_PDF_QA_EMAIL }}
+          BAKER_PDF_QA_PASSWORD: ${{ secrets.BAKER_PDF_QA_PASSWORD }}
+          BAKER_PDF_QA_WORKSPACE_ID: ${{ secrets.BAKER_PDF_QA_WORKSPACE_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          const required=['BAKER_PDF_QA_EMAIL','BAKER_PDF_QA_PASSWORD','BAKER_PDF_QA_WORKSPACE_ID'];
+          if(process.env.BAKER_PDF_QA_DEDICATED!=='true'||required.some(key=>!process.env[key]?.trim())){
+            throw new Error('Live PDF acceptance is blocked: configure the dedicated synthetic-only Fieldwork PDF QA account, encrypted QA credentials/workspace ID, and BAKER_PDF_QA_DEDICATED=true. No live signup or customer account may be used.');
+          }
+          console.log('Dedicated QA configuration is present; account and workspace will be verified by the live test.');
+          JS
       - name: Wait for exact public-domain deployment
         if: github.ref == 'refs/heads/main'
         env:
@@ -77,10 +82,14 @@ jobs:
           if(!ready)throw new Error('Expected production commit is not live on the custom domain.');
           console.log('Exact production commit confirmed.');
           JS
-      - name: Real signed-user bulk PDF import on the live website
+      - name: Verified dedicated-QA bulk PDF import with cloud readback
         if: github.ref == 'refs/heads/main'
         env:
           BAKER_TEST_ORIGIN: https://www.fieldworkbybaker.com
+          BAKER_PDF_QA_DEDICATED: ${{ vars.BAKER_PDF_QA_DEDICATED }}
+          BAKER_PDF_QA_EMAIL: ${{ secrets.BAKER_PDF_QA_EMAIL }}
+          BAKER_PDF_QA_PASSWORD: ${{ secrets.BAKER_PDF_QA_PASSWORD }}
+          BAKER_PDF_QA_WORKSPACE_ID: ${{ secrets.BAKER_PDF_QA_WORKSPACE_ID }}
         run: node scripts/ripley-pdf-browser-check.mjs
       - name: Save dependency security report without forced upgrades
         if: always()

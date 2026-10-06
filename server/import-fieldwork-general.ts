@@ -119,7 +119,7 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Allow', 'POST');
     return send(res, 405, { error: 'Method not allowed', version: VERSION });
   }
-  const session = requireSession(req);
+  const session = await requireSession(req);
   if (!session) return send(res, 401, { code: 'SESSION_REFRESH_REQUIRED', error: 'Your secure Baker session needs to be refreshed. Sign in again, then retry this import.', version: VERSION });
   if (!canUsePaidTools(session)) return send(res, 403, { code: 'PAID_REQUIRED', error: 'A paid Baker account is required for AI migration.', version: VERSION });
 

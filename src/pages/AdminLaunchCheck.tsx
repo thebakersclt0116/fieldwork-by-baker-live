@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { Brain, CheckCircle2, CreditCard, Loader2, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
-import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 
 type State = 'checking' | 'pass' | 'warn' | 'fail';
 
@@ -30,9 +30,17 @@ export default function AdminLaunchCheck() {
         secureSessionSigningAvailable?: boolean;
         stripeCheckoutConfigured?: boolean;
         stripeMode?: string;
+        cloudStorageConnected?: boolean;
+        accountsReady?: boolean;
+        signupEnabled?: boolean;
+        billingWebhookVerified?: boolean;
+        liveBillingEnabled?: boolean;
+        publicLaunchReady?: boolean;
       };
-      next.push({ key: 'storage', label: 'Durable cloud records', state: 'fail', detail: 'The current entry and original-document stores are browser-local. Cloud accounts, document storage and verified backups must be connected before public paid launch.' });
-      next.push({ key: 'billing-lifecycle', label: 'Recurring subscription lifecycle', state: 'fail', detail: 'A live key alone is not sufficient. Durable customer identity, renewal/cancellation webhooks, and entitlement reconciliation must be connected before accepting live subscriptions.' });
+      next.push({ key: 'storage', label: 'Durable cloud records', state: health.cloudStorageConnected ? 'pass' : 'fail', detail: health.cloudStorageConnected ? 'The DigitalOcean records database is connected. Each device must still finish the readback checks shown in Storage details.' : 'The cloud database is not connected. Keep the original device records and independent audit exports.' });
+      next.push({ key: 'accounts', label: 'Verified accounts and public signup', state: health.accountsReady && health.signupEnabled ? 'pass' : 'fail', detail: !health.accountsReady ? 'The persistent account or verification email service is not ready.' : health.signupEnabled ? 'Persistent accounts, email configuration, and public signup are enabled.' : 'Account services are configured. Public signup is still closed while launch verification is completed.' });
+      next.push({ key: 'billing-lifecycle', label: 'Recurring subscription lifecycle', state: health.billingWebhookVerified && health.liveBillingEnabled ? 'pass' : 'fail', detail: health.billingWebhookVerified && health.liveBillingEnabled ? 'The billing backend reports verified lifecycle handling and enabled live checkout.' : 'New live checkout remains closed until signed renewal/cancellation events and durable entitlement reconciliation are verified.' });
+      next.push({ key: 'release', label: 'Recorded launch verification', state: health.publicLaunchReady ? 'pass' : 'warn', detail: health.publicLaunchReady ? 'The release has recorded its migration, restore, workload, email, and live AI checks. Review those results before expanding traffic.' : 'Migration on the source device, backup restore, the 50-user workload, and live email/AI checks still need recorded release approval. Configuration checks alone do not complete those tests.' });
       next.push({
         key: 'gateway',
         label: 'AI Gateway',
@@ -51,7 +59,7 @@ export default function AdminLaunchCheck() {
         label: 'Stripe Checkout',
         state: stripeState,
         detail: !health.stripeCheckoutConfigured
-          ? 'STRIPE_SECRET_KEY is not configured on production.'
+          ? 'The production billing service is not configured with a usable Stripe key.'
           : health.stripeMode === 'live'
             ? 'Stripe is configured with a live secret key.'
             : health.stripeMode === 'test'
@@ -66,7 +74,7 @@ export default function AdminLaunchCheck() {
       const response = await fetch('/api/baker-ai', {
         method: 'POST',
         signal: AbortSignal.timeout(55000),
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
         body: JSON.stringify({
           mode: 'bcba-brain',
           message: 'Launch diagnostic: in one sentence, explain the difference between duration and latency in behavior measurement.',
@@ -91,10 +99,6 @@ export default function AdminLaunchCheck() {
     setRunning(false);
   };
 
-  useEffect(() => {
-    if (isOwner) void runChecks();
-  }, [isOwner]);
-
   if (!isOwner) return <Navigate to="/dashboard" replace />;
 
   const failures = checks.filter((item) => item.state === 'fail').length;
@@ -109,12 +113,13 @@ export default function AdminLaunchCheck() {
             <h1 className="mt-2 font-serif text-4xl font-semibold text-[#332C28] dark:text-white">Is the production core actually live?</h1>
             <p className="mt-2 max-w-2xl text-[#6B5D54] dark:text-[#CFC4BE]">This page performs a real authenticated Baker Brain request and checks production payment/session configuration. It does not create a charge.</p>
           </div>
-          <button onClick={() => void runChecks()} disabled={running} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-[#E85D70]">{running ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} Run again</button>
+          <button onClick={() => void runChecks()} disabled={running} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-[#E85D70]">{running ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} {checks.length ? 'Run again' : 'Run checks'}</button>
         </div>
 
         <div className="mt-7 rounded-[28px] border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]">
           {running && checks.length === 0 ? <div className="flex min-h-40 items-center justify-center gap-3 text-sm text-[#A8998E]"><Loader2 size={18} className="animate-spin text-[#E85D70]" /> Running production checks…</div> : (
             <div className="space-y-3">
+              {!checks.length && <p className="text-sm text-[#6B5D54]">Run checks to inspect the connected services and request a live Baker Brain response.</p>}
               {checks.map((check) => <CheckRow key={check.key} check={check} />)}
             </div>
           )}
@@ -123,7 +128,7 @@ export default function AdminLaunchCheck() {
         {checks.length > 0 && (
           <div className={'mt-5 rounded-[24px] border p-5 ' + (failures ? 'border-[#F0D5DA] bg-[#FFF7F8]' : warnings ? 'border-[#F1D8B9] bg-[#FFF9F2]' : 'border-[#CFE7D9] bg-[#F4FBF7]')}>
             <div className="font-semibold text-[#332C28]">{failures ? 'Launch blockers detected' : warnings ? 'Core works, but configuration warning remains' : 'Core launch checks passed'}</div>
-            <p className="mt-1 text-sm text-[#6B5D54]">{failures ? failures + ' required check(s) failed.' : warnings ? warnings + ' configuration warning(s) remain.' : 'AI, signed sessions, and live Stripe configuration all reported green.'}</p>
+            <p className="mt-1 text-sm text-[#6B5D54]">{failures ? failures + ' required check(s) failed.' : warnings ? warnings + ' launch verification item(s) remain.' : 'The live AI request and required account, storage, billing, and release checks reported success.'}</p>
           </div>
         )}
 

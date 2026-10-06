@@ -76,10 +76,18 @@ test('known recovery origin no longer redirects back to a broken custom domain',
 });
 test('production blocks both test payments and unsafe live entitlement grants',()=>{
   for(const path of ['api/create-checkout-session.ts','api/checkout-complete.ts']){
-    const src=read(path); assert.ok(src.includes('LIVE_BILLING_NOT_CONFIGURED')); assert.ok(src.includes('BILLING_BACKEND_REQUIRED'));
-    assert.ok(src.includes("process.env.VERCEL_ENV === 'preview'"));
+    const src=read(path);
+    assert.ok(src.includes('await requireSession'));
+    assert.ok(src.includes('forwardCloudBilling'));
+    assert.equal(src.includes('signSession'),false);
+    assert.equal(src.includes('api.stripe.com'),false);
   }
-  assert.ok(read('api/checkout-complete.ts').includes('CHECKOUT_MODE_MISMATCH'));
+  // Signature, live-mode, lifecycle, and finite access behavior is exercised by
+  // cloud/tests/billing.test.ts against the SDK and an isolated PostgreSQL DB.
+  const proxy=read('server/cloud-billing.ts');
+  assert.ok(proxy.includes('allowedBrowserOrigin(req)'));
+  assert.ok(proxy.includes('BILLING_BACKEND_REQUIRED'));
+  assert.ok(proxy.includes("redirect: 'error'"));
   assert.ok(read('src/pages/Upgrade.tsx').includes('!billingEnabled || Boolean(loadingPlan)'));
 });
 test('verified live catalog is consistent with approved launch prices and does not start subscriptions',()=>{

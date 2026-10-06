@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, Brain, BookOpen, Compass, ExternalLink, FileText, FlaskConical, Library, Loader2, Route, Send, Sparkles, Target, Users, WandSparkles } from 'lucide-react';
-import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 import { evaluateCompliance } from '@/lib/compliance2027';
 import { getCurrentUserEmail, loadEntries } from '@/lib/fieldworkStore';
 
@@ -142,7 +142,7 @@ export default function BakerBrainHub() {
       const response = await fetch('/api/baker-ai', {
         method: 'POST',
         signal: AbortSignal.timeout(55000),
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
         body: JSON.stringify({
           mode: 'bcba-brain',
           message,

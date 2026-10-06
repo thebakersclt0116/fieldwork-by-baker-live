@@ -1,8 +1,9 @@
+import { useFieldworkEntries } from '@/hooks/useFieldworkEntries';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Download, ExternalLink, FileDown, LockKeyhole, Printer, ShieldCheck } from 'lucide-react';
 import type { HourEntry } from '@/types';
-import { getCurrentUserEmail, loadEntries } from '@/lib/fieldworkStore';
+import { getCurrentUserEmail } from '@/lib/fieldworkStore';
 import { BACB_2027_SOURCES } from '@/lib/compliance2027';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -70,7 +71,7 @@ function downloadText(filename: string, content: string, type = 'text/csv;charse
 export default function ExportCenter() {
   const { canExportOfficialForms } = useAuth();
   const email = getCurrentUserEmail() || '';
-  const entries = useMemo(() => loadEntries(email), [email]);
+  const [entries] = useFieldworkEntries(email);
   const rows = useMemo(() => buildMonthlyRows(entries), [entries]);
   const [traineeName, setTraineeName] = useState('');
   const [bacbId, setBacbId] = useState('');

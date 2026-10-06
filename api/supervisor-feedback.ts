@@ -10,7 +10,7 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req, ['supervisor']);
+  const session = await requireSession(req, ['supervisor']);
   if (!session || !session.superviseeEmail) {
     return send(res, 401, { error: 'A valid supervisor invite is required.' });
   }

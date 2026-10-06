@@ -9,6 +9,7 @@ import {
   type KeyObject,
 } from 'node:crypto';
 import { BAKER_RUNTIME_SECRET } from './_runtime-secret.js';
+import { cloudApiOrigin, readCloudSession } from '../server/cloud-session.js';
 
 export type BakerRole = 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
 
@@ -30,6 +31,9 @@ export interface SupervisorFeedbackPayload {
 }
 
 export interface BakerSession {
+  userId?: string;
+  workspaceId?: string;
+  authMethod?: string;
   email: string;
   name: string;
   role: BakerRole;
@@ -207,11 +211,24 @@ export function getBearerToken(req: { headers?: Record<string, string | string[]
   return header.slice(7).trim();
 }
 
-export function requireSession(
+export async function requireSession(
   req: { headers?: Record<string, string | string[] | undefined> },
   roles: BakerRole[] = ['owner', 'free', 'paid', 'professional', 'supervisor']
-): BakerSession | null {
-  const session = verifySession(getBearerToken(req));
+): Promise<BakerSession | null> {
+  const cloudConfigured = Boolean(process.env.FIELDWORK_CLOUD_API_ORIGIN?.trim());
+  // A mistyped cloud URL must not restore obsolete browser-era entitlements.
+  if (cloudConfigured && !cloudApiOrigin()) return null;
+  const token = getBearerToken(req);
+  let session: BakerSession | null = null;
+  if (token) {
+    const legacy = verifySession(token);
+    // Reserved beta accounts and scoped supervisor links keep their established
+    // signed access. Cloud members must use their revocable database session.
+    if (legacy && token.startsWith('b2.') && cloudConfigured) session = await readCloudSession(req);
+    else if (legacy && (token.startsWith('b2.') || legacy.role === 'supervisor' || !cloudConfigured)) session = legacy;
+  } else {
+    session = await readCloudSession(req);
+  }
   if (!session || !roles.includes(session.role)) return null;
   return session;
 }

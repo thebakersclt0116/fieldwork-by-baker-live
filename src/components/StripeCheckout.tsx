@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CreditCard, Loader2 } from 'lucide-react';
-import { getStoredAccessToken } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken } from '@/hooks/useAuth';
 
 type PlanId = 'individual_monthly' | 'professional_monthly' | 'professional_annual';
 
@@ -49,7 +49,7 @@ export default function StripeCheckout({
     try {
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
         body: JSON.stringify({ plan: selectedPlan }),
       });
       const payload = await response.json() as { url?: string; error?: string };

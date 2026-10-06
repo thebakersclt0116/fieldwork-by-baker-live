@@ -4,7 +4,7 @@ import { AlertTriangle, Bot, CheckCircle2, Clock, Copy, Mail, Plus, ShieldCheck,
 import type { ActivityType, HourEntry } from '@/types';
 import { addEntry, getCurrentUserEmail, hoursBetween, loadEntries, newId } from '@/lib/fieldworkStore';
 import { evaluateCompliance, BACB_2027_SOURCES } from '@/lib/compliance2027';
-import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 
 function activityTypeFor(category: 'RESTRICTED' | 'UNRESTRICTED'): ActivityType {
   return category === 'RESTRICTED' ? 'RESTRICTED_DIRECT' : 'UNRESTRICTED_OTHER';
@@ -87,7 +87,7 @@ export default function EmilyDashboard() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...getAuthorizationHeaders(),
         },
         body: JSON.stringify({
           supervisorName,

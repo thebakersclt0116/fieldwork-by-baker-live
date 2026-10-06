@@ -2,7 +2,7 @@ import type { PdfTextPage, PdfReport, PdfSession } from './ripleyPdfLayout.ts';
 import { parseRipleyPdfLayout } from './ripleyPdfLayout.ts';
 import { parseSource, sha256, type SourceTable } from './detailedMigration.ts';
 
-/** Extract locally with a matching, bundled PDF.js worker. No document bytes go to AI or a server. */
+/** Extract locally with a matching, bundled PDF.js worker. Parsing uses no AI or remote service; account sync separately preserves the original file in cloud storage. */
 export async function readRipleyPdf(bytes: Uint8Array, progress?: (page:number,total:number)=>void):Promise<PdfReport> {
   if(bytes.byteLength>25*1024*1024)throw new Error('Each PDF must be 25 MB or smaller. Export one month at a time.');
   if(!new TextDecoder().decode(bytes.slice(0,1024)).includes('%PDF-'))throw new Error('The selected file is not a valid PDF.');

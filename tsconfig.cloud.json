@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": "dist-cloud",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["cloud/**/*.ts", "shared/**/*.ts"],
+  "exclude": ["cloud/**/*.test.ts", "cloud/tests/**"]
+}

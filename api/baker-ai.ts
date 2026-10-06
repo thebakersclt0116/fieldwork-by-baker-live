@@ -143,7 +143,7 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req);
+  const session = await requireSession(req);
   const authorized = Boolean(session && (session.role === 'supervisor' || canUsePaidTools(session)));
   if (!session || !authorized) return send(res, 401, { error: 'A paid or authorized Baker session is required.' });
 

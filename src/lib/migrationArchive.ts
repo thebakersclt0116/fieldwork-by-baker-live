@@ -1,8 +1,10 @@
 import { buildStoreZip } from './downloadZip';
-import { getCurrentUserEmail, loadEntries, saveEntries } from './fieldworkStore';
+import { assertDeviceEditorAccess, getCurrentUserEmail, loadEntries, loadSupervisors, saveEntries } from './fieldworkStore';
+import { listDeviceBackups } from './cloudBackups';
+import { canonicalJson } from '../../shared/cloudTypes';
 import { auditCsv, planMerge, selectionProblem, sha256, type AuditEntry, type Mapping, type ImportOptions, type MigrationPreview, type SourceTable } from './detailedMigration';
 
-export type SourceDocument = { id: string; owner: string; hash: string; filename: string; mime: string; size: number; savedAt: string; kind: 'detailed-source' | 'supporting-document'; bytes: Uint8Array };
+export type SourceDocument = { id: string; owner: string; hash: string; filename: string; mime: string; size: number; savedAt: string; kind: 'detailed-source' | 'supporting-document'; originalDocumentId?: string; bytes: Uint8Array };
 export type AuditBatch = { id: string; owner: string; createdAt: string; sourceHash: string; filename: string; mapping: Mapping; options: ImportOptions; sourceRows: number; results: MigrationPreview['rows']; before: AuditEntry[]; addedIds: string[]; archivedSummaryIds: string[]; state: 'prepared' | 'committed' | 'failed'; note: string };
 const normalized = (v: string) => v.trim().toLowerCase();
 function requireOwner(owner: string) {
@@ -27,23 +29,86 @@ async function all<T extends { owner: string }>(store: string, owner: string): P
   try { return await new Promise<T[]>((resolve, reject) => { const req = db.transaction(store).objectStore(store).index('owner').getAll(normalized(owner)); req.onsuccess = () => { try { requireOwner(owner); resolve((req.result as T[]).filter(r => normalized(r.owner) === normalized(owner))); } catch (e) { reject(e); } }; req.onerror = () => reject(req.error); }); }
   finally { db.close(); }
 }
-async function put<T extends { owner: string }>(store: string, record: T): Promise<void> {
-  requireOwner(record.owner); const db = await openDatabase();
-  try { await new Promise<void>((resolve, reject) => { const tx = db.transaction(store, 'readwrite'); tx.objectStore(store).put(record); tx.oncomplete = () => resolve(); tx.onabort = () => reject(new Error('Archive write failed, possibly because storage is full. Nothing may be discarded; download a backup first.')); tx.onerror = () => reject(tx.error); }); }
+function matchingDocument(a: SourceDocument, b: SourceDocument): boolean {
+  const { bytes: aBytes, ...aMetadata } = a, { bytes: bBytes, ...bMetadata } = b;
+  const left = new Uint8Array(aBytes), right = new Uint8Array(bBytes);
+  return canonicalJson(aMetadata) === canonicalJson(bMetadata) && left.length === right.length
+    && left.every((value, index) => value === right[index]);
+}
+function compatibleBatch(existing: AuditBatch, incoming: AuditBatch): boolean {
+  if (canonicalJson(existing) === canonicalJson(incoming)) return true;
+  return existing.state === 'prepared' && ['committed', 'failed'].includes(incoming.state)
+    && canonicalJson({ ...existing, state: null, note: null }) === canonicalJson({ ...incoming, state: null, note: null });
+}
+async function put(store: 'documents' | 'batches', record: SourceDocument | AuditBatch, notify = true): Promise<void> {
+  requireOwner(record.owner);
+  assertDeviceEditorAccess(record.owner, !notify);
+  if (record.owner !== normalized(record.owner)) throw new Error('This archive uses an incompatible account identifier. Preserve the original and review it before restoring.');
+  const db = await openDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(store, 'readwrite'), records = tx.objectStore(store);
+      let failure: unknown;
+      tx.oncomplete = () => { try { requireOwner(record.owner); resolve(); } catch (error) { reject(error); } };
+      tx.onabort = () => reject(failure || new Error('Archive write failed, possibly because storage is full. Download a backup before continuing.'));
+      tx.onerror = () => { failure ||= tx.error; };
+      // The primary key is global in the legacy device store. Read and conditionally
+      // write within one transaction so another tab cannot replace a newer decision.
+      const request = records.get(record.id);
+      request.onsuccess = () => {
+        try {
+          requireOwner(record.owner);
+          assertDeviceEditorAccess(record.owner, !notify);
+          const existing = request.result as SourceDocument | AuditBatch | undefined;
+          if (existing && existing.owner !== record.owner) throw new Error('This archive ID is already owned by another local account. Both copies were preserved.');
+          if (existing && store === 'documents' && !matchingDocument(existing as SourceDocument, record as SourceDocument)) throw new Error('An original document or its metadata differs on this device. Both copies must be reviewed.');
+          if (existing && store === 'batches' && !compatibleBatch(existing as AuditBatch, record as AuditBatch)) throw new Error('An audit decision differs on this device. Both copies have been preserved.');
+          if (!existing || store === 'batches') records.put(record);
+        } catch (error) { failure = error; tx.abort(); }
+      };
+    });
+  }
   finally { db.close(); }
+  if (notify) window.dispatchEvent(new CustomEvent('fieldwork:archive-changed', { detail: { email: normalized(record.owner) } }));
 }
 export const listDocuments = (owner: string) => all<SourceDocument>('documents', owner);
 export const listBatches = (owner: string) => all<AuditBatch>('batches', owner);
+
+export async function restoreArchivedDocument(owner: string, document: SourceDocument): Promise<void> {
+  requireOwner(owner);
+  const bytes = new Uint8Array(document.bytes);
+  if (normalized(document.owner) !== normalized(owner) || document.size !== bytes.byteLength || await sha256(bytes) !== document.hash) {
+    throw new Error('The original document did not pass account and integrity verification.');
+  }
+  requireOwner(owner);
+  await put('documents', { ...document, bytes }, false);
+  const saved = (await listDocuments(owner)).find((value) => value.id === document.id);
+  if (!saved || !matchingDocument(saved, document)) throw new Error('The restored original could not be verified on this device.');
+  requireOwner(owner);
+}
+
+export async function restoreAuditBatch(owner: string, batch: AuditBatch): Promise<void> {
+  requireOwner(owner);
+  if (normalized(batch.owner) !== normalized(owner)) throw new Error('This audit batch belongs to a different account.');
+  await put('batches', batch, false);
+}
 export async function archiveFile(file: File, owner: string, kind: SourceDocument['kind']): Promise<SourceDocument> {
   requireOwner(owner);
   if (file.size > 25 * 1024 * 1024) throw new Error('Maximum source file size is 25 MB. Split the export into date ranges; no file has been truncated.');
   const bytes = new Uint8Array(await file.arrayBuffer()), hash = await sha256(bytes);
-  const doc: SourceDocument = { id: `${normalized(owner)}:${hash}`, owner: normalized(owner), hash, filename: file.name, mime: file.type, size: file.size, kind, savedAt: new Date().toISOString(), bytes };
-  const existing = (await listDocuments(owner)).find(r => r.hash === hash);
-  if (existing) return existing;
+  const existing = (await listDocuments(owner)).find(r => r.hash === hash && r.size === file.size
+    && r.filename === file.name && r.mime === file.type && r.kind === kind);
+  if (existing) {
+    if (new Uint8Array(existing.bytes).byteLength !== existing.size || await sha256(new Uint8Array(existing.bytes)) !== hash) throw new Error('The saved original failed its integrity check. Keep the source file before continuing.');
+    requireOwner(owner);
+    return existing;
+  }
+  // A capture has its own identity: equal bytes on another device may have
+  // different filenames, capture times, or other source evidence.
+  const doc: SourceDocument = { id: `${normalized(owner)}:capture:${crypto.randomUUID()}`, owner: normalized(owner), hash, filename: file.name, mime: file.type, size: file.size, kind, savedAt: new Date().toISOString(), bytes };
   await put('documents', doc);
-  const readback = (await listDocuments(owner)).find(r => r.hash === hash);
-  if (!readback || await sha256(new Uint8Array(readback.bytes)) !== hash) throw new Error('Original-file readback verification failed. Stop before deleting source records.');
+  const readback = (await listDocuments(owner)).find(r => r.id === doc.id);
+  if (!readback || !matchingDocument(readback, doc)) throw new Error('Original-file readback verification failed. Stop before deleting source records.');
   return doc;
 }
 export function downloadBytes(name: string, data: string | Uint8Array, mime: string) {
@@ -100,21 +165,32 @@ const escapeHtml = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '
 export function auditHtml(entries: AuditEntry[]): string {
   return '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'"><title>Baker entry-level audit record</title><style>body{font:15px system-ui;max-width:1050px;margin:32px auto;padding:16px;color:#211d1a}article{break-inside:avoid;border:1px solid #ddd;border-radius:12px;padding:20px;margin:16px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px system-ui}h2{font-size:19px}td,th{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}table{width:100%;table-layout:fixed}td{overflow-wrap:anywhere}@media print{body{margin:0}}</style></head><body><h1>Fieldwork by Baker — entry-level audit record</h1><p>Exported ' + escapeHtml(new Date().toISOString()) + '. Source evidence is not a new supervisor signature or a guarantee of BACB acceptance. Blank data means not recorded. Original source rows and revision history are preserved below.</p>' + entries.map(e => '<article><h2>' + escapeHtml(e.date + ' · ' + e.duration.toFixed(2) + ' hours · ' + e.activityCategory) + '</h2><p>' + escapeHtml((e.organizationName || 'Organization missing') + ' / ' + e.supervisorName + ' / ' + e.startTime + '–' + e.endTime) + '</p><h3>Activity narrative</h3><pre>' + escapeHtml(e.notes || 'Not recorded') + '</pre><h3>Complete current record, source fields and revisions</h3><pre>' + escapeHtml(JSON.stringify(e, null, 2)) + '</pre></article>').join('') + '</body></html>';
 }
-export async function downloadAuditArchive(owner: string): Promise<void> {
+export async function buildAuditArchive(owner: string): Promise<Uint8Array> {
   requireOwner(owner); const entries = loadEntries(owner) as AuditEntry[];
   const documents = await listDocuments(owner), batches = await listBatches(owner), enc = new TextEncoder();
+  const supervisors = loadSupervisors(owner), deviceRecoveryCopies = await listDeviceBackups(owner);
+  const rawDeviceRecoveryCopies = await (await import('./cloudSync')).listRawDeviceRecoveryCopies(owner);
   const files: Array<{ name: string; data: Uint8Array }> = [
-    { name: 'records.json', data: enc.encode(JSON.stringify({ format: 'baker-audit-v1', owner, exportedAt: new Date().toISOString(), entries, batches }, null, 2)) },
+    { name: 'records.json', data: enc.encode(JSON.stringify({ format: 'baker-audit-v1', owner, exportedAt: new Date().toISOString(), entries, supervisors, batches }, null, 2)) },
+    { name: 'device-recovery-copies.json', data: enc.encode(JSON.stringify({ owner, copies: deviceRecoveryCopies, rawDeviceRecoveryCopies }, null, 2)) },
     { name: 'entry-ledger.csv', data: enc.encode(auditCsv(entries)) },
     { name: 'entry-ledger.html', data: enc.encode(auditHtml(entries)) },
-    { name: 'README.txt', data: enc.encode('This is a FULL-ACCOUNT audit export. It may contain confidential fieldwork data. Review before sharing.\nOpen entry-ledger.html in a browser to read or print to PDF. CSV cells are formula-escaped for safety; exact source text remains in records.json and originals.\nOriginal files are preserved byte-for-byte; manifest.json records their names and SHA-256 hashes. These hashes detect changes against this manifest but are NOT trusted timestamps or supervisor signatures.\nrecords.json includes complete current records, source rows, exceptions, migration decisions, and pre-import snapshots. Source records whose live entries were removed remain in batch history.\nReconcile source entry count and all monthly/organization totals before leaving the original platform. Missing original narratives cannot be reconstructed from monthly totals.\nThis archive is browser-local until you download it. Store this ZIP securely outside the browser. Baker does not promise cloud backup here.\n') },
+    { name: 'README.txt', data: enc.encode('This is a FULL-ACCOUNT FIELDWORK AUDIT export. It may contain confidential fieldwork data. Review before sharing.\nOpen entry-ledger.html in a browser to read or print to PDF. CSV cells are formula-escaped for safety; exact source text remains in records.json and originals.\nOriginal files are preserved byte-for-byte; manifest.json records their names and SHA-256 hashes. These hashes detect changes against this manifest but are NOT trusted timestamps or supervisor signatures.\nrecords.json includes complete current records, source rows, exceptions, migration decisions, and pre-import snapshots. Source records whose live entries were removed remain in batch history.\nReconcile source entry count and all monthly/organization totals before leaving the original platform. Missing original narratives cannot be reconstructed from monthly totals.\nStorage details reports whether the account copy of these fieldwork records and originals has been verified. This downloaded ZIP is a separate backup; keep it securely outside the browser. Device recovery copies may include older or malformed source snapshots. Study progress, saved AI material, and other device-only preferences are outside this fieldwork audit export.\n') },
   ];
+  const originalDocuments: Array<Omit<SourceDocument, 'bytes'> & { archivePath: string }> = [];
   for (const doc of documents) {
     if (await sha256(new Uint8Array(doc.bytes)) !== doc.hash) throw new Error(`Original-file integrity check failed for ${doc.filename}. Export stopped; do not discard the source.`);
-    files.push({ name: `originals/${doc.hash}/${doc.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`, data: new Uint8Array(doc.bytes) });
+    const archivePath = `originals/${doc.hash}/${await sha256(doc.id)}/${doc.filename.replace(/[^a-zA-Z0-9._-]/g, '_') || 'original'}`;
+    files.push({ name: archivePath, data: new Uint8Array(doc.bytes) });
+    const metadata = { ...doc } as Partial<SourceDocument>; delete metadata.bytes;
+    originalDocuments.push({ ...metadata as Omit<SourceDocument, 'bytes'>, archivePath });
   }
   if (files.reduce((n, f) => n + f.data.byteLength, 0) > 150 * 1024 * 1024) throw new Error('Archive exceeds the 150 MB browser export safety limit. Download individual originals and your entry ledger; no records were truncated.');
-  const manifest = { format: 'baker-audit-manifest-v1', createdAt: new Date().toISOString(), entries: entries.length, originalDocuments: documents.map(({ bytes: _bytes, ...d }) => d), files: await Promise.all(files.map(async f => ({ path: f.name, bytes: f.data.byteLength, sha256: await sha256(f.data) }))), unresolvedBatches: batches.filter(b => b.state !== 'committed').map(b => b.id) };
+  const manifest = { format: 'baker-audit-manifest-v1', createdAt: new Date().toISOString(), entries: entries.length, originalDocuments, files: await Promise.all(files.map(async f => ({ path: f.name, bytes: f.data.byteLength, sha256: await sha256(f.data) }))), unresolvedBatches: batches.filter(b => b.state !== 'committed').map(b => b.id) };
   files.push({ name: 'manifest.json', data: enc.encode(JSON.stringify(manifest, null, 2)) });
-  requireOwner(owner); downloadBytes(`baker-full-audit-${new Date().toISOString().slice(0, 10)}.zip`, buildStoreZip(files), 'application/zip');
+  requireOwner(owner); return buildStoreZip(files);
+}
+export async function downloadAuditArchive(owner: string): Promise<void> {
+  const bytes = await buildAuditArchive(owner);
+  requireOwner(owner); downloadBytes(`baker-full-audit-${new Date().toISOString().slice(0, 10)}.zip`, bytes, 'application/zip');
 }

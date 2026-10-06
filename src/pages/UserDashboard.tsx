@@ -4,7 +4,7 @@ import { AlertTriangle, Bot, CheckCircle2, Copy, FileDown, LockKeyhole, Mail, Pl
 import type { ActivityType, HourEntry } from '@/types';
 import { addEntry, getCurrentUserEmail, hoursBetween, loadEntries, newId } from '@/lib/fieldworkStore';
 import { evaluateCompliance } from '@/lib/compliance2027';
-import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 
 function activityTypeFor(category: 'RESTRICTED' | 'UNRESTRICTED'): ActivityType {
   return category === 'RESTRICTED' ? 'RESTRICTED_DIRECT' : 'UNRESTRICTED_OTHER';
@@ -58,7 +58,7 @@ export default function UserDashboard() {
     try {
       const response = await fetch('/api/supervisor-invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
         body: JSON.stringify({ supervisorName, supervisorEmail, reviewEntry: { id: entry.id, date: entry.date, duration: entry.duration, activityCategory: entry.activityCategory, narrative: entry.notes || '', supervisorName: entry.supervisorName, supervisionMinutes: entry.supervisionMinutes || 0 } }),
       });
       const payload = await response.json() as { path?: string; error?: string };

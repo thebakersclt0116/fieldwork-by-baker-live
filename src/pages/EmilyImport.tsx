@@ -29,7 +29,7 @@ import {
   normalizeTime,
 } from '@/lib/fieldworkStore';
 import { evaluateCompliance } from '@/lib/compliance2027';
-import { getStoredAccessToken } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken } from '@/hooks/useAuth';
 
 type AiImportEntry = {
   date: string;
@@ -265,7 +265,7 @@ export default function EmilyImport() {
     if (!token) throw new Error('Your Baker session has expired. Sign in again.');
     const response = await fetch('/api/import-fieldwork', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
       body: JSON.stringify(body),
     });
     const payload = await response.json() as MigrationResponse;

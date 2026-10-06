@@ -31,7 +31,7 @@ import {
   normalizeDate,
   normalizeTime,
 } from '@/lib/fieldworkStore';
-import { getStoredAccessToken } from '@/hooks/useAuth';
+import { getAuthorizationHeaders, getStoredAccessToken } from '@/hooks/useAuth';
 import { buildStoreZip } from '@/lib/downloadZip';
 
 type AiImportEntry = {
@@ -292,7 +292,7 @@ export default function SmartImportBridge() {
     if (!token) throw new Error('Your Baker session expired. Sign in again and restart the migration.');
     const response = await fetch('/api/import-fieldwork', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', ...getAuthorizationHeaders() },
       body: JSON.stringify(body),
     });
     const payload = await response.json() as MigrationResponse;

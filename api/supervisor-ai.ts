@@ -7,7 +7,7 @@ function send(res: any, status: number, body: unknown) {
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
 }
 
-function fallback(session: ReturnType<typeof requireSession>, requestText: string) {
+function fallback(session: Awaited<ReturnType<typeof requireSession>>, requestText: string) {
   const entry = session?.reviewEntry;
   const concerns: string[] = [];
   if (!entry) concerns.push('No fieldwork entry is attached to this supervisor invite.');
@@ -48,7 +48,7 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req, ['supervisor']);
+  const session = await requireSession(req, ['supervisor']);
   if (!session || !session.reviewEntry || !session.superviseeEmail) {
     return send(res, 401, { error: 'A valid supervisor review invite tied to an entry is required.' });
   }
