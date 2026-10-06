@@ -1,0 +1,13 @@
+{
+  "application": "fieldwork-by-baker",
+  "mode": "live",
+  "currency": "usd",
+  "trial": { "days": 3, "cardRequiredAtSignup": false, "automaticChargeOnDayFour": false },
+  "checkoutEnabled": false,
+  "activationRequires": ["Durable verified user identity", "Server-side Stripe customer linkage", "Signed webhook processing and subscription reconciliation", "Live secret key stored privately in the deployment", "Verified cancellation and payment-failure handling"],
+  "plans": {
+    "individual_monthly": { "productId": "prod_VO99ZaeeK85Om0", "priceId": "price_1UNMr5AbMYqDEncBkDbWXXRX", "lookupKey": "fieldwork_individual_monthly_v1", "unitAmount": 1699, "interval": "month" },
+    "professional_monthly": { "productId": "prod_VO993JpdQbBdjK", "priceId": "price_1UNMrGAbMYqDEncBYyKrXnKw", "lookupKey": "fieldwork_professional_monthly_v1", "unitAmount": 3499, "interval": "month" },
+    "professional_annual": { "productId": "prod_VO993JpdQbBdjK", "priceId": "price_1UNMrOAbMYqDEncBM5o6q16S", "lookupKey": "fieldwork_professional_annual_v1", "unitAmount": 34900, "interval": "year" }
+  }
+}
