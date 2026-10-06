@@ -362,6 +362,10 @@
   }
 
   /* Site-wide dark mode compatibility for legacy hard-coded utility colors. */
+  .dark .signup-page [class~="bg-white/80"] {
+    background-color: var(--dark-elevated);
+  }
+
   .dark [class~="bg-white"],
   .dark [class~="bg-[#FFFCF9]"] {
     background-color: var(--dark-surface) !important;
