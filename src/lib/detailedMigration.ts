@@ -1,9 +1,10 @@
 import type { HourEntry, ActivityCategory, FieldworkType } from '../types';
+import type { PdfSession, PdfBucket } from './ripleyPdfLayout';
 
 export const MIGRATION_VERSION = 'entry-audit-v1';
 export const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 export const MAX_SOURCE_ROWS = 20000;
-export type SourceOrigin = { filename: string; sha256: string; sourceRow: number; original: unknown };
+export type SourceOrigin = { filename: string; sha256: string; sourceRow: number; original: unknown; pdfSession?: PdfSession };
 export type SourceTable = { headers: string[]; rows: string[][]; originals: unknown[]; origins?: SourceOrigin[] };
 export const FIELDS = {
   sourceId: ['Entry ID', 'id', 'entryId', 'recordId', 'hourId'],
@@ -40,7 +41,7 @@ export type Provenance = {
   sourceRow: number; sourceId: string; importedAt: string; mapping: Mapping;
   raw: Array<{ column: string; value: string }>; original: unknown;
   originalStatus: string; elapsedMinutes?: number; sourceStart: string; sourceEnd: string;
-  allocation?: string; warnings: string[];
+  allocation?: string; sourcePages?: number[]; warnings: string[];
 };
 export type AuditEntry = HourEntry & { migration?: Provenance; contactType?: string; recordKind?: 'SESSION' | 'MONTHLY_SUMMARY' };
 export type RowResult = { row: number; entries: AuditEntry[]; errors: string[]; warnings: string[] };
@@ -141,6 +142,8 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
     const originalRow = table.originals[index] as Record<string, unknown>;
     // Only in-memory provenance from locally combined files is authoritative. Never trust hash claims inside uploaded JSON.
     const attribution = table.origins?.[index];
+    const pdfSession = attribution?.pdfSession;
+    if (pdfSession) warnings.push(...pdfSession.warnings);
     const sourceHash = attribution?.sha256 || file.hash;
     const sourceRow = attribution?.sourceRow || index + 2;
     const sourceFile = attribution?.filename || file.name;
@@ -162,12 +165,13 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
     const format = formatValue === 'individual' ? 'INDIVIDUAL' : formatValue === 'group' ? 'GROUP' : undefined;
     const explicitCategory = enumText(get('category'));
     const category: ActivityCategory = explicitCategory === 'restricted' ? 'RESTRICTED' : explicitCategory === 'unrestricted' ? 'UNRESTRICTED' : 'UNKNOWN';
-    const allocations: Array<{ category: ActivityCategory; hours: number; label: string; group?: boolean }> = [];
-    for (const [key, cat] of [['restricted', 'RESTRICTED'], ['unrestricted', 'UNRESTRICTED'], ['group', 'UNRESTRICTED']] as const) {
+    const allocations: Array<{ category: ActivityCategory; hours: number; label: string; group?: boolean; pdfBucket?: PdfBucket }> = [];
+    if (!pdfSession) for (const [key, cat] of [['restricted', 'RESTRICTED'], ['unrestricted', 'UNRESTRICTED'], ['group', 'UNRESTRICTED']] as const) {
       const v = get(key), n = parseAmount(v);
       if (v.trim() && n === undefined) errors.push(`Invalid ${key} hours.`);
       if (n !== undefined && n > 0) allocations.push({ category: cat, hours: n, label: key, group: key === 'group' });
     }
+    if (pdfSession) for (const bucket of pdfSession.buckets.filter(b => b.hours > 0)) allocations.push({ category: bucket.category, hours: bucket.hours, label: bucket.key, group: bucket.format === 'GROUP', pdfBucket: bucket });
     const allocationTotal = round(allocations.reduce((s, a) => s + a.hours, 0));
     if (duration === undefined && allocationTotal > 0) duration = allocationTotal;
     if (allocations.length && duration !== undefined && Math.abs(duration - allocationTotal) > 0.011) errors.push('Category allocations do not match the entry total; resolve the source discrepancy before tracking.');
@@ -213,17 +217,17 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
       activityType: allocation.category === 'RESTRICTED' ? 'RESTRICTED_DIRECT' : 'UNRESTRICTED_OTHER',
       supervisorId: `source_${get('supervisor').trim().toLowerCase()}`, supervisorName: get('supervisor').trim() || 'Not specified',
       supervisorEmail: get('supervisorEmail').trim() || undefined, organizationName: get('organization').trim() || undefined,
-      workPresence: presence, supervisionFormat: allocation.group ? 'GROUP' : format,
+      workPresence: allocation.pdfBucket?.presence ?? presence, supervisionFormat: allocation.pdfBucket?.format ?? (allocation.group ? 'GROUP' : format),
       observationMode: mode, contactType: get('contactType') || undefined, clientInitials: get('client').trim() || undefined, setting: get('setting'),
       notes: noteParts.join('\n\n'), status: 'PENDING', createdAt: importedAt, updatedAt: importedAt,
       // Whole-row supervision is never multiplied across split allocations. The original remains in the audit source.
-      supervisionMinutes: allocations.length === 1 ? minuteValues.supervision : undefined,
+      supervisionMinutes: allocation.pdfBucket ? (allocation.pdfBucket.presence === 'SUPERVISED' ? round(allocation.hours * 60) : 0) : allocations.length === 1 ? minuteValues.supervision : undefined,
       observationMinutes: allocations.length === 1 ? minuteValues.observation : undefined,
-      individualSupervisionMinutes: allocations.length === 1 ? minuteValues.individual : undefined,
+      individualSupervisionMinutes: allocation.pdfBucket ? (allocation.pdfBucket.format === 'INDIVIDUAL' ? round(allocation.hours * 60) : 0) : allocations.length === 1 ? minuteValues.individual : undefined,
       aiSourceText: file.name,
       migration: { version: MIGRATION_VERSION, sourceSystem: options.sourceSystem, sourceFile, sourceHash,
         sourceRow, sourceId, importedAt, mapping: { ...mapping }, raw, original: originalEvidence, originalStatus,
-        elapsedMinutes: elapsed, sourceStart: get('startTime'), sourceEnd: get('endTime'), allocation: allocation.label, warnings: [...warnings] },
+        sourcePages: pdfSession?.pages, elapsedMinutes: elapsed, sourceStart: get('startTime'), sourceEnd: get('endTime'), allocation: allocation.label, warnings: [...warnings] },
     }));
     rows.push({ row: index + 2, entries, errors, warnings });
   }
@@ -264,7 +268,7 @@ export function selectionProblem(preview: MigrationPreview, selectedIds: string[
 }
 
 export function auditCsv(entries: AuditEntry[]): string {
-  const headers = ['Entry ID', 'Date', 'Start time', 'End time', 'Hours', 'Activity category', 'Fieldwork type', 'Organization', 'Supervisor', 'Supervisor email', 'Hour type', 'Supervision format', 'Supervision minutes', 'Observation minutes', 'Individual supervision minutes', 'Observation mode', 'Client initials', 'Setting', 'Description of activity', 'Baker status', 'Supervisor note', 'Supervisor message', 'Revision history', 'Source file', 'Source SHA256', 'Source row', 'Source entry ID', 'Source status', 'Original entry start', 'Original entry end', 'Allocation', 'Source warnings', 'Contact type', 'All original fields'];
+  const headers = ['Entry ID', 'Date', 'Start time', 'End time', 'Hours', 'Activity category', 'Fieldwork type', 'Organization', 'Supervisor', 'Supervisor email', 'Hour type', 'Supervision format', 'Supervision minutes', 'Observation minutes', 'Individual supervision minutes', 'Observation mode', 'Client initials', 'Setting', 'Description of activity', 'Baker status', 'Supervisor note', 'Supervisor message', 'Revision history', 'Source file', 'Source SHA256', 'Source row', 'Source entry ID', 'Source status', 'Original entry start', 'Original entry end', 'Allocation', 'Source PDF pages', 'Source warnings', 'Contact type', 'All original fields'];
   const cell = (v: unknown) => { const raw = text(v); const safe = /^[\s]*[=+@-]/.test(raw) ? "'" + raw : raw; return '"' + safe.replace(/"/g, '""') + '"'; };
-  return [headers, ...entries.map(e => [e.id, e.date, e.startTime, e.endTime, e.duration, e.activityCategory, e.fieldworkType, e.organizationName, e.supervisorName, e.supervisorEmail, e.workPresence, e.supervisionFormat, e.supervisionMinutes, e.observationMinutes, e.individualSupervisionMinutes, e.observationMode, e.clientInitials, e.setting, e.notes, e.status, e.supervisorNote, e.supervisorMessage, e.revisionHistory, e.migration?.sourceFile, e.migration?.sourceHash, e.migration?.sourceRow, e.migration?.sourceId, e.migration?.originalStatus, e.migration?.sourceStart, e.migration?.sourceEnd, e.migration?.allocation, e.migration?.warnings, e.contactType, e.migration?.raw])].map(row => row.map(cell).join(',')).join('\r\n');
+  return [headers, ...entries.map(e => [e.id, e.date, e.startTime, e.endTime, e.duration, e.activityCategory, e.fieldworkType, e.organizationName, e.supervisorName, e.supervisorEmail, e.workPresence, e.supervisionFormat, e.supervisionMinutes, e.observationMinutes, e.individualSupervisionMinutes, e.observationMode, e.clientInitials, e.setting, e.notes, e.status, e.supervisorNote, e.supervisorMessage, e.revisionHistory, e.migration?.sourceFile, e.migration?.sourceHash, e.migration?.sourceRow, e.migration?.sourceId, e.migration?.originalStatus, e.migration?.sourceStart, e.migration?.sourceEnd, e.migration?.allocation, e.migration?.sourcePages?.join(', '), e.migration?.warnings, e.contactType, e.migration?.raw])].map(row => row.map(cell).join(',')).join('\r\n');
 }
