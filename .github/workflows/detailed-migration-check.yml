@@ -5,8 +5,7 @@ on:
     paths:
       - 'src/**'
       - 'public/audit-bridge/**'
-      - 'scripts/*migration*'
-      - 'scripts/detailed-playwright.config.mjs'
+      - 'scripts/**'
       - '.github/workflows/detailed-migration-check.yml'
   workflow_dispatch:
 permissions:
@@ -17,26 +16,47 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply scoped hardening on feature branch only
+      - name: Apply remaining reviewed fixes once on feature branch
         if: github.ref == 'refs/heads/baker-audit-detail-migration'
         run: |
-          node scripts/harden-detailed-migration.mjs
-          git config user.name 'Baker Migration CI'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/pages/DetailedMigration.tsx src/lib/detailedMigration.ts src/lib/migrationArchive.ts
-          if ! git diff --cached --quiet; then
-            git commit -m 'Harden original-record migration and typed archive writes'
+          if test -f scripts/final-source-review.mjs; then
+            node scripts/final-source-review.mjs
+            git config user.name 'Baker Migration CI'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add src/lib/detailedMigration.ts public/audit-bridge/background.js scripts/detailed-migration.browser.mjs
+            git rm scripts/final-source-review.mjs scripts/harden-detailed-migration.mjs scripts/wire-detailed-migration.mjs
+            git commit -m 'Finish source fidelity fixes and remove temporary patch scripts'
             git push origin HEAD:baker-audit-detail-migration
           fi
           echo "Tested source commit: $(git rev-parse HEAD)"
-      - name: Exact source data regression tests
-        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs
+      - name: Read public domain and backend status without secrets
+        run: |
+          mkdir -p audit-test-artifacts
+          node --input-type=module <<'JS'
+          import dns from 'node:dns/promises';
+          import fs from 'node:fs/promises';
+          const report = { checkedAt: new Date().toISOString(), dns: [], services: [] };
+          for (const host of ['www.fieldworkbybaker.com','fieldworkbybaker.com']) {
+            for (const type of ['A','NS']) {
+              try { report.dns.push({host,type,values:await dns.resolve(host,type)}); } catch(e) { report.dns.push({host,type,error:e.code}); }
+            }
+          }
+          for (const host of ['www.fieldworkbybaker.com','fieldwork-by-baker-testing.vercel.app']) {
+            try {
+              const r=await fetch('https://'+host+'/api/health?release='+Date.now(), {signal:AbortSignal.timeout(15000)});
+              const data=await r.json(); report.services.push({host,status:r.status,model:data.model,aiGatewayAuthAvailable:data.aiGatewayAuthAvailable,secureSessionSigningAvailable:data.secureSessionSigningAvailable,stripeMode:data.stripeMode,deployedCommit:data.deployedCommit,version:data.detailedMigrationVersion});
+            } catch(e) { report.services.push({host,error:e.cause?.code || e.message}); }
+          }
+          await fs.writeFile('audit-test-artifacts/public-readiness.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report,null,2));
+          JS
+      - name: Exact source and source-fidelity regressions
+        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs
       - name: Install build dependencies
         run: |
           npm config set registry https://registry.npmjs.org/
@@ -55,7 +75,7 @@ jobs:
           done
       - name: Install isolated browser test tools
         run: |
-          npm install --no-save --package-lock=false @playwright/test@1.51.1
+          npm install --no-save --package-lock=false @playwright/test@latest
           npx playwright install --with-deps chromium
       - name: Browser acceptance tests against compiled app
         run: npx playwright test --config=scripts/detailed-playwright.config.mjs
@@ -65,28 +85,27 @@ jobs:
           EXPECTED_COMMIT: ${{ github.sha }}
         run: |
           node --input-type=module <<'JS'
-          let ready = false;
-          for (let attempt = 0; attempt < 45; attempt++) {
+          let ready=false;
+          for(let attempt=0;attempt<30;attempt++){
             try {
-              const r = await fetch('https://www.fieldworkbybaker.com/api/health?audit_check=' + Date.now());
-              const h = await r.json();
-              if (h.deployedCommit === process.env.EXPECTED_COMMIT && h.detailedMigrationVersion === 'entry-audit-v1') { ready = true; break; }
+              const r=await fetch('https://www.fieldworkbybaker.com/api/health?release='+Date.now(),{signal:AbortSignal.timeout(10000)}); const h=await r.json();
+              if(h.deployedCommit===process.env.EXPECTED_COMMIT && h.detailedMigrationVersion==='entry-audit-v1'){ready=true;break;}
             } catch {}
-            await new Promise(r => setTimeout(r, 10000));
+            await new Promise(r=>setTimeout(r,10000));
           }
-          if (!ready) throw new Error('Expected main commit is not live on the custom domain; deployment must be checked.');
-          console.log('Exact main commit is live; running normal signed-trial production acceptance.');
+          if(!ready) throw new Error('Public custom domain is not serving the expected release. Check DNS/Namecheap verification and Vercel deployment.');
+          console.log('Exact release is live on public custom domain.');
           JS
-      - name: Real authenticated production migration acceptance
+      - name: Real signed-trial production acceptance
         if: github.ref == 'refs/heads/main'
         env:
           BAKER_TEST_ORIGIN: https://www.fieldworkbybaker.com
         run: npx playwright test --config=scripts/detailed-playwright.config.mjs
-      - name: Collect safe synthetic evidence
+      - name: Collect safe synthetic evidence and review sources
         if: always()
         run: |
           mkdir -p audit-test-artifacts
-          zip -q audit-test-artifacts/review-source.zip src/pages/DetailedMigration.tsx src/lib/detailedMigration.ts src/lib/migrationArchive.ts src/lib/fieldworkStore.ts src/lib/downloadZip.ts src/types/index.ts src/App.tsx public/audit-bridge/background.js scripts/detailed-migration.test.mjs scripts/detailed-migration.browser.mjs
+          git archive --format=zip --output=audit-test-artifacts/review-source.zip HEAD src public scripts .github/workflows package.json tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts vercel.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
