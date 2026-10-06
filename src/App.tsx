@@ -18,6 +18,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
 const DetailedMigration = lazy(() => import('./pages/DetailedMigration'));
+const ResetEmilyFieldwork = lazy(() => import('./pages/ResetEmilyFieldwork'));
 const BakerAI = lazy(() => import('./pages/BakerAI'));
 const BakerBrainHub = lazy(() => import('./pages/BakerBrainHub'));
 const MyPathV2 = lazy(() => import('./pages/MyPathV2'));
@@ -36,18 +37,12 @@ const Legal = lazy(() => import('./pages/Legal'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function RouteFallback() {
-  return (
-    <div className="min-h-[60vh] flex items-center justify-center bg-[#FFFCF9] text-sm text-[#A8998E]" role="status">
-      Loading Fieldwork by Baker…
-    </div>
-  );
+  return <div className="min-h-[60vh] flex items-center justify-center bg-[#FFFCF9] text-sm text-[#A8998E]" role="status">Loading Fieldwork by Baker…</div>;
 }
-
 function AccountDashboard() {
   const { isOwner } = useAuth();
   return isOwner ? <Dashboard /> : <MemberDashboard />;
 }
-
 export default function App() {
   return (
     <Layout>
@@ -67,20 +62,19 @@ export default function App() {
         <Route path="/security" element={<Legal />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
-
         <Route path="/my-path" element={<ProtectedRoute><PaidFeatureRoute><MyPathV2 /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/roadmap" element={<BCBARoadmap />} />
         <Route path="/commons" element={<ProtectedRoute><PaidFeatureRoute><BakerCommons /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/baker-brain" element={<ProtectedRoute><PaidFeatureRoute><BakerBrainHub /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/exam-lab" element={<ProtectedRoute><PaidFeatureRoute><ExamLab /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/resources" element={<ProtectedRoute><PaidFeatureRoute><ResourceVault /></PaidFeatureRoute></ProtectedRoute>} />
-
         <Route path="/dashboard" element={<ProtectedRoute><PaidFeatureRoute><AccountDashboard /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
         <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><DetailedMigration /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/audit-history" element={<ProtectedRoute><DetailedMigration /></ProtectedRoute>} />
+        <Route path="/reset-fieldwork" element={<ProtectedRoute><ResetEmilyFieldwork /></ProtectedRoute>} />
         <Route path="/import-monthly" element={<Navigate to="/import" replace />} />
         <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/admin/supervisor-preview" element={<ProtectedRoute><AdminSupervisorPreview /></ProtectedRoute>} />
