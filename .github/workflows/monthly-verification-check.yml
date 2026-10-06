@@ -1,0 +1,41 @@
+name: Monthly Verification and Recovery Checks
+on:
+  push:
+    branches: [launch-readiness-hardening, main]
+    paths: ['src/**', 'api/**', 'server/**', 'scripts/**', 'supabase/**', 'package*.json', 'vercel.json', '.github/workflows/monthly-verification-check.yml']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --registry=https://registry.npmjs.org/
+      - name: Paid entitlement, PDF, recovery and record boundary tests
+        run: node --test scripts/monthly-verification.test.mjs scripts/managed-session.test.mjs scripts/cloud-boundary.test.mjs scripts/cloud-saving.test.mjs scripts/launch-hardening.test.mjs scripts/managed-review.test.mjs scripts/time-display.test.mjs
+      - name: Build frontend
+        run: npm run build
+      - name: Bundle all server routes
+        run: |
+          mkdir -p /tmp/monthly-api
+          for route in api/*.ts; do
+            case "$route" in api/_*) continue ;; esac
+            ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/monthly-api/$(basename "$route" .ts).mjs"
+          done
+      - run: npm install --no-save --package-lock=false @playwright/test@1.61.1
+      - run: npx playwright install chromium
+      - name: Month navigation, mobile layout and password recovery
+        run: npx playwright test --config=scripts/monthly-playwright.config.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monthly-feature-browser-evidence
+          path: monthly-test-artifacts
+          retention-days: 7

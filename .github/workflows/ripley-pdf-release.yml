@@ -1,13 +1,11 @@
 name: Ripley PDF Release
 on:
   push:
-    branches: [baker-ripley-detailed-pdf-20261006, main]
-    paths: ['src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
-  pull_request:
-    branches: [main]
+    branches: [baker-ripley-detailed-pdf-20261006, simplify-ripley-import, main]
+    paths: ['vite.config.ts', 'src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: ripley-pdf-${{ github.ref }}
   cancel-in-progress: true
@@ -19,9 +17,23 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
+      - name: Apply final source-integrity review on feature branch
+        if: github.ref == 'refs/heads/baker-ripley-detailed-pdf-20261006'
+        run: |
+          if test -f scripts/harden-pdf-batch.mjs; then
+            node scripts/harden-pdf-batch.mjs
+            git config user.name 'Baker PDF Release CI'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add src/pages/DetailedMigration.tsx scripts/ripley-pdf-browser-check.mjs
+            git rm scripts/harden-pdf-batch.mjs
+            git commit -m 'Block incomplete PDF batches and show source candidate before import'
+            git push origin HEAD:baker-ripley-detailed-pdf-20261006
+          fi
+          echo "Tested commit: $(git rev-parse HEAD)"
       - name: Install exactly as current Vercel project
         run: |
-          npm ci --registry=https://registry.npmjs.org/
+          rm -f package-lock.json
+          npm install --registry=https://registry.npmjs.org/
       - name: Resolve real PDF reader and matching worker
         run: |
           node --input-type=module <<'JS'
@@ -31,7 +43,7 @@ jobs:
           console.log('Installed pdfjs-dist version: '+require('pdfjs-dist/package.json').version);
           JS
       - name: Existing data integrity regression tests
-        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs scripts/import-integrity.test.mjs
+        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs scripts/import-integrity.test.mjs scripts/time-display.test.mjs
       - name: Production regression checks
         run: node scripts/fieldwork-regression-check.mjs
       - name: Full TypeScript and Vite production build

@@ -1,4 +1,5 @@
 import { requireSession, signSession } from './_auth.js';
+import {isManagedReview,acceptManagedReview} from '../server/managed-review.js';
 
 function send(res: any, status: number, body: unknown) {
   res.setHeader('Cache-Control', 'private, no-store');
@@ -10,6 +11,7 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Allow', 'POST');
     return send(res, 405, { error: 'Method not allowed' });
   }
+  if(isManagedReview(req.body?.invitation))return acceptManagedReview(req,res);
 
   const session = requireSession(req, ['supervisor']);
   if (!session || !session.superviseeEmail) {

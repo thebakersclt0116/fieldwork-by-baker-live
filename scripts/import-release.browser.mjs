@@ -16,7 +16,7 @@ test.beforeEach(async ({ page, request }) => {
     await page.route('**/api/health*', route => route.fulfill({ json: { stripeMode: 'test', stripeCheckoutConfigured: true } }));
   }
   await page.addInitScript(({ user, token }) => { localStorage.setItem('authUser', JSON.stringify(user)); localStorage.setItem('bakerSessionToken', token); localStorage.setItem('theme', 'dark'); }, { user, token });
-  await page.goto('/import'); await expect(page.getByRole('heading', { name: 'Every entry. The original details. A record you can keep.' })).toBeVisible();
+  await page.goto('/import/ripley'); await expect(page.getByRole('heading', { name: 'Every entry. The original details. A record you can keep.' })).toBeVisible();
 });
 const readRecords = (page) => page.evaluate(email => JSON.parse(localStorage.getItem(`fieldworkByBaker:v1:${email}:entries`) || '[]'), owner);
 async function load(page, entries = [record]) {
@@ -48,6 +48,7 @@ test('invalid source rows block a complete import until a partial import is expl
   await expect(page.getByRole('note')).toContainText('Complete-file mode');
   await page.getByLabel('Intentionally import only the selected valid sessions.', { exact: false }).check();
   await commit(page); await expect.poll(async () => (await readRecords(page)).length).toBe(1);
+  await page.goto('/audit-history');
   await page.locator('summary').filter({ hasText: '2 original rows' }).click();
   await expect(page.locator('p').filter({ hasText: 'EXPLICIT PARTIAL IMPORT.' }).first()).toBeVisible();
 });
@@ -92,6 +93,7 @@ test('simulated storage exhaustion never reports success or destroys prior track
   await commit(page);
   await expect(page.getByRole('status')).toContainText('storage quota exhausted');
   expect(await readRecords(page)).toEqual([]);
+  await page.goto('/audit-history');
   await expect(page.getByText('synthetic-source.json', { exact: true })).toBeVisible();
 });
 test('explicit monthly-summary data cannot be imported as fabricated individual sessions', async ({ page }) => {

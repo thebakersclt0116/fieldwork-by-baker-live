@@ -5,7 +5,7 @@ export interface ManagedAccount {
   token: string;
   refreshToken: string;
   expiresAt: number;
-  user: { name: string; email: string; role: 'owner'|'free'|'paid'|'professional'|'supervisor'; subscription?: 'none'|'individual'|'professional'; trialEndsAt?: number };
+  user: { name: string; email: string; role: 'owner'|'free'|'paid'|'professional'|'supervisor'; subscription?: 'none'|'individual'|'professional'; subscriptionStatus?: string; trialEndsAt?: number };
 }
 export async function accountRequest(body: Record<string,unknown>): Promise<{ response: Response; payload: ManagedAccount & { verificationRequired?: boolean } }> {
   const response = await fetch('/api/account', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });

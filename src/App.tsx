@@ -18,6 +18,7 @@ const SignUp = lazy(() => import('./pages/SignUp'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
+const AccountSettings = lazy(() => import('./pages/AccountSettings'));
 const DetailedMigration = lazy(() => import('./pages/DetailedMigration'));
 const BakerAI = lazy(() => import('./pages/BakerAI'));
 const BakerBrainHub = lazy(() => import('./pages/BakerBrainHub'));
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/forgot-password" element={<AccountRecovery />} />
         <Route path="/reset-password" element={<AccountRecovery />} />
 
+        <Route path="/settings" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
         <Route path="/my-path" element={<ProtectedRoute><PaidFeatureRoute><MyPathV2 /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/roadmap" element={<BCBARoadmap />} />
         <Route path="/commons" element={<ProtectedRoute><PaidFeatureRoute><BakerCommons /></PaidFeatureRoute></ProtectedRoute>} />
@@ -83,6 +85,7 @@ export default function App() {
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
         <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><DetailedMigration /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/import/ripley" element={<ProtectedRoute><PaidFeatureRoute><DetailedMigration /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/audit-history" element={<ProtectedRoute><DetailedMigration /></ProtectedRoute>} />
         <Route path="/import-monthly" element={<Navigate to="/import" replace />} />
         <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />

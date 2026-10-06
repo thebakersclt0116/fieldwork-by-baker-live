@@ -52,7 +52,7 @@ export default async function handler(req: any, res: any) {
       const role = ['owner','supervisor'].includes(profile.role) ? profile.role : activeSubscription ? (profile.subscription_tier === 'professional' ? 'professional' : 'paid') : 'free';
       return send(200, { token: payload.access_token, refreshToken: payload.refresh_token, expiresAt: payload.expires_at,
         user: { name: profile.display_name, email: identity.email, role,
-          subscription: activeSubscription ? profile.subscription_tier : 'none',
+          subscription: activeSubscription ? profile.subscription_tier : 'none', subscriptionStatus: profile.subscription_status,
           trialEndsAt: profile.trial_ends_at ? Math.floor(Date.parse(profile.trial_ends_at)/1000) : undefined } });
     }
     if (action === 'logout') {

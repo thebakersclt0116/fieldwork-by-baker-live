@@ -1,6 +1,5 @@
 import {useEffect,useState} from 'react';
 import {Link,useLocation} from 'react-router';
-import {managedAccountsEnabled} from '@/lib/managedSession';
 
 export default function AccountRecovery(){
   const location=useLocation();const reset=location.pathname==='/reset-password';
@@ -24,7 +23,7 @@ export default function AccountRecovery(){
     }catch{setError('Recovery could not complete. Request a fresh link and try again.');}finally{setBusy(false);}
   }
   return <main className="mx-auto max-w-md px-4 py-16"><h1 className="font-serif text-3xl font-semibold">{reset?'Choose a new password':'Recover your account'}</h1>
-    {!managedAccountsEnabled?<p className="my-5">Account recovery is being connected. Please contact support if you need access to your existing beta account.</p>:done?<p role="status" className="my-5">{reset?'Your password was changed. Sign in again with your new password.':'If an account exists for that email, you’ll receive a password-reset link. Check your inbox and spam folder.'}</p>:<form onSubmit={submit} className="my-6 space-y-4">
+    {done?<p role="status" className="my-5">{reset?'Your password was changed. Sign in again with your new password.':'If an account exists for that email, you’ll receive a password-reset link. Check your inbox and spam folder.'}</p>:<form onSubmit={submit} className="my-6 space-y-4">
       {reset?<><label className="block">New password<input required minLength={8} maxLength={1024} autoComplete="new-password" type="password" value={password} onChange={event=>setPassword(event.target.value)} className="mt-2 w-full rounded border p-3"/></label><label className="block">Confirm password<input required minLength={8} maxLength={1024} autoComplete="new-password" type="password" value={confirmation} onChange={event=>setConfirmation(event.target.value)} className="mt-2 w-full rounded border p-3"/></label></>:<label className="block">Account email<input required maxLength={254} autoComplete="email" type="email" value={email} onChange={event=>setEmail(event.target.value)} className="mt-2 w-full rounded border p-3"/></label>}
       {error&&<p role="alert">{error}</p>}<button disabled={busy||(reset&&!recoveryToken)} className="rounded bg-[#E85D70] px-5 py-3 font-semibold text-white">{busy?'Please wait…':reset?'Save new password':'Send recovery email'}</button>
     </form>}<Link to="/login" className="inline-block font-semibold text-[#D94D62]">Return to sign in</Link>

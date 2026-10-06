@@ -21,7 +21,14 @@ export async function cloudRequest(path: string, token: string | null, options: 
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const detail = payload && typeof payload === 'object' && 'message' in payload ? String(payload.message) : '';
+    if (detail.includes('FORM_EMAIL_LIMIT')) throw new CloudError('FORM_EMAIL_LIMIT',429);
+    if (detail.includes('EMAIL_REQUEST_CONFLICT') || detail.includes('EMAIL_REQUEST_EXPIRED')) throw new CloudError('EMAIL_REQUEST_CONFLICT',409);
+    if (detail.includes('PAID_SUBSCRIPTION_REQUIRED')) throw new CloudError('PAID_SUBSCRIPTION_REQUIRED',403);
     if (detail.includes('VERSION_CONFLICT')) throw new CloudError('VERSION_CONFLICT',409);
+    if (detail.includes('REVIEW_ALREADY_SAVED')) throw new CloudError('REVIEW_ALREADY_SAVED',409);
+    if (detail.includes('REVIEW_NOT_AVAILABLE')) throw new CloudError('REVIEW_NOT_AVAILABLE',403);
+    if (detail.includes('SUPERVISOR_TOOLS_REQUIRED')) throw new CloudError('SUPERVISOR_TOOLS_REQUIRED',403);
+    if (detail.includes('INVITATION_LIMIT')) throw new CloudError('INVITATION_LIMIT',429);
     if (detail.includes('APPROVED_EDIT_REASON_REQUIRED')) throw new CloudError('APPROVED_EDIT_REASON_REQUIRED',400);
     if (detail.includes('STORAGE_LIMIT')) throw new CloudError('STORAGE_LIMIT',413);
     if (detail.includes('ORIGINAL_NOT_VERIFIED')) throw new CloudError('ORIGINAL_NOT_VERIFIED',409);

@@ -1,3 +1,5 @@
+import MonthlyProgress from '@/components/MonthlyProgress';
+import { currentMonthKey, summarizeMonth } from '@/lib/monthlyProgress';
 import { accountStorage } from '@/lib/accountStorage';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
@@ -32,7 +34,9 @@ export default function MyPathV2() {
   const [editing, setEditing] = useState(false);
 
   const save = () => { accountStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); setEditing(false); };
-  const latestMonth = [...compliance.months].sort((a, b) => b.month.localeCompare(a.month))[0];
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
+  const currentMonth = summarizeMonth(entries, currentMonthKey());
+  const latestMonth = compliance.months.find(month => month.month === currentMonthKey());
   const progress = Math.min(100, Math.max(8, Math.round((compliance.actualHours / 2000) * 100)));
   const supervisionNeedsAttention = Boolean(latestMonth && latestMonth.supervisionMinutes < latestMonth.requiredSupervisionMinutes);
 
@@ -56,11 +60,13 @@ export default function MyPathV2() {
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card icon={Clock3} title="Fieldwork progress" value={latestMonth ? `${latestMonth.totalHours.toFixed(1)}h this month` : 'No hours yet'} text="Review supervision, observation, restricted/unrestricted balance, and pending approvals." href="/dashboard" cta="Open fieldwork" />
+          <Card icon={Clock3} title="Fieldwork progress" value={`${currentMonth.totalHours.toFixed(2)}h this month`} text="Review supervision, observation, restricted/unrestricted balance, and pending approvals." href="/dashboard" cta="Open fieldwork" />
           <Card icon={FlaskConical} title="Exam Lab" value="Practice smarter" text={`Focus adaptive sets around ${profile.growthArea || 'your weakest content areas'}.`} href="/exam-lab" cta="Start practice" />
           <Card icon={Users} title="Baker Commons" value="Your people are here" text="Join exam-date cohorts, study groups, fieldwork discussions, and professional Q&A." href="/commons" cta="Open Commons" />
           <Card icon={FileText} title="Saved resources" value="Build your collection" text="Keep study guides, templates, notes, and career tools organized in one vault." href="/resources" cta="Open Vault" />
         </section>
+
+        <MonthlyProgress entries={entries} selectedMonth={selectedMonth} onSelect={setSelectedMonth} />
 
         <section className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-[28px] border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><div className="flex items-center gap-2"><Route size={18} className="text-[#E85D70]" /><h3 className="font-serif text-xl font-semibold text-[#332C28] dark:text-white">Roadmap progress</h3></div><p className="mt-2 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Keep education, fieldwork, application, exam, and career milestones in one updateable path.</p><Link to="/roadmap" className="mt-4 inline-block text-sm font-bold text-[#E85D70]">Continue roadmap →</Link></div>

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { useParams, Link } from 'react-router';
+import {currentManagedToken} from '@/lib/managedSession';
 import { Bot, CheckCircle2, ClipboardCheck, Copy, Mail, MessageSquare, Send, ShieldCheck, Sparkles, XCircle } from 'lucide-react';
 
 type ReviewEntry = {
@@ -10,6 +11,8 @@ type ReviewEntry = {
   narrative: string;
   supervisorName?: string;
   supervisionMinutes?: number;
+  revision?:number;
+  status?:'VERIFIED'|'PENDING'|'REJECTED';
 };
 
 type SupervisorSession = {
@@ -17,6 +20,8 @@ type SupervisorSession = {
   superviseeEmail: string;
   reviewEntry: ReviewEntry | null;
   expiresAt: string;
+  managed?:boolean;
+  saved?:boolean;
 };
 
 type SupervisorAiDraft = {
@@ -47,6 +52,9 @@ const AI_ABILITIES = [
 
 export default function SupervisorView() {
   const { token = '' } = useParams();
+  const managed=/^c1\.[a-f0-9]{64}$/.test(token);
+  const requestId=useRef(crypto.randomUUID());
+  const [saved,setSaved]=useState(false);
   const [session, setSession] = useState<SupervisorSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,12 +76,12 @@ export default function SupervisorView() {
       try {
         const response = await fetch('/api/supervisor-session', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json',...(managed?{Authorization:'Bearer '+await currentManagedToken()}:{}) },
           body: JSON.stringify({ token }),
         });
         const payload = await response.json() as SupervisorSession & { error?: string };
         if (!response.ok) throw new Error(payload.error || 'Invalid supervisor invite.');
-        if (active) setSession(payload);
+        if (active) {setSession(payload);setSaved(payload.saved===true);if(payload.saved&&payload.reviewEntry?.status)setStatus(payload.reviewEntry.status);}
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : 'Invalid supervisor invite.');
       } finally {
@@ -108,9 +116,9 @@ export default function SupervisorView() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${managed?await currentManagedToken():token}`,
         },
-        body: JSON.stringify({ request: aiPrompt }),
+        body: JSON.stringify({ request: aiPrompt,...(managed?{invitation:token}:{}) }),
       });
       const payload = await response.json() as SupervisorAiDraft & { error?: string };
       if (!response.ok || !payload.note || !payload.message) {
@@ -142,16 +150,18 @@ export default function SupervisorView() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${managed?await currentManagedToken():token}`,
         },
         body: JSON.stringify({
           entryId: session.reviewEntry.id,
           status,
           note,
           message,
+          ...(managed?{invitation:token,revision:session.reviewEntry.revision,requestId:requestId.current}:{}),
         }),
       });
-      const payload = await response.json() as { path?: string; subject?: string; error?: string };
+      const payload = await response.json() as { path?: string; subject?: string; error?: string; saved?:boolean };
+      if(managed){if(!response.ok||!payload.saved)throw new Error(payload.error||'Review was not confirmed.');setSaved(true);return;}
       if (!response.ok || !payload.path) throw new Error(payload.error || 'Could not create signed feedback.');
       setFeedbackUrl(`${window.location.origin}${payload.path}`);
       if (payload.subject) setSubject(payload.subject);
@@ -173,6 +183,7 @@ export default function SupervisorView() {
           <XCircle size={34} className="mx-auto text-[#C9445A] mb-4" />
           <h1 className="font-serif text-2xl font-semibold text-[#332C28] mb-2">Supervisor link unavailable</h1>
           <p className="text-sm text-[#A8998E]">{error || 'This invite is invalid or expired.'}</p>
+          {managed&&<Link className="mt-5 inline-block rounded bg-[#E85D70] px-4 py-3 font-semibold text-white" to={'/login?return='+encodeURIComponent('/supervisor/'+token)}>Sign in with your invited email</Link>}
         </div>
       </div>
     );
@@ -183,7 +194,7 @@ export default function SupervisorView() {
       <div className="max-w-6xl mx-auto space-y-6">
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-[#5FA37E] text-sm font-semibold mb-2"><ShieldCheck size={17} /> Secure supervisor beta access</div>
+            <div className="flex items-center gap-2 text-[#5FA37E] text-sm font-semibold mb-2"><ShieldCheck size={17} /> {managed?'Verified supervisor access':'Secure supervisor beta access'}</div>
             <h1 className="font-serif text-4xl font-semibold text-[#332C28] mb-2">Review fieldwork with Baker AI</h1>
             <p className="text-[#6B5D54]">Invited as {session.supervisor.name}. This signed link is scoped to {session.superviseeEmail}.</p>
           </div>
@@ -281,9 +292,10 @@ export default function SupervisorView() {
 
               {error && <div className="mb-4 rounded-xl bg-[#FFF5F7] px-4 py-3 text-sm text-[#C9445A]">{error}</div>}
 
-              <button onClick={() => void submitFeedback()} disabled={submitting || !session.reviewEntry} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#332C28] text-white px-5 py-3 text-sm font-semibold disabled:opacity-40">
-                <CheckCircle2 size={17} /> {submitting ? 'Signing feedback…' : 'Create signed feedback'}
+              <button onClick={() => void submitFeedback()} disabled={submitting || !session.reviewEntry || saved} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#332C28] text-white px-5 py-3 text-sm font-semibold disabled:opacity-40">
+                <CheckCircle2 size={17} /> {saved?'Review saved':submitting?'Saving review…':managed?'Save review to this entry':'Create signed feedback'}
               </button>
+              {managed&&saved&&<p role="status" className="mt-4 rounded bg-[#E8F5EE] p-4 text-sm text-[#4B8C69]">Your review is saved to the candidate’s account for this entry version. Further changes require a new invitation.</p>}
 
               {feedbackUrl && (
                 <div className="mt-5 rounded-2xl bg-[#E8F5EE] border border-[#B7DEC7] p-4">
