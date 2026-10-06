@@ -1,8 +1,8 @@
 name: Ripley PDF Release
 on:
   push:
-    branches: [baker-ripley-detailed-pdf-20261006, main]
-    paths: ['src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
+    branches: [baker-ripley-detailed-pdf-20261006, simplify-ripley-import, main]
+    paths: ['vite.config.ts', 'src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -43,7 +43,7 @@ jobs:
           console.log('Installed pdfjs-dist version: '+require('pdfjs-dist/package.json').version);
           JS
       - name: Existing data integrity regression tests
-        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs scripts/import-integrity.test.mjs
+        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs scripts/import-integrity.test.mjs scripts/time-display.test.mjs
       - name: Production regression checks
         run: node scripts/fieldwork-regression-check.mjs
       - name: Full TypeScript and Vite production build

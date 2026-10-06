@@ -1,3 +1,5 @@
+import TimeInput from '@/components/TimeInput';
+import { formatTime } from '@/lib/timeDisplay';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import { AlertTriangle, CheckCircle2, Edit3, Mail, Pencil, Save, X } from 'lucide-react';
@@ -52,7 +54,7 @@ function reviewNarrative(entry: HourEntry, reason: string): string {
   const lines = [
     reason ? `CHANGE AFTER APPROVAL — Reason: ${reason}` : '',
     entry.organizationName ? `Organization: ${entry.organizationName}` : '',
-    entry.startTime && entry.endTime && entry.startTime !== '00:00' ? `Time: ${entry.startTime}–${entry.endTime}` : '',
+    entry.startTime && entry.endTime && entry.startTime !== '00:00' ? `Time: ${formatTime(entry.startTime)}–${formatTime(entry.endTime)}` : '',
     `Current duration: ${entry.duration.toFixed(2)} hours`,
     `Category: ${entry.activityCategory}`,
     entry.workPresence ? `Entry type: ${entry.workPresence}` : '',
@@ -359,8 +361,8 @@ export default function TrackedHoursEditor() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <Field label="Date"><input type="date" value={draft.date} onChange={(e) => updateDraft('date', e.target.value)} className="field-input" /></Field>
-                      <Field label="Start time"><input type="time" value={draft.startTime || ''} onChange={(e) => updateDraft('startTime', e.target.value)} className="field-input" /></Field>
-                      <Field label="End time"><input type="time" value={draft.endTime || ''} onChange={(e) => updateDraft('endTime', e.target.value)} className="field-input" /></Field>
+                      <Field label="Start time"><TimeInput label="Start time" value={draft.startTime || ''} onChange={(value) => updateDraft('startTime', value)} className="field-input" /></Field>
+                      <Field label="End time"><TimeInput label="End time" value={draft.endTime || ''} onChange={(value) => updateDraft('endTime', value)} className="field-input" /></Field>
                       <Field label="Hours"><input type="number" min="0.01" step="0.01" value={computedDuration} onChange={(e) => updateDraft('duration', Number(e.target.value))} disabled={draft.startTime !== '00:00' && draft.endTime !== '00:00' && hoursBetween(draft.startTime, draft.endTime) > 0} className="field-input disabled:opacity-60" /><span className="mt-1 block text-[10px] text-[#A8998E]">Valid start/end times automatically control the decimal.</span></Field>
                       <Field label="Organization"><input value={draft.organizationName || ''} onChange={(e) => updateDraft('organizationName', e.target.value)} className="field-input" placeholder="Melmark Carolinas" /></Field>
                       <Field label="Responsible supervisor"><input value={draft.supervisorName || ''} onChange={(e) => updateDraft('supervisorName', e.target.value)} className="field-input" placeholder="Carrie" /></Field>

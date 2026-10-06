@@ -1,3 +1,4 @@
+import { formatTime } from '@/lib/timeDisplay';
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -259,7 +260,7 @@ export default function CalendarTab() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-medium text-[#E85D70]">
-                      {entry.startTime} — {entry.endTime}
+                      {formatTime(entry.startTime)} — {formatTime(entry.endTime)}
                     </span>
                     <span className="font-mono text-sm font-medium text-[#332C28]">
                       {entry.duration}h

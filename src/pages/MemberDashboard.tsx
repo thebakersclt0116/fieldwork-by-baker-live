@@ -1,3 +1,5 @@
+import TimeInput from '@/components/TimeInput';
+import { formatTime } from '@/lib/timeDisplay';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import {
@@ -57,7 +59,7 @@ function labelize(value: string | undefined): string {
 function reviewNarrative(entry: DetailedHourEntry): string {
   const metadata = [
     entry.organizationName ? `Organization: ${entry.organizationName}` : '',
-    entry.startTime && entry.endTime && entry.startTime !== '00:00' ? `Time: ${entry.startTime}–${entry.endTime}` : '',
+    entry.startTime && entry.endTime && entry.startTime !== '00:00' ? `Time: ${formatTime(entry.startTime)}–${formatTime(entry.endTime)}` : '',
     entry.workPresence ? `Entry type: ${labelize(entry.workPresence)}` : '',
     entry.supervisionFormat ? `Supervision format: ${labelize(entry.supervisionFormat)}` : '',
     entry.observationMinutes ? `Client observation: ${entry.observationMinutes} min${entry.observationMode ? ` (${labelize(entry.observationMode)})` : ''}` : '',
@@ -349,8 +351,8 @@ export default function MemberDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <InputLabel label="Date"><input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="field-input" /></InputLabel>
-                <InputLabel label="Start time"><input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className="field-input" /></InputLabel>
-                <InputLabel label="End time"><input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className="field-input" /></InputLabel>
+                <InputLabel label="Start time"><TimeInput label="Start time" value={startTime} onChange={(value) => setStartTime(value)} className="field-input" /></InputLabel>
+                <InputLabel label="End time"><TimeInput label="End time" value={endTime} onChange={(value) => setEndTime(value)} className="field-input" /></InputLabel>
                 <div className="rounded-xl border border-[#F0D5DA] bg-[#FFF5F7] px-4 py-3">
                   <div className="text-xs text-[#A8998E]">Exact decimal</div>
                   <div className="font-mono text-2xl text-[#E85D70] mt-1">{duration > 0 ? duration.toFixed(2) : '0.00'}h</div>
@@ -435,7 +437,7 @@ export default function MemberDashboard() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                             <EntryFact label="Organization" value={entry.organizationName || entry.setting || 'Not specified'} />
                             <EntryFact label="Responsible supervisor" value={entry.supervisorName || 'Not specified'} />
-                            <EntryFact label="Time" value={entry.startTime && entry.endTime && entry.startTime !== '00:00' ? `${entry.startTime}–${entry.endTime}` : `${entry.duration.toFixed(2)} hours recorded`} />
+                            <EntryFact label="Time" value={entry.startTime && entry.endTime && entry.startTime !== '00:00' ? `${formatTime(entry.startTime)}–${formatTime(entry.endTime)}` : `${entry.duration.toFixed(2)} hours recorded`} />
                             <EntryFact label="Entry type" value={entry.workPresence ? `${labelize(entry.workPresence)}${entry.supervisionFormat ? ` · ${labelize(entry.supervisionFormat)}` : ''}` : entry.supervisionMinutes ? 'Supervised' : 'Not specified'} />
                           </div>
 

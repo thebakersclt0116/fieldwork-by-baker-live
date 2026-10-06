@@ -1,3 +1,4 @@
+import TimeInput from '@/components/TimeInput';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { AlertTriangle, CheckCircle2, Lock, Mic, MicOff, Send, Sparkles } from 'lucide-react';
@@ -212,8 +213,8 @@ export default function BakerAIEntryAssistant({ email, entries, onEntriesChange 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <label className="text-xs text-[#A8998E]">Date<input type="date" value={result.date} onChange={(event) => setResult({ ...result, date: event.target.value })} className="field-input" /></label>
-            <label className="text-xs text-[#A8998E]">Start<input type="time" value={result.startTime} onChange={(event) => setResult({ ...result, startTime: event.target.value })} className="field-input" /></label>
-            <label className="text-xs text-[#A8998E]">End<input type="time" value={result.endTime} onChange={(event) => setResult({ ...result, endTime: event.target.value })} className="field-input" /></label>
+            <label className="text-xs text-[#A8998E]">Start<TimeInput label="Start time" value={result.startTime} onChange={(value) => setResult({ ...result, startTime: value })} className="field-input" /></label>
+            <label className="text-xs text-[#A8998E]">End<TimeInput label="End time" value={result.endTime} onChange={(value) => setResult({ ...result, endTime: value })} className="field-input" /></label>
             <div className="rounded-xl bg-[#FFF5F7] px-3 py-2"><div className="text-xs text-[#A8998E]">Exact decimal</div><div className="font-mono text-xl text-[#E85D70] mt-1">{displayedDuration.toFixed(2)}h</div></div>
             <label className="text-xs text-[#A8998E]">Organization<input value={result.organizationName} onChange={(event) => setResult({ ...result, organizationName: event.target.value })} className="field-input" /></label>
             <label className="text-xs text-[#A8998E]">Responsible supervisor<input value={result.supervisorName} onChange={(event) => setResult({ ...result, supervisorName: event.target.value })} className="field-input" /></label>

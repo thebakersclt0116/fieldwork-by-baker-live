@@ -1,8 +1,8 @@
 name: Detailed Migration Acceptance
 on:
   push:
-    branches: [baker-audit-detail-migration, main]
-    paths: ['src/**', 'public/audit-bridge/**', 'scripts/**', '.github/workflows/detailed-migration-check.yml']
+    branches: [baker-audit-detail-migration, simplify-ripley-import, main]
+    paths: ['vite.config.ts', 'src/**', 'public/audit-bridge/**', 'scripts/**', '.github/workflows/detailed-migration-check.yml']
   workflow_dispatch:
 permissions:
   contents: write
