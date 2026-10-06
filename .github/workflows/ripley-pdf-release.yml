@@ -5,31 +5,18 @@ on:
     paths: ['src/**', 'public/guides/**', 'scripts/*pdf*', 'package.json', '.github/workflows/ripley-pdf-release.yml']
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: ripley-pdf-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
-      - name: Apply the previously omitted reviewed integration
-        if: github.ref == 'refs/heads/baker-ripley-detailed-pdf-20261006'
-        run: |
-          if test -f scripts/apply-pdf-import.py; then
-            python3 scripts/apply-pdf-import.py
-            git config user.name 'Baker PDF Release CI'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add package.json src/lib/detailedMigration.ts src/pages/DetailedMigration.tsx
-            git rm scripts/apply-pdf-import.py
-            git commit -m 'Fix TS2307 PDF dependency and TS2353 PDF source metadata; wire bulk upload'
-            git push origin HEAD:baker-ripley-detailed-pdf-20261006
-          fi
-          echo "Compiled source commit: $(git rev-parse HEAD)"
       - name: Install exactly as current Vercel project
         run: |
           rm -f package-lock.json
@@ -47,7 +34,9 @@ jobs:
       - name: Production regression checks
         run: node scripts/fieldwork-regression-check.mjs
       - name: Full TypeScript and Vite production build
-        run: npm run build
+        run: |
+          rm -rf dist
+          npm run build
       - name: Bundle API routes independently
         run: |
           mkdir -p /tmp/pdf-api-check
@@ -55,16 +44,41 @@ jobs:
             case "$route" in api/_*) continue ;; esac
             ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/pdf-api-check/$(basename "$route" .ts).mjs"
           done
-      - name: Save dependency security report without force-upgrading the app
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --no-save --package-lock=false playwright@1.61.1 pdf-lib@1.17.1
+          npx playwright install chromium
+      - name: Actual PDF upload and browser-worker acceptance
+        run: node scripts/ripley-pdf-browser-check.mjs
+      - name: Wait for exact public-domain deployment
+        if: github.ref == 'refs/heads/main'
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'JS'
+          let ready=false;
+          for(let n=0;n<40;n++){
+            try{const r=await fetch('https://www.fieldworkbybaker.com/api/health?pdf_release='+Date.now(),{signal:AbortSignal.timeout(10000)});const h=await r.json();if(r.ok && h.deployedCommit===process.env.EXPECTED_COMMIT){ready=true;break;}}catch{}
+            await new Promise(r=>setTimeout(r,10000));
+          }
+          if(!ready)throw new Error('Expected production commit is not live on the custom domain.');
+          console.log('Exact production commit confirmed.');
+          JS
+      - name: Real signed-user bulk PDF import on the live website
+        if: github.ref == 'refs/heads/main'
+        env:
+          BAKER_TEST_ORIGIN: https://www.fieldworkbybaker.com
+        run: node scripts/ripley-pdf-browser-check.mjs
+      - name: Save dependency security report without forced upgrades
         if: always()
         run: |
           mkdir -p pdf-release-evidence
           npm audit --json > pdf-release-evidence/dependency-audit.json || true
-      - name: Collect compiled app and public source for independent browser testing
+      - name: Collect compiled app and non-secret PDF source for independent testing
         if: always()
         run: |
           mkdir -p pdf-release-evidence
-          if test -d dist; then zip -qr pdf-release-evidence/compiled-frontend.zip dist; fi
+          if test -f dist/index.html; then zip -qr pdf-release-evidence/compiled-frontend.zip dist; fi
           zip -q pdf-release-evidence/pdf-release-source.zip src/lib/ripleyPdfImport.ts src/lib/ripleyPdfLayout.ts src/lib/detailedMigration.ts src/pages/DetailedMigration.tsx src/components/RipleyPdfGuide.tsx package.json
       - uses: actions/upload-artifact@v4
         if: always()
