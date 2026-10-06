@@ -2,11 +2,7 @@ name: Detailed Migration Acceptance
 on:
   push:
     branches: [baker-audit-detail-migration, main]
-    paths:
-      - 'src/**'
-      - 'public/audit-bridge/**'
-      - 'scripts/**'
-      - '.github/workflows/detailed-migration-check.yml'
+    paths: ['src/**', 'public/audit-bridge/**', 'scripts/**', '.github/workflows/detailed-migration-check.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -22,16 +18,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply remaining reviewed fixes once on feature branch
+      - name: Apply reviewed release patch once on feature branch
         if: github.ref == 'refs/heads/baker-audit-detail-migration'
         run: |
-          if test -f scripts/final-source-review.mjs; then
-            node scripts/final-source-review.mjs
+          if test -f scripts/import-release-fixes.mjs; then
+            node scripts/import-release-fixes.mjs
             git config user.name 'Baker Migration CI'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add src/lib/detailedMigration.ts public/audit-bridge/background.js scripts/detailed-migration.browser.mjs
-            git rm scripts/final-source-review.mjs scripts/harden-detailed-migration.mjs scripts/wire-detailed-migration.mjs
-            git commit -m 'Finish source fidelity fixes and remove temporary patch scripts'
+            git add src/lib/detailedMigration.ts src/lib/migrationArchive.ts src/pages/DetailedMigration.tsx src/components/Layout.tsx src/components/TrackedHoursEditor.tsx scripts/detailed-migration.test.mjs
+            git rm scripts/import-release-fixes.mjs
+            git commit -m 'Finalize complete-session migration, archive isolation and lossless subsequent edits'
             git push origin HEAD:baker-audit-detail-migration
           fi
           echo "Tested source commit: $(git rev-parse HEAD)"
@@ -41,22 +37,17 @@ jobs:
           node --input-type=module <<'JS'
           import dns from 'node:dns/promises';
           import fs from 'node:fs/promises';
-          const report = { checkedAt: new Date().toISOString(), dns: [], services: [] };
-          for (const host of ['www.fieldworkbybaker.com','fieldworkbybaker.com']) {
-            for (const type of ['A','NS']) {
-              try { report.dns.push({host,type,values:await dns.resolve(host,type)}); } catch(e) { report.dns.push({host,type,error:e.code}); }
-            }
+          const report={checkedAt:new Date().toISOString(),dns:[],services:[]};
+          for(const host of ['www.fieldworkbybaker.com','fieldworkbybaker.com']){
+            for(const type of ['A','NS']){try{report.dns.push({host,type,values:await dns.resolve(host,type)});}catch(e){report.dns.push({host,type,error:e.code});}}
           }
-          for (const host of ['www.fieldworkbybaker.com','fieldwork-by-baker-testing.vercel.app']) {
-            try {
-              const r=await fetch('https://'+host+'/api/health?release='+Date.now(), {signal:AbortSignal.timeout(15000)});
-              const data=await r.json(); report.services.push({host,status:r.status,model:data.model,aiGatewayAuthAvailable:data.aiGatewayAuthAvailable,secureSessionSigningAvailable:data.secureSessionSigningAvailable,stripeMode:data.stripeMode,deployedCommit:data.deployedCommit,version:data.detailedMigrationVersion});
-            } catch(e) { report.services.push({host,error:e.cause?.code || e.message}); }
+          for(const host of ['www.fieldworkbybaker.com','fieldwork-by-baker-testing.vercel.app']){
+            try{const r=await fetch('https://'+host+'/api/health?release='+Date.now(),{signal:AbortSignal.timeout(15000)});const h=await r.json();report.services.push({host,status:r.status,model:h.model,aiGatewayAuthAvailable:h.aiGatewayAuthAvailable,secureSessionSigningAvailable:h.secureSessionSigningAvailable,stripeMode:h.stripeMode,deployedCommit:h.deployedCommit,version:h.detailedMigrationVersion});}catch(e){report.services.push({host,error:e.cause?.code||e.message});}
           }
-          await fs.writeFile('audit-test-artifacts/public-readiness.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report,null,2));
+          await fs.writeFile('audit-test-artifacts/public-readiness.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
           JS
-      - name: Exact source and source-fidelity regressions
-        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs
+      - name: Exact source, selection and source-fidelity regressions
+        run: node --experimental-strip-types --test scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs scripts/import-integrity.test.mjs
       - name: Install build dependencies
         run: |
           npm config set registry https://registry.npmjs.org/
@@ -79,24 +70,41 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Browser acceptance tests against compiled app
         run: npx playwright test --config=scripts/detailed-playwright.config.mjs
-      - name: Wait for this exact production commit
+      - name: Verify exact production release and ordinary authenticated AI request
         if: github.ref == 'refs/heads/main'
         env:
           EXPECTED_COMMIT: ${{ github.sha }}
         run: |
           node --input-type=module <<'JS'
-          let ready=false;
-          for(let attempt=0;attempt<30;attempt++){
-            try {
-              const r=await fetch('https://www.fieldworkbybaker.com/api/health?release='+Date.now(),{signal:AbortSignal.timeout(10000)}); const h=await r.json();
-              if(h.deployedCommit===process.env.EXPECTED_COMMIT && h.detailedMigrationVersion==='entry-audit-v1'){ready=true;break;}
-            } catch {}
+          import fs from 'node:fs/promises';
+          import {randomUUID} from 'node:crypto';
+          const origin='https://fieldwork-by-baker-testing.vercel.app'; let health;
+          for(let i=0;i<30;i++){
+            try{const r=await fetch(origin+'/api/health?release='+Date.now(),{signal:AbortSignal.timeout(10000)});health=await r.json();if(health.deployedCommit===process.env.EXPECTED_COMMIT)break;}catch{}
             await new Promise(r=>setTimeout(r,10000));
           }
-          if(!ready) throw new Error('Public custom domain is not serving the expected release. Check DNS/Namecheap verification and Vercel deployment.');
-          console.log('Exact release is live on public custom domain.');
+          if(health?.deployedCommit!==process.env.EXPECTED_COMMIT) throw new Error('Expected release not verified on the production Vercel origin.');
+          const r=await fetch(origin+'/api/free-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Baker Release QA',email:'baker-release-qa-'+randomUUID()+'@example.com',password:randomUUID()+randomUUID()}),signal:AbortSignal.timeout(20000)});
+          const session=await r.json();if(!r.ok||!session.token)throw new Error('Ordinary signed-trial signup failed. No auth bypass attempted.');
+          const ai=await fetch(origin+'/api/baker-ai',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.token},body:JSON.stringify({mode:'bcba-brain',message:'Explain duration versus latency for a BCBA student in two sentences.',context:{},history:[]}),signal:AbortSignal.timeout(120000)});
+          const answer=await ai.json(); const report={checkedAt:new Date().toISOString(),origin,commit:health.deployedCommit,version:health.detailedMigrationVersion,signedTrialIssued:true,brainStatus:ai.status,brainAnswered:typeof answer.answer==='string'&&answer.answer.length>20,provider:answer.provider||null,stripeMode:health.stripeMode};
+          await fs.writeFile('audit-test-artifacts/production-origin-verification.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+          if(!ai.ok||!report.brainAnswered)throw new Error('Authenticated Baker Brain test did not return an answer; inspect runtime logs.');
           JS
-      - name: Real signed-trial production acceptance
+      - name: Verify public custom domain before live browser test
+        if: github.ref == 'refs/heads/main'
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'JS'
+          import dns from 'node:dns/promises';
+          const ns=await dns.resolveNs('fieldworkbybaker.com');
+          if(ns.some(s=>/failed-whois-verification|verify-contact-details/i.test(s)))throw new Error('EXTERNAL LAUNCH BLOCKER: Namecheap registrant-contact verification suspension still controls the custom domain.');
+          const r=await fetch('https://www.fieldworkbybaker.com/api/health?release='+Date.now(),{signal:AbortSignal.timeout(15000)});const h=await r.json();
+          if(h.deployedCommit!==process.env.EXPECTED_COMMIT)throw new Error('Custom domain is not serving this exact release.');
+          console.log('Public custom domain serves the exact release.');
+          JS
+      - name: Real signed-trial production browser acceptance
         if: github.ref == 'refs/heads/main'
         env:
           BAKER_TEST_ORIGIN: https://www.fieldworkbybaker.com
