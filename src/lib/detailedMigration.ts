@@ -3,7 +3,8 @@ import type { HourEntry, ActivityCategory, FieldworkType } from '../types';
 export const MIGRATION_VERSION = 'entry-audit-v1';
 export const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 export const MAX_SOURCE_ROWS = 20000;
-export type SourceTable = { headers: string[]; rows: string[][]; originals: unknown[] };
+export type SourceOrigin = { filename: string; sha256: string; sourceRow: number; original: unknown };
+export type SourceTable = { headers: string[]; rows: string[][]; originals: unknown[]; origins?: SourceOrigin[] };
 export const FIELDS = {
   sourceId: ['Entry ID', 'id', 'entryId', 'recordId', 'hourId'],
   date: ['Date', 'serviceDate', 'activityDate', 'entryDate'],
@@ -41,7 +42,7 @@ export type Provenance = {
   originalStatus: string; elapsedMinutes?: number; sourceStart: string; sourceEnd: string;
   allocation?: string; warnings: string[];
 };
-export type AuditEntry = HourEntry & { migration?: Provenance; contactType?: string };
+export type AuditEntry = HourEntry & { migration?: Provenance; contactType?: string; recordKind?: 'SESSION' | 'MONTHLY_SUMMARY' };
 export type RowResult = { row: number; entries: AuditEntry[]; errors: string[]; warnings: string[] };
 export type MigrationPreview = { rows: RowResult[]; entries: AuditEntry[]; errors: number; warnings: number };
 const cleanHeader = (v: string) => v.toLowerCase().replace(/\s*\((?:optional|required)\)/g, '').replace(/[^a-z0-9]/g, '');
@@ -137,6 +138,14 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
     const values = table.rows[index];
     const get = (k: Field) => mapping[k] === undefined ? '' : values[mapping[k]!] || '';
     const errors: string[] = [], warnings: string[] = [];
+    const originalRow = table.originals[index] as Record<string, unknown>;
+    // Only in-memory provenance from locally combined files is authoritative. Never trust hash claims inside uploaded JSON.
+    const attribution = table.origins?.[index];
+    const sourceHash = attribution?.sha256 || file.hash;
+    const sourceRow = attribution?.sourceRow || index + 2;
+    const sourceFile = attribution?.filename || file.name;
+    const originalEvidence = attribution?.original ?? originalRow;
+    if (originalRow?.summaryDerived === true || originalRow?.recordKind === 'MONTHLY_SUMMARY' || originalRow?.granularity === 'month') errors.push('This source row is explicitly a monthly summary, not an individual session. Preserve it as a supporting document.');
     const date = parseDate(get('date'), options.dateOrder), start = parseTime(get('startTime')), end = parseTime(get('endTime'));
     if (!date) errors.push('A valid full entry date is required (not a month-only date).');
     if (values.length !== table.headers.length) errors.push('Row column count does not match the header.');
@@ -195,10 +204,10 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
     if (originalStatus.trim()) warnings.push('Historical source status retained as evidence; Baker approval starts Pending.');
     const raw = table.headers.map((column, i) => ({ column, value: values[i] || '' }));
     const sourceId = get('sourceId').trim();
-    const baseId = await sha256(`${options.sourceSystem}\n${sourceId || file.hash + ':' + index}`);
+    const baseId = await sha256(`${options.sourceSystem.trim().toLowerCase()}\n${sourceId || sourceHash + ':' + (sourceRow - 2)}`);
     const noteParts = [get('description'), get('notes')].filter(v => v.trim());
     const entries: AuditEntry[] = errors.length ? [] : allocations.map((allocation, aIndex) => ({
-      id: `detail_${baseId}_${aIndex}`, userId: email, date,
+      id: `detail_${baseId}_${aIndex}`, userId: email, date, recordKind: 'SESSION',
       startTime: allocations.length === 1 ? start?.time || '' : '', endTime: allocations.length === 1 ? end?.time || '' : '',
       duration: round(allocation.hours), fieldworkType: fw!, activityCategory: allocation.category,
       activityType: allocation.category === 'RESTRICTED' ? 'RESTRICTED_DIRECT' : 'UNRESTRICTED_OTHER',
@@ -212,8 +221,8 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
       observationMinutes: allocations.length === 1 ? minuteValues.observation : undefined,
       individualSupervisionMinutes: allocations.length === 1 ? minuteValues.individual : undefined,
       aiSourceText: file.name,
-      migration: { version: MIGRATION_VERSION, sourceSystem: options.sourceSystem, sourceFile: file.name, sourceHash: file.hash,
-        sourceRow: index + 2, sourceId, importedAt, mapping: { ...mapping }, raw, original: table.originals[index], originalStatus,
+      migration: { version: MIGRATION_VERSION, sourceSystem: options.sourceSystem, sourceFile, sourceHash,
+        sourceRow, sourceId, importedAt, mapping: { ...mapping }, raw, original: originalEvidence, originalStatus,
         elapsedMinutes: elapsed, sourceStart: get('startTime'), sourceEnd: get('endTime'), allocation: allocation.label, warnings: [...warnings] },
     }));
     rows.push({ row: index + 2, entries, errors, warnings });
@@ -221,7 +230,8 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
   return { rows, entries: rows.flatMap(r => r.entries), errors: rows.filter(r => r.errors.length).length, warnings: rows.filter(r => r.warnings.length).length };
 }
 export function isMonthlySummary(entry: AuditEntry): boolean {
-  return !entry.migration && (entry.duration > 24 || /monthly aggregate|monthly verification|summary.derived/i.test(`${entry.aiRationale || ''} ${entry.notes || ''}`));
+  if (entry.recordKind === 'SESSION' || entry.migration) return false;
+  return entry.recordKind === 'MONTHLY_SUMMARY' || entry.duration > 24 || /monthly aggregate|summary.derived/i.test(entry.aiRationale || '') || /^monthly aggregate(?:[.:\s]|$)/i.test(entry.notes || '');
 }
 export function entryFingerprint(entry: AuditEntry): string {
   return JSON.stringify([entry.date, entry.startTime, entry.endTime, entry.duration, entry.activityCategory, entry.fieldworkType,
@@ -242,6 +252,17 @@ export function planMerge(existing: AuditEntry[], incoming: AuditEntry[]) {
   const overlappingSummaries = existing.filter(e => isMonthlySummary(e) && months.has(e.date.slice(0, 7)));
   return { add, duplicate, conflicts, possibleDuplicates, overlappingSummaries };
 }
+export function selectionProblem(preview: MigrationPreview, selectedIds: string[], allowPartial = false): string {
+  const ids = new Set(selectedIds), known = new Set(preview.entries.map(e => e.id));
+  if ([...ids].some(id => !known.has(id))) return 'Selection is stale. Build the review again.';
+  for (const row of preview.rows) {
+    const selected = row.entries.filter(e => ids.has(e.id)).length;
+    if (selected && selected !== row.entries.length) return 'An original session cannot be partially imported. Select all its linked allocations or none.';
+  }
+  if (!allowPartial && (preview.errors || preview.entries.some(e => !ids.has(e.id)))) return 'Complete-file mode: correct blocked rows and select every valid session, or explicitly choose a partial import.';
+  return '';
+}
+
 export function auditCsv(entries: AuditEntry[]): string {
   const headers = ['Entry ID', 'Date', 'Start time', 'End time', 'Hours', 'Activity category', 'Fieldwork type', 'Organization', 'Supervisor', 'Supervisor email', 'Hour type', 'Supervision format', 'Supervision minutes', 'Observation minutes', 'Individual supervision minutes', 'Observation mode', 'Client initials', 'Setting', 'Description of activity', 'Baker status', 'Supervisor note', 'Supervisor message', 'Revision history', 'Source file', 'Source SHA256', 'Source row', 'Source entry ID', 'Source status', 'Original entry start', 'Original entry end', 'Allocation', 'Source warnings', 'Contact type', 'All original fields'];
   const cell = (v: unknown) => { const raw = text(v); const safe = /^[\s]*[=+@-]/.test(raw) ? "'" + raw : raw; return '"' + safe.replace(/"/g, '""') + '"'; };

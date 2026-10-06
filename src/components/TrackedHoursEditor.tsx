@@ -8,11 +8,13 @@ import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
 const EDITABLE_KEYS = [
   'date', 'startTime', 'endTime', 'duration', 'activityCategory', 'supervisorName', 'supervisorEmail',
   'organizationName', 'workPresence', 'supervisionFormat', 'supervisionMinutes', 'observationMinutes',
-  'observationMode', 'clientInitials', 'setting', 'notes',
+  'observationMode', 'clientInitials', 'setting', 'notes', 'individualSupervisionMinutes', 'fieldworkType',
 ] as const;
 
 function snapshot(entry: HourEntry) {
   return {
+    ...entry,
+    revisionHistory: undefined, // avoid recursively copying the entire prior history
     date: entry.date,
     startTime: entry.startTime,
     endTime: entry.endTime,
@@ -100,20 +102,19 @@ export default function TrackedHoursEditor() {
   const approvalSensitive = Boolean(original && (original.status === 'VERIFIED' || original.requiresReapproval));
   const computedDuration = useMemo(() => {
     if (!draft) return 0;
-    if (draft.startTime && draft.endTime && draft.startTime !== '00:00' && draft.endTime !== '00:00') {
+    if (draft.startTime && draft.endTime && (!original || draft.startTime !== original.startTime || draft.endTime !== original.endTime)) {
       const calculated = hoursBetween(draft.startTime, draft.endTime);
       if (calculated > 0) return calculated;
     }
     return Math.max(0, Number(draft.duration) || 0);
-  }, [draft]);
+  }, [draft, original]);
 
   if (!visible) return null;
 
   const beginEdit = (entry: HourEntry) => {
     const next = safeClone(entry);
     next.revision = Math.max(0, Number(next.revision || 0));
-    next.workPresence = next.workPresence || ((next.supervisionMinutes || 0) > 0 ? 'SUPERVISED' : 'INDEPENDENT');
-    next.supervisionFormat = next.supervisionFormat || ((next.individualSupervisionMinutes || 0) > 0 ? 'INDIVIDUAL' : undefined);
+    // Missing source classifications remain unknown until the user explicitly supplies them.
     setOriginal(safeClone(next));
     setDraft(next);
     setReason(next.requiresReapproval ? String(next.revisionReason || '') : '');
@@ -146,14 +147,18 @@ export default function TrackedHoursEditor() {
       setting: String(draft.setting || '').trim(),
       notes: String(draft.notes || '').trim() || undefined,
       clientInitials: String(draft.clientInitials || '').trim().toUpperCase() || undefined,
-      supervisionMinutes: draft.workPresence === 'SUPERVISED' ? Math.max(0, Number(draft.supervisionMinutes || 0)) || undefined : undefined,
-      observationMinutes: draft.workPresence === 'SUPERVISED' ? Math.max(0, Number(draft.observationMinutes || 0)) || undefined : undefined,
-      individualSupervisionMinutes: draft.workPresence === 'SUPERVISED' && draft.supervisionFormat === 'INDIVIDUAL'
-        ? Math.max(0, Number(draft.supervisionMinutes || 0)) || undefined
-        : undefined,
+      supervisionMinutes: draft.supervisionMinutes,
+      observationMinutes: draft.observationMinutes,
+      individualSupervisionMinutes: draft.individualSupervisionMinutes,
       activityType: activityTypeFor(draft),
     };
 
+    const timeChanged = draft.startTime !== original.startTime || draft.endTime !== original.endTime;
+    if (timeChanged && (!draft.startTime || !draft.endTime || hoursBetween(draft.startTime, draft.endTime) <= 0)) { setMessage('Enter a valid same-day start and end time, or restore the source time range.'); return; }
+    for (const [label, minutes] of [['Supervision', normalized.supervisionMinutes], ['Observation', normalized.observationMinutes], ['Individual supervision', normalized.individualSupervisionMinutes]] as const) {
+      if (minutes !== undefined && (!Number.isFinite(minutes) || minutes < 0 || minutes > normalized.duration * 60 + 0.61)) { setMessage(label + ' minutes must be between 0 and the entry duration.'); return; }
+    }
+    if (normalized.workPresence === 'INDEPENDENT' && (normalized.supervisionMinutes || 0) > 0) { setMessage('Independent work conflicts with positive supervision minutes. Review those fields before saving.'); return; }
     if (!normalized.date || normalized.duration <= 0) {
       setMessage('Enter a valid date and positive duration.');
       return;
@@ -354,24 +359,25 @@ export default function TrackedHoursEditor() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <Field label="Date"><input type="date" value={draft.date} onChange={(e) => updateDraft('date', e.target.value)} className="field-input" /></Field>
-                      <Field label="Start time"><input type="time" value={draft.startTime || '00:00'} onChange={(e) => updateDraft('startTime', e.target.value)} className="field-input" /></Field>
-                      <Field label="End time"><input type="time" value={draft.endTime || '00:00'} onChange={(e) => updateDraft('endTime', e.target.value)} className="field-input" /></Field>
+                      <Field label="Start time"><input type="time" value={draft.startTime || ''} onChange={(e) => updateDraft('startTime', e.target.value)} className="field-input" /></Field>
+                      <Field label="End time"><input type="time" value={draft.endTime || ''} onChange={(e) => updateDraft('endTime', e.target.value)} className="field-input" /></Field>
                       <Field label="Hours"><input type="number" min="0.01" step="0.01" value={computedDuration} onChange={(e) => updateDraft('duration', Number(e.target.value))} disabled={draft.startTime !== '00:00' && draft.endTime !== '00:00' && hoursBetween(draft.startTime, draft.endTime) > 0} className="field-input disabled:opacity-60" /><span className="mt-1 block text-[10px] text-[#A8998E]">Valid start/end times automatically control the decimal.</span></Field>
                       <Field label="Organization"><input value={draft.organizationName || ''} onChange={(e) => updateDraft('organizationName', e.target.value)} className="field-input" placeholder="Melmark Carolinas" /></Field>
                       <Field label="Responsible supervisor"><input value={draft.supervisorName || ''} onChange={(e) => updateDraft('supervisorName', e.target.value)} className="field-input" placeholder="Carrie" /></Field>
-                      <Field label="Category"><select value={draft.activityCategory} onChange={(e) => updateDraft('activityCategory', e.target.value as ActivityCategory)} className="field-input bg-white"><option value="UNRESTRICTED">Unrestricted</option><option value="RESTRICTED">Restricted</option><option value="UNKNOWN">Unknown / monthly summary</option></select></Field>
-                      <Field label="Independent / supervised"><select value={draft.workPresence || 'INDEPENDENT'} onChange={(e) => updateDraft('workPresence', e.target.value as WorkPresence)} className="field-input bg-white"><option value="INDEPENDENT">Independent</option><option value="SUPERVISED">Supervised</option></select></Field>
+                      <Field label="Category"><select value={draft.activityCategory} onChange={(e) => updateDraft('activityCategory', e.target.value as ActivityCategory)} className="field-input bg-white"><option value="UNRESTRICTED">Unrestricted</option><option value="RESTRICTED">Restricted</option><option value="UNKNOWN">Unknown / not in source</option></select></Field>
+                      <Field label="Independent / supervised"><select value={draft.workPresence || ''} onChange={(e) => updateDraft('workPresence', e.target.value as WorkPresence)} className="field-input bg-white"><option value="">Not recorded in source</option><option value="INDEPENDENT">Independent</option><option value="SUPERVISED">Supervised</option></select></Field>
                       <Field label="Setting / location"><input value={draft.setting || ''} onChange={(e) => updateDraft('setting', e.target.value)} className="field-input" placeholder="School, clinic, home…" /></Field>
 
-                      {(draft.workPresence || 'INDEPENDENT') === 'SUPERVISED' && (
+                      {(
                         <>
-                          <Field label="Supervision format"><select value={draft.supervisionFormat || 'INDIVIDUAL'} onChange={(e) => updateDraft('supervisionFormat', e.target.value as SupervisionFormat)} className="field-input bg-white"><option value="INDIVIDUAL">Individual</option><option value="GROUP">Group</option></select></Field>
+                          <Field label="Supervision format"><select value={draft.supervisionFormat || ''} onChange={(e) => updateDraft('supervisionFormat', e.target.value as SupervisionFormat)} className="field-input bg-white"><option value="">Not recorded in source</option><option value="INDIVIDUAL">Individual</option><option value="GROUP">Group</option></select></Field>
                           <Field label="Supervision minutes"><input type="number" min="0" value={draft.supervisionMinutes || 0} onChange={(e) => updateDraft('supervisionMinutes', Number(e.target.value))} className="field-input" /></Field>
+                          <Field label="Individual supervision minutes"><input type="number" min="0" value={draft.individualSupervisionMinutes ?? ''} onChange={e => updateDraft('individualSupervisionMinutes', e.target.value === '' ? undefined : Number(e.target.value))} className="field-input" /></Field>
                           <Field label="Client observation minutes"><input type="number" min="0" value={draft.observationMinutes || 0} onChange={(e) => updateDraft('observationMinutes', Number(e.target.value))} className="field-input" /></Field>
                           {(draft.observationMinutes || 0) > 0 && (
                             <>
                               <Field label="Observation mode"><select value={draft.observationMode || 'IN_PERSON'} onChange={(e) => updateDraft('observationMode', e.target.value as ObservationMode)} className="field-input bg-white"><option value="IN_PERSON">In person</option><option value="ONLINE">Online / video</option><option value="PHONE">Phone</option></select></Field>
-                              <Field label="Client initials / name"><input value={draft.clientInitials || ''} onChange={(e) => updateDraft('clientInitials', e.target.value)} className="field-input" /></Field>
+                              <Field label="Client initials (no full names)"><input value={draft.clientInitials || ''} onChange={(e) => updateDraft('clientInitials', e.target.value)} className="field-input" /></Field>
                             </>
                           )}
                         </>

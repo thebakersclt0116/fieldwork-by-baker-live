@@ -96,7 +96,7 @@ test('supervision and independent conflicts, overlong observations, are explicit
 });
 test('monthly aggregate overlap is recognized before tracking detailed rows', async () => {
   const incoming = (await preview()).entries;
-  const summary = { ...incoming[0], id: 'legacy', migration: undefined, duration: 70, aiRationale: 'Monthly aggregate' };
+  const summary = { ...incoming[0], id: 'legacy', migration: undefined, recordKind: undefined, duration: 70, aiRationale: 'Monthly aggregate' };
   assert.equal(isMonthlySummary(summary), true); assert.equal(planMerge([summary], incoming).overlappingSummaries.length, 1);
 });
 test('CSV exports all fields with formula escaping; exact notes stay in entry/source JSON', async () => {

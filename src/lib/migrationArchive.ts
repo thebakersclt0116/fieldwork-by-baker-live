@@ -1,6 +1,6 @@
 import { buildStoreZip } from './downloadZip';
 import { getCurrentUserEmail, loadEntries, saveEntries } from './fieldworkStore';
-import { auditCsv, planMerge, sha256, type AuditEntry, type Mapping, type ImportOptions, type MigrationPreview, type SourceTable } from './detailedMigration';
+import { auditCsv, planMerge, selectionProblem, sha256, type AuditEntry, type Mapping, type ImportOptions, type MigrationPreview, type SourceTable } from './detailedMigration';
 
 export type SourceDocument = { id: string; owner: string; hash: string; filename: string; mime: string; size: number; savedAt: string; kind: 'detailed-source' | 'supporting-document'; bytes: Uint8Array };
 export type AuditBatch = { id: string; owner: string; createdAt: string; sourceHash: string; filename: string; mapping: Mapping; options: ImportOptions; sourceRows: number; results: MigrationPreview['rows']; before: AuditEntry[]; addedIds: string[]; archivedSummaryIds: string[]; state: 'prepared' | 'committed' | 'failed'; note: string };
@@ -10,8 +10,13 @@ function requireOwner(owner: string) {
 }
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('baker-audit-archive-v1', 1);
-    req.onupgradeneeded = () => { req.result.createObjectStore('documents', { keyPath: 'id' }); req.result.createObjectStore('batches', { keyPath: 'id' }); };
+    const req = indexedDB.open('baker-audit-archive-v1', 2);
+    req.onupgradeneeded = () => {
+      for (const name of ['documents', 'batches']) {
+        const store = req.result.objectStoreNames.contains(name) ? req.transaction!.objectStore(name) : req.result.createObjectStore(name, { keyPath: 'id' });
+        if (!store.indexNames.contains('owner')) store.createIndex('owner', 'owner');
+      }
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(new Error('The audit archive could not be opened. Enable browser storage; no import was committed.'));
     req.onblocked = () => reject(new Error('Close other Baker tabs and try again. The archive is locked by another tab.'));
@@ -19,7 +24,7 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 async function all<T extends { owner: string }>(store: string, owner: string): Promise<T[]> {
   requireOwner(owner); const db = await openDatabase();
-  try { return await new Promise<T[]>((resolve, reject) => { const req = db.transaction(store).objectStore(store).getAll(); req.onsuccess = () => resolve((req.result as T[]).filter(r => normalized(r.owner) === normalized(owner))); req.onerror = () => reject(req.error); }); }
+  try { return await new Promise<T[]>((resolve, reject) => { const req = db.transaction(store).objectStore(store).index('owner').getAll(normalized(owner)); req.onsuccess = () => { try { requireOwner(owner); resolve((req.result as T[]).filter(r => normalized(r.owner) === normalized(owner))); } catch (e) { reject(e); } }; req.onerror = () => reject(req.error); }); }
   finally { db.close(); }
 }
 async function put<T extends { owner: string }>(store: string, record: T): Promise<void> {
@@ -47,8 +52,10 @@ export function downloadBytes(name: string, data: string | Uint8Array, mime: str
   const a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
-export async function commitMigration(args: { owner: string; doc: SourceDocument; table: SourceTable; mapping: Mapping; options: ImportOptions; preview: MigrationPreview; selectedIds: string[]; replaceSummaryIds: string[]; confirmPossibleDuplicates: boolean }) {
+export async function commitMigration(args: { owner: string; doc: SourceDocument; table: SourceTable; mapping: Mapping; options: ImportOptions; preview: MigrationPreview; selectedIds: string[]; replaceSummaryIds: string[]; confirmPossibleDuplicates: boolean; allowPartial?: boolean }) {
   requireOwner(args.owner);
+  const selectionError = selectionProblem(args.preview, args.selectedIds, args.allowPartial);
+  if (selectionError) throw new Error(selectionError);
   const before = loadEntries(args.owner) as AuditEntry[];
   const ids = new Set(args.selectedIds), incoming = args.preview.entries.filter(e => ids.has(e.id));
   const merge = planMerge(before, incoming);
@@ -72,7 +79,7 @@ export async function commitMigration(args: { owner: string; doc: SourceDocument
     if (Math.abs(total - detail) > 0.02) throw new Error(`${month}: summary ${total.toFixed(2)} h does not reconcile to detailed ${detail.toFixed(2)} h. Import all source entries or resolve the discrepancy before replacing it.`);
   }
   if (!merge.add.length) throw new Error('No new entries to commit. Exact source-ID duplicates were left unchanged.');
-  const batch: AuditBatch = { id: `${normalized(args.owner)}:${crypto.randomUUID()}`, owner: normalized(args.owner), createdAt: new Date().toISOString(), sourceHash: args.doc.hash, filename: args.doc.filename, mapping: args.mapping, options: args.options, sourceRows: args.table.rows.length, results: args.preview.rows, before, addedIds: merge.add.map(e => e.id), archivedSummaryIds: [...replacing], state: 'prepared', note: 'Source preserved before tracking mutation.' };
+  const batch: AuditBatch = { id: `${normalized(args.owner)}:${crypto.randomUUID()}`, owner: normalized(args.owner), createdAt: new Date().toISOString(), sourceHash: args.doc.hash, filename: args.doc.filename, mapping: args.mapping, options: args.options, sourceRows: args.table.rows.length, results: args.preview.rows, before, addedIds: merge.add.map(e => e.id), archivedSummaryIds: [...replacing], state: 'prepared', note: (args.allowPartial ? 'EXPLICIT PARTIAL IMPORT. ' : 'All valid sessions from this file selected. ') + 'Source preserved before tracking mutation. Whole-account completeness still requires source reconciliation.' };
   await put('batches', batch);
   const after = [...before.filter(e => !replacing.has(e.id)), ...merge.add].sort((a, b) => `${b.date} ${b.startTime}`.localeCompare(`${a.date} ${a.startTime}`));
   try {
@@ -80,7 +87,7 @@ export async function commitMigration(args: { owner: string; doc: SourceDocument
     if (JSON.stringify(loadEntries(args.owner)) !== JSON.stringify(before)) throw new Error('Entries changed in another tab. Re-preview before importing.');
     saveEntries(after, args.owner);
     if (JSON.stringify(loadEntries(args.owner)) !== JSON.stringify(after)) { saveEntries(before, args.owner); throw new Error('Tracked-entry readback failed; prior records restored.'); }
-    await put('batches', { ...batch, state: 'committed', note: `${merge.add.length} tracked allocations verified. Historical approvals remain source evidence, not new Baker signatures.` });
+    await put('batches', { ...batch, state: 'committed', note: `${args.allowPartial ? 'EXPLICIT PARTIAL IMPORT. ' : 'Selected-file import complete. '}${merge.add.length} tracked allocations verified. Historical approvals remain source evidence, not new Baker signatures.` });
   } catch (err) {
     // If tracking was written but final journal write failed, preserve both snapshots for recovery.
     try { await put('batches', { ...batch, state: 'failed', note: 'Check tracked entries against the preserved before/after snapshots before retrying.' }); } catch { /* prepared journal is still available */ }

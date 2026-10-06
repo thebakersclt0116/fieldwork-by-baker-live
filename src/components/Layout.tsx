@@ -36,7 +36,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`min-h-[100dvh] flex flex-col ${isDark ? 'dark' : ''}`}>
       <PlatformNavbar isDark={isDark} onToggleDark={toggleDark} />
-      <main className="flex-1 pt-[72px]" key={`${location.pathname}:${fieldworkVersion}`}>
+      <main className="flex-1 pt-[72px]" key={`${location.pathname}:${['/import', '/audit-history'].includes(location.pathname) ? 'records' : fieldworkVersion}`}>
         {['/dashboard', '/export'].includes(location.pathname) && <nav aria-label="Fieldwork records" className="flex flex-wrap justify-center gap-4 border-b border-[#F2EDEA] bg-[#FFFCF9] p-3 text-sm dark:border-white/10 dark:bg-[#171412]"><Link className="font-semibold text-[#E85D70] underline" to="/import">Migrate every original entry</Link><Link className="font-semibold text-[#E85D70] underline" to="/audit-history">Audit history & original documents</Link></nav>}
         {children}</main>
       <RipleyQuickLog />
