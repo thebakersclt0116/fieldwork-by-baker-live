@@ -184,12 +184,13 @@ export async function buildPreview(table: SourceTable, mapping: Mapping, options
       else { minuteValues[key] = Number(raw); if (duration !== undefined && Number(raw) > duration * 60 + 0.61) errors.push(`${key} minutes exceed entry duration.`); }
     }
     if (minuteValues.individual !== undefined && minuteValues.supervision !== undefined && minuteValues.individual > minuteValues.supervision) errors.push('Individual supervision exceeds total supervision.');
-    if (presence === 'INDEPENDENT' && ((minuteValues.supervision || 0) > 0 || (minuteValues.observation || 0) > 0)) errors.push('Independent entry conflicts with supervision/observation minutes.');
-    if (minuteValues.observation !== undefined && minuteValues.supervision !== undefined && minuteValues.observation > minuteValues.supervision) errors.push('Client observation exceeds total supervision.');
+    if (presence === 'INDEPENDENT' && (minuteValues.supervision || 0) > 0) errors.push('Independent entry conflicts with supervision minutes.');
     if (format === 'GROUP' && (minuteValues.individual || 0) > 0) errors.push('Group format conflicts with individual supervision minutes.');
     if (presence === 'SUPERVISED' && !format && !get('group').trim()) warnings.push('Individual/group format missing.');
     const modeText = enumText(get('observationMode'));
     const mode = ['in person', 'onsite', 'on site'].includes(modeText) ? 'IN_PERSON' : ['online', 'video', 'telehealth', 'synchronous', 'asynchronous'].includes(modeText) ? 'ONLINE' : ['phone', 'telephone'].includes(modeText) ? 'PHONE' : undefined;
+    const controls = (table.originals[index] as { __originalControls?: Array<{ usedPlaceholder?: boolean }> })?.__originalControls;
+    if (Array.isArray(controls) && controls.some(c => c.usedPlaceholder)) warnings.push('Some source allocation amounts were displayed as Ripley edit-form placeholders. Original value and placeholder are both retained; verify against the month history.');
     const originalStatus = get('status');
     if (originalStatus.trim()) warnings.push('Historical source status retained as evidence; Baker approval starts Pending.');
     const raw = table.headers.map((column, i) => ({ column, value: values[i] || '' }));

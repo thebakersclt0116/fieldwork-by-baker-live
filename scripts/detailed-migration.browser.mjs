@@ -41,14 +41,14 @@ async function approveImport(page) {
 test('full source import, signed normal trial on live, audit ledger and exact original ZIP recovery', async ({ page }) => {
   await upload(page);
   await page.locator('summary').filter({ hasText: 'Source row 2' }).click();
-  await expect(page.getByText('Full supplementary note', { exact: false }).first()).toBeVisible();
+  await expect(page.locator('p').filter({ hasText: 'Full supplementary note' }).first()).toBeVisible();
   await approveImport(page);
   await expect.poll(async () => page.evaluate(email => JSON.parse(localStorage.getItem(`fieldworkByBaker:v1:${email}:entries`) || '[]').length, testOwner)).toBe(2);
   await page.goto('/audit-history');
   await expect(page.getByRole('heading', { name: 'Entry-by-entry audit ledger' })).toBeVisible();
   const entrySummary = page.locator('summary').filter({ hasText: '2026-09-12 · 1.75 h' });
   await entrySummary.click();
-  await expect(page.getByText('Full supplementary note', { exact: false }).first()).toBeVisible();
+  await expect(page.locator('p').filter({ hasText: 'Full supplementary note' }).first()).toBeVisible();
   await expect(page.locator('summary').filter({ hasText: '2026-09-12 · 1.75 h' })).toContainText('PENDING');
   const zipPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download full audit ZIP' }).click();
@@ -86,7 +86,7 @@ test('partial source cannot replace an unmatched monthly total', async ({ page }
 });
 test('the extension reads details but never secret controls, save buttons, delete or foreign links', async ({ page }) => {
   test.skip(live, 'DOM fixture test is isolated, never replaces a live user page.');
-  await page.setContent('<main><a href="/hours/123/edit">Edit hour</a><a href="/hours/123/delete">Delete</a><a href="/profile/edit">Edit profile</a><a href="https://invalid.example/hours/456/edit">Edit</a><a href="/hours/456/edit?token=private">Edit</a><form><label>Date<input name="date" value="2026-09-12"></label><label>Start time<input name="start" value="08:30"></label><label>End time<input name="end" value="10:15"></label><label>Description of activity<textarea>Full original description\nSecond line.</textarea></label><input type="hidden" name="csrf" value="SECRET_MUST_NOT_APPEAR"><input type="password" value="PRIVATE_PASSWORD"><button type="submit">Save</button></form></main>');
+  await page.setContent('<main><a href="/hours/123/edit">Edit hour</a><a href="/hours/123/delete">Delete</a><a href="/profile/edit">Edit profile</a><a href="https://invalid.example/hours/456/edit">Edit</a><a href="/hours/456/edit?token=private">Edit</a><form><label>Date<input name="date" value="2026-09-12"></label><label>Start time<input name="start" value="08:30"></label><label>End time<input name="end" value="10:15"></label><label>Description of activity<textarea>Full original description\nSecond line.</textarea></label><label>Unrestricted<input name="unrestricted" placeholder="1.75" value=""></label><input type="hidden" name="csrf" value="SECRET_MUST_NOT_APPEAR"><input type="password" value="PRIVATE_PASSWORD"><button type="submit">Save</button></form></main>');
   const result = await page.evaluate(async () => {
     const mod = await import('/audit-bridge/background.js');
     let submissions = 0; document.querySelector('form').addEventListener('submit', e => { e.preventDefault(); submissions++; });
@@ -94,5 +94,7 @@ test('the extension reads details but never secret controls, save buttons, delet
   });
   expect(result.scan.links.length).toBe(1); expect(result.detail.ok).toBeTruthy(); expect(result.submissions).toBe(0);
   expect(result.detail.record['Description of activity']).toContain('Second line.');
+  expect(result.detail.record.Unrestricted).toBe('1.75');
+  expect(result.detail.record.__originalControls.find(c => c.name === 'unrestricted').usedPlaceholder).toBe(true);
   expect(JSON.stringify(result)).not.toContain('SECRET_MUST_NOT_APPEAR'); expect(JSON.stringify(result)).not.toContain('PRIVATE_PASSWORD');
 });

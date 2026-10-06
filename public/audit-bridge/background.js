@@ -23,7 +23,9 @@ export function scanHistoryDocument() {
 export function readDetailDocument() {
   const forms = [...document.querySelectorAll('form')];
   const labelOf = el => {
-    const explicit = el.labels?.[0]?.textContent || el.getAttribute('aria-label');
+    const labelNode = el.labels?.[0]?.cloneNode(true);
+    labelNode?.querySelectorAll('input,textarea,select,button').forEach(node => node.remove());
+    const explicit = labelNode?.textContent || el.getAttribute('aria-label');
     if (explicit) return explicit.replace(/\s+/g, ' ').replace(/\s*\*\s*$/, '').trim();
     return el.name || el.id || '';
   };
@@ -41,11 +43,15 @@ export function readDetailDocument() {
     let value = el.value ?? '', shown = value;
     if (el.tagName === 'SELECT') shown = [...el.selectedOptions].map(o => o.textContent.trim()).join(' | ');
     if (type === 'checkbox') shown = el.checked ? 'true' : 'false';
+    if (type === 'radio') shown = label || value;
+    const placeholder = el.getAttribute('placeholder') || '';
+    const usedPlaceholder = !String(value).trim() && /restricted/i.test(label) && /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(placeholder.trim());
+    if (usedPlaceholder) shown = placeholder;
     const key = type === 'radio' ? el.name || label : label;
     let uniqueKey = key, count = 2;
     while (Object.prototype.hasOwnProperty.call(record, uniqueKey)) uniqueKey = `${key} (${count++})`;
     record[uniqueKey] = shown;
-    controls.push({ label, name: el.name || '', type, value, shown, ...(type === 'checkbox' || type === 'radio' ? { checked: el.checked } : {}) });
+    controls.push({ label, name: el.name || '', type, value, shown, placeholder, usedPlaceholder, ...(type === 'checkbox' || type === 'radio' ? { checked: el.checked } : {}) });
   }
   record.__originalControls = controls;
   record.__sourceEntryText = form.innerText || form.textContent || '';
