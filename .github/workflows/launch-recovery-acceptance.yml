@@ -1,0 +1,75 @@
+name: Launch Recovery Acceptance
+on:
+  push:
+    branches: [baker-launch-recovery-20261005, main]
+    paths: ['src/**', 'server/**', 'api/**', 'config/**', 'scripts/*recovery*', '.github/workflows/launch-recovery-acceptance.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: launch-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply reviewed repair on recovery branch
+        if: github.ref == 'refs/heads/baker-launch-recovery-20261005'
+        run: |
+          if test -f scripts/apply-launch-recovery.mjs; then
+            node scripts/apply-launch-recovery.mjs
+            node scripts/finish-launch-recovery.mjs
+            git config user.name 'Baker Recovery CI'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add src/main.tsx src/components/Layout.tsx src/pages/Upgrade.tsx src/pages/BakerBrainHub.tsx src/pages/AdminLaunchCheck.tsx api/_gateway.ts api/baker-ai.ts api/create-checkout-session.ts api/checkout-complete.ts api/health.ts server/baker-brain-safe.ts
+            git rm scripts/apply-launch-recovery.mjs scripts/finish-launch-recovery.mjs
+            git commit -m 'Repair recovery access, live AI validation and production billing guardrails'
+            git push origin HEAD:baker-launch-recovery-20261005
+          fi
+          echo "Tested commit: $(git rev-parse HEAD)"
+      - name: AI transport and data-integrity regressions
+        run: node --experimental-strip-types --test scripts/launch-recovery.test.mjs scripts/detailed-migration.test.mjs scripts/source-fidelity.test.mjs scripts/import-integrity.test.mjs
+      - name: Install build dependencies
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          rm -f package-lock.json
+          npm install --registry=https://registry.npmjs.org/
+      - name: Existing production regressions
+        run: node scripts/fieldwork-regression-check.mjs
+      - name: Build production frontend and all API modules
+        run: |
+          npm run build
+          mkdir -p /tmp/baker-api-check
+          for route in api/*.ts; do
+            case "$route" in api/_*) continue ;; esac
+            ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/baker-api-check/$(basename "$route" .ts).mjs"
+          done
+      - name: Install browser QA tools
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.61.1
+          npx playwright install chromium
+      - name: Existing import and audit browser acceptance
+        run: npx playwright test --config=scripts/detailed-playwright.config.mjs
+      - name: Recovery and truthful AI browser acceptance
+        run: npx playwright test --config=scripts/launch-recovery-playwright.config.mjs
+      - name: Verify production origin with real signed user
+        if: github.ref == 'refs/heads/main'
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: node scripts/verify-live-recovery.mjs
+      - name: Collect scoped review source and safe test evidence
+        if: always()
+        run: |
+          mkdir -p recovery-evidence
+          zip -q recovery-evidence/recovery-review-source.zip server/ai-gateway-client.ts server/baker-brain-safe.ts api/baker-ai.ts api/health.ts api/create-checkout-session.ts api/checkout-complete.ts src/main.tsx src/components/Layout.tsx src/pages/BakerBrainHub.tsx src/pages/AdminLaunchCheck.tsx src/pages/Upgrade.tsx scripts/launch-recovery.test.mjs config/stripe-live-catalog.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-recovery-acceptance
+          path: recovery-evidence
+          retention-days: 7
