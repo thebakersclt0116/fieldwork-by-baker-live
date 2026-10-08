@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, FileDown, LockKeyhole, Sparkles, UserCheck, Upload } from 'lucide-react';
 import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import { checkoutAdMeasurement } from '@/lib/adMeasurement';
 
 type PlanId = 'individual_monthly' | 'professional_monthly' | 'professional_annual';
 
@@ -81,7 +82,7 @@ export default function Upgrade() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, adMeasurement: checkoutAdMeasurement() }),
       });
       const payload = await response.json() as { url?: string; error?: string; code?: string };
       if (!response.ok || !payload.url) {

@@ -7,7 +7,9 @@ import PlatformHome from './pages/PlatformHome';
 const WorkspacePreview=lazy(()=>import('./pages/WorkspacePreview'));
 const Suggestions=lazy(()=>import('./pages/Suggestions'));
 const AccountRecovery=lazy(()=>import('./pages/AccountRecovery'));
+const AdMeasurementTest=lazy(()=>import('./pages/AdMeasurementTest'));
 import { useAuth } from './hooks/useAuth';
+import AdMeasurementChoice from './components/AdMeasurementChoice';
 
 const Features = lazy(() => import('./pages/Features'));
 const Pricing = lazy(() => import('./pages/Pricing'));
@@ -56,6 +58,7 @@ function AccountDashboard() {
 export default function App() {
   return (
     <Layout>
+      <AdMeasurementChoice />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
         <Route path="/" element={<PlatformHome />} />
@@ -96,6 +99,7 @@ export default function App() {
         <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/admin/supervisor-preview" element={<ProtectedRoute><AdminSupervisorPreview /></ProtectedRoute>} />
         <Route path="/admin/launch-check" element={<ProtectedRoute><AdminLaunchCheck /></ProtectedRoute>} />
+        <Route path="/admin/ad-measurement-test" element={<ProtectedRoute><AdMeasurementTest /></ProtectedRoute>} />
         <Route path="/supervisor/:token" element={<SupervisorView />} />
         <Route path="/feedback/:token" element={<ApplySupervisorFeedback />} />
         <Route path="*" element={<NotFound />} />
