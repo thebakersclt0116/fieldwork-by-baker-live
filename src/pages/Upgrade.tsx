@@ -18,7 +18,7 @@ const plans: Array<{
     name: 'Individual',
     price: '$16.99',
     cadence: '/month',
-    badge: 'Free demo',
+    badge: 'Individual membership',
     description: 'The connected BCBA workspace for candidates who want more than a basic tracker.',
     features: ['Fieldwork tracking', 'Baker Brain', 'Full Exam Lab + weak-area plans', 'Ripley/CSV migration', 'Form-ready exports', 'Resource Vault'],
   },
@@ -102,8 +102,8 @@ export default function Upgrade() {
       <div className="max-w-7xl mx-auto">
         <div className="max-w-3xl mx-auto text-center mb-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] text-[#E85D70] px-3 py-1.5 text-xs font-semibold mb-4"><Sparkles size={14} /> paid membership</div>
-          <h1 className="font-serif text-4xl lg:text-5xl font-semibold text-[#332C28] mb-4">Choose your plan after trying the real product.</h1>
-          <p className="text-[#6B5D54] text-lg">Your Free demo includes the connected experience. With a membership, continue with Individual or Professional.</p>
+          <h1 className="font-serif text-4xl lg:text-5xl font-semibold text-[#332C28] mb-4">Choose the membership that fits your journey.</h1>
+          <p className="text-[#6B5D54] text-lg">Explore fictional sample records in the free demo. Choose Individual or Professional to track your own hours and use the connected workspace.</p>
         </div>
 
         {stripeMode !== 'checking' && stripeMode !== 'live' && (
