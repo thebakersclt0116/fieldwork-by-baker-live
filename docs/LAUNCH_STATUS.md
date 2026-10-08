@@ -1,44 +1,39 @@
-# Fieldwork launch status
-
-Status: public paid launch remains blocked pending end-to-end acceptance.
+# Fieldwork launch acceptance — October 8, 2026
 
 Live domain: https://www.fieldworkbybaker.com
-Vercel project: Fieldwork By Baker / fieldwork-by-baker-testing.
-Production currently includes the iOS and Android apps coming soon announcement. Account/backend changes remain on the launch-readiness-hardening preview branch.
+Vercel team/project: Fieldwork By Baker / fieldwork-by-baker-testing.
 
-## Service setup verified
+Production includes managed verified accounts, protected cloud workspaces and private originals, password recovery, paid membership guards, monthly PDF forms, shared Commons, account-wide profile photos, Suggestions, and mobile-app previews. Public trials have been removed. Visitors can explore a read-only demo; membership is required for paid features. Sample community discussions are clearly identified as fictional examples.
 
-Vercel Pro is active. The approved $5 AI credit is funded with auto-reload off. Supabase Free project hfsngrpvxhrjahziwrdq is healthy. Stable session signing and Supabase connection values are saved in Production and Preview. Resend Free is connected; its sender domain, DKIM and SPF records are all verified. Supabase custom SMTP is enabled with a stored password, sender noreply@fieldworkbybaker.com, smtp.resend.com:465 and user resend. Supabase site URL is https://www.fieldworkbybaker.com and the sole recovery redirect is its /reset-password route.
+## Verified service and feature checks
 
-Managed account UI is enabled only in Preview for acceptance. Production signup has not been switched to managed accounts. Real test email destination: thebakersclt@gmail.com. No passwords are stored in this document.
+- Vercel Pro hosting, Supabase Free database/private storage, verified Resend sender and custom signup/recovery SMTP.
+- Password recovery completed by the account holder; updated password opened the live dashboard.
+- Fictional private original uploaded and downloaded with an exact hash match; foreign account access denied by protected database/storage rules.
+- Assigned verified supervisor read and saved a review in the browser. The saved review persisted after reload. Database checks confirmed direct foreign reads are denied, duplicate review requests are idempotent, and edited revisions invalidate invitations.
+- Deployed 2022 and 2027 organization monthly forms downloaded. Names, month/year, hours and supervision allocations matched the fictional records. Both signatures and dates remained blank and editable. PDFs were rendered and visually inspected.
+- Sandbox accounts can download PDFs for testing but cannot email forms. The deployed server rejected an attempted sandbox form email.
+- Stripe sandbox Individual monthly, Professional monthly and Professional annual purchases completed using fictional cards. Signed checkout, subscription and invoice events returned HTTP 200; sandbox payments did not modify live permissions. Cancellation and portal return to the isolated preview were verified.
+- Account-wide photo upload and persistence, country/activity opt-in defaults, shared Commons protections and Suggestions email delivery verified.
+- Main-page regular-phone and Duo-inspired previews verified in light and dark themes. Monthly form dark-mode contrast fixed and deployed.
+- Funded AI returned a fictional classroom explanation and saved it to the account. AI spending limit is $5; auto-reload is off.
 
-## Implemented
+## Live acceptance completed
 
-Managed signup requires delivered email confirmation; login and renewal verify the provider identity and derive permissions from protected profiles. Password recovery uses the fixed canonical destination, removes the recovery token from the address bar, and requests refresh-session revocation after reset. Concurrent renewals share one rotating refresh token; a logout/account change cannot silently restore the old session. Existing beta key login and browser records remain separate.
+The approved private $0 Professional test activated through Stripe's signed live webhooks. The subscription and invoice events both returned HTTP 200. Fieldwork's protected database showed active Professional access. The signup and selected-plan notifications were delivered to both owner inboxes. The paid account sent its monthly verification email to the authorized test recipient; Resend confirmed delivery with the unsigned PDF attached and the trainee's reply address.
 
-Managed workspaces hydrate before member pages open. Entries use workspace compare-and-swap, learning records use record versions, and paged reads reject concurrent changes. Unknown save outcomes retain local drafts and block further writes. Explicit recovery preserves a separate draft copy before loading cloud records. Successful saves reconcile server revisions and approval state. Legacy shared learning records are never silently assigned to an account.
+The temporary live subscription was canceled after testing. The cancellation reached the protected billing database and removed paid access. Fictional entries were soft-deleted, their invitation revoked, and review history retained. No payment method or future charge was created.
 
-Private originals use immutable owner paths, 25 MB file limits, bounded upload reservations, a 150 MB account archive cap and a 750 MB project archive cap to preserve free-tier headroom. Successful archives verify actual stored bytes against SHA-256. Downloads require owner access and expire after 60 seconds. Original metadata and import-journal events cannot be overwritten by clients. Imports preserve their prepared snapshot and wait for cloud entry saving before recording completion. Full audit ZIP export retrieves and checks originals, journals, records and account learning caches; it must be saved independently of Fieldwork.
+Production public billing and the recorded launch verification marker are enabled for the final deployment. Final production health and public checkout opening are checked after release.
 
-Exact elapsed-minute fractions are retained before aggregation. Supervisor snapshot feedback cannot target unassigned entries. Authentication/review responses are private and not cached. Build credentials are never generated into tracked code. The dependency lock uses the official npm registry and CI installs with npm ci. AI acceptance requires a real model response.
+## Form and review behavior
 
-## Actual verification
+A monthly verification email sends an unsigned official PDF to the supervisor address entered by the member. The supervisor reviews the values, signs and dates using print or an acceptable desktop PDF application, then returns it by replying to the trainee. Sending the form is not an approval or certification. The separate entry-review flow saves an assigned supervisor's decision against the current revision. Supervisor AI is disabled.
 
-Production frontend build passes. Focused account, cloud persistence, archive boundary, authorization and precision checks pass. All four CI workflows passed on the preceding recovery commit; the current archive/session update is being checked separately. The first private schema and entry-write transactions passed account isolation, protected-role, forged-approval, stale-write and immutable-history database checks.
+## Validation and operating limits
 
-The private archive migration is installed in Supabase. Its rollback-only fictional database test passed upload reservation/retry, missing-file rejection, immutable import history and cross-account original/journal isolation. No actual file bytes or historical records were uploaded in that database check.
+Latest focused billing/review/monthly tests: 34 passed. Launch health tests: 3 passed. Production build passed. Provider acceptance and real browser/database checks are recorded separately from unit tests.
 
-The private source fixture was validated locally only: 35 sessions, 62 hours, 19.75 restricted / 42.25 unrestricted, 55.75 independent / 6.25 supervised, 60 observation minutes, full narratives, a page continuation and four overlaps. No original bytes, narratives or personal details are published in this repository or CI.
+Private originals currently have 25 MB per-file, 150 MB per-account and 750 MB project archive caps. Independent exports should be retained. No identifiable client records were used in launch testing. No regulatory compliance certification is asserted. Six previously recorded build dependency audit findings remain; a forced Tailwind major migration was not attempted.
 
-## Remaining acceptance and implementation
-
-- Real delivered verification/recovery emails, independent-device sign-in, session renewal and full cloud save/download/restore tests.
-- Durable assigned-supervisor review of the exact current entry revision, immutable approval history and truthful email notification state.
-- Live AI conversation/resource checks and durable per-account/project generation budgets.
-- Live Stripe prices, verified customers, signed raw-body webhooks, idempotency/order reconciliation and portal; paid permissions must come from durable state. Live billing remains disabled. No real-money test is authorized.
-- Independent backup retention and a recorded restore drill; monitoring, meaningful budget alerts and hosting overage choice.
-- Mobile, keyboard, contrast, meaningful-control and adverse PDF/network regression on the exact final production commit.
-
-Six high audit findings remain in the build-time braces/Tailwind dependency chain; the registry did not provide the reported patched braces version at verification. A forced Tailwind major migration was not attempted. The postcss-selector-parser override resolves its reported advisory and builds successfully.
-
-Do not declare publicLaunchReady or enable paid public rollout merely because safe-failure unit tests pass. No compliance certification is asserted; identifiable client/health-data scope and any required provider agreements remain to be resolved before accepting that data.
+No passwords, private keys or webhook signing secrets are included in this document.
