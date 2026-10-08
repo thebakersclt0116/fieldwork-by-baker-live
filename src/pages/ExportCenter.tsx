@@ -1,3 +1,4 @@
+import './ExportCenter.css';
 import { currentManagedToken } from '@/lib/managedSession';
 import { monthLabel } from '@/lib/monthlyProgress';
 import { useMemo, useRef, useState } from 'react';
@@ -201,7 +202,7 @@ export default function ExportCenter() {
           </aside>
 
           <main className="space-y-6">
-            <section className="rounded-3xl border border-[#F0D5DA] bg-[#FFF6F8] p-6">
+            <section className="monthly-verification-panel rounded-3xl border border-[#F0D5DA] bg-[#FFF6F8] p-6">
               <h2 className="font-serif text-2xl text-[#332C28]">Prefilled monthly verification form</h2>
               <p className="mt-2 text-sm text-[#6B5D54]">One month and organization at a time. Signature and date fields stay blank for you and your supervisor.</p>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
