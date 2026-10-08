@@ -10,7 +10,7 @@ export default async function handler(req: any, res: any) {
   }
 
   const gatewayToken = await getAiGatewayToken();
-  const stripeSecret = String(process.env.STRIPE_SECRET_KEY || '');
+  const stripeSecret = String((process.env.BAKER_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY) || '');
   const stripeMode = /^(?:sk|rk)_live_/.test(stripeSecret)
     ? 'live'
     : /^(?:sk|rk)_test_/.test(stripeSecret)

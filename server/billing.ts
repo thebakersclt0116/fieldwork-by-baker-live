@@ -6,12 +6,12 @@ export type BillingMode='live'|'test';
 export type PlanId='individual_monthly'|'professional_monthly'|'professional_annual';
 export const isPlan=(plan:unknown):plan is PlanId=>typeof plan==='string'&&Object.hasOwn(catalog.plans,plan);
 export function billingMode():BillingMode {
- const key=process.env.STRIPE_SECRET_KEY || '';
+ const key=(process.env.BAKER_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY) || '';
  if (/^(?:sk|rk)_live_/.test(key))return 'live';
  if (/^(?:sk|rk)_test_/.test(key) && process.env.VERCEL_ENV==='preview' && process.env.BAKER_ALLOW_TEST_CHECKOUT==='true')return 'test';
  throw new CloudError('LIVE_BILLING_NOT_CONFIGURED');
 }
-export function billingConfigured(){return process.env.BAKER_BILLING_ENABLED==='true'&&Boolean(/^(?:sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY || '')&&process.env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_')&&process.env.SUPABASE_SECRET_KEY?.startsWith('sb_secret_'));}
+export function billingConfigured(){return process.env.BAKER_BILLING_ENABLED==='true'&&Boolean(/^(?:sk|rk)_live_/.test((process.env.BAKER_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY) || '')&&process.env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_')&&process.env.SUPABASE_SECRET_KEY?.startsWith('sb_secret_'));}
 export async function billingRPC(name:'link_billing_customer'|'apply_billing_snapshot'|'claim_billing_checkout',body:unknown){
  const {url}=cloudConfiguration();const key=process.env.SUPABASE_SECRET_KEY;
  if(!key?.startsWith('sb_secret_'))throw new CloudError('BILLING_BACKEND_REQUIRED');
@@ -21,7 +21,7 @@ export async function billingRPC(name:'link_billing_customer'|'apply_billing_sna
 }
 export async function stripeRequest(path:string,params?:URLSearchParams,idempotencyKey?:string):Promise<any>{
  if(!path.startsWith('/v1/')||path.includes('://'))throw new CloudError('INVALID_BILLING_PATH',400);
- billingMode();const response=await fetch('https://api.stripe.com'+path,{method:params?'POST':'GET',signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${process.env.STRIPE_SECRET_KEY}`,...(params?{'Content-Type':'application/x-www-form-urlencoded'}:{}),...(idempotencyKey?{'Idempotency-Key':idempotencyKey}:{})},...(params?{body:params.toString()}:{})});
+ billingMode();const response=await fetch('https://api.stripe.com'+path,{method:params?'POST':'GET',signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${(process.env.BAKER_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY)}`,...(params?{'Content-Type':'application/x-www-form-urlencoded'}:{}),...(idempotencyKey?{'Idempotency-Key':idempotencyKey}:{})},...(params?{body:params.toString()}:{})});
  const result=await response.json();if(!response.ok)throw new CloudError('STRIPE_REQUEST_FAILED',502);return result;
 }
 export async function billingIdentity(req:any){const token=getBearerToken(req);if(!token)throw new CloudError('AUTH_REQUIRED',401);return {token,user:await verifyCloudUser(token)};}

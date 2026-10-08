@@ -39,6 +39,11 @@ test('restricted keys preserve live configuration and preview-only test boundari
  delete process.env.BAKER_ALLOW_TEST_CHECKOUT;assert.throws(()=>billingMode());
  process.env.VERCEL_ENV='production';process.env.STRIPE_SECRET_KEY='sk_live_fictional';
 });
+test('dedicated Fieldwork key overrides integration key without exposing live mode to preview test keys',()=>{
+ process.env.STRIPE_SECRET_KEY='sk_test_fictional';process.env.BAKER_STRIPE_SECRET_KEY='rk_live_fictional';assert.equal(billingMode(),'live');assert.equal(billingConfigured(),true);
+ process.env.BAKER_STRIPE_SECRET_KEY='invalid';assert.throws(()=>billingMode());assert.equal(billingConfigured(),false);
+ delete process.env.BAKER_STRIPE_SECRET_KEY;process.env.STRIPE_SECRET_KEY='sk_live_fictional';
+});
 test('production ignores sandbox entitlements even when the testing flag is accidentally set',async()=>{
  process.env.BAKER_ALLOW_TEST_CHECKOUT='true';process.env.STRIPE_SECRET_KEY='sk_test_fictional';let calls=0;globalThis.fetch=async()=>{calls++;throw Error('No sandbox read in production');};
  const result=await effectiveSubscription({subscription_tier:'none',subscription_status:'none'},actor,'fictional-jwt');assert.deepEqual(result,{tier:'none',status:'none',mode:'live'});assert.equal(calls,0);
