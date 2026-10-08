@@ -1,3 +1,4 @@
+import CommunityDemo from '@/components/CommunityDemo';
 import CommunityMembers from '@/components/CommunityMembers';
 import { useMemo, useState } from 'react';
 import { Bell, Bookmark, CalendarDays, Heart, MessageCircle, Search, ShieldAlert, Sparkles, Users, X } from 'lucide-react';
@@ -86,6 +87,7 @@ export default function BakerCommons() {
         </div>
 
         <CommunityMembers/>
+        <CommunityDemo/>
         <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)_280px]">
           <aside className="space-y-4">
             <div className="rounded-[26px] border border-[#F2EDEA] bg-white p-4 dark:border-white/10 dark:bg-[#211D1A]">
