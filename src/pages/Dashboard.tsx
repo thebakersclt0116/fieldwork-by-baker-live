@@ -1,3 +1,4 @@
+import MobileAppAnnouncement from '@/components/MobileAppAnnouncement';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -231,6 +232,7 @@ export default function Dashboard() {
         </>
       )}
 
+      <div className="container-2xl pt-4"><MobileAppAnnouncement /></div>
       {/* Dashboard Top Bar */}
       <div
         className={`sticky top-[72px] z-40 bg-white/95 backdrop-blur-md border-b border-[#F2EDEA] transition-shadow duration-300 ${

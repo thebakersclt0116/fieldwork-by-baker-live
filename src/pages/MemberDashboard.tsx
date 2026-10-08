@@ -1,3 +1,4 @@
+import MobileAppAnnouncement from '@/components/MobileAppAnnouncement';
 import MonthlyProgress from '@/components/MonthlyProgress';
 import { currentMonthKey, monthLabel } from '@/lib/monthlyProgress';
 import TimeInput from '@/components/TimeInput';
@@ -317,6 +318,7 @@ export default function MemberDashboard() {
           </div>
         </div>
 
+        <MobileAppAnnouncement />
         <MonthlyProgress entries={entries} selectedMonth={selectedMonth} onSelect={month => { setSelectedMonth(month); setSelectedIds([]); }} />
 
         {latestMonth && (

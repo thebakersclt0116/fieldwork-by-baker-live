@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Brain, Compass, FlaskConical, Library, LogOut, Menu, Moon, Route, Sparkles, Sun, Upload, Users, X } from 'lucide-react';
+import { MessageSquare, Brain, Compass, FlaskConical, Library, LogOut, Menu, Moon, Route, Sparkles, Sun, Upload, Users, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const coreNav = [
+  { label: 'Suggestions', href: '/suggestions', icon: MessageSquare },
   { label: 'My Path', href: '/my-path', icon: Compass },
   { label: 'BCBA Roadmap', href: '/roadmap', icon: Route },
   { label: 'Baker Commons', href: '/commons', icon: Users },
