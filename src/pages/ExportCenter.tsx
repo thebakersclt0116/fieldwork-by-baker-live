@@ -157,7 +157,7 @@ export default function ExportCenter() {
           <div className="w-16 h-16 rounded-2xl bg-[#FFF5F7] text-[#E85D70] flex items-center justify-center mx-auto mb-5"><LockKeyhole size={28} /></div>
           <div className="inline-flex rounded-full bg-[#FAF8F6] px-3 py-1 text-xs font-semibold text-[#7B6B62] mb-3">{activeTrial ? '3-DAY TRIAL' : 'PAID SUBSCRIPTION REQUIRED'}</div>
           <h1 className="font-serif text-3xl font-semibold text-[#332C28] mb-3">Monthly verification is a paid feature.</h1>
-          <p className="text-[#6B5D54] mb-6">Your records remain available. Prefilled monthly verification forms require an active paid subscription and are not included in the 3-day trial.</p>
+          <p className="text-[#6B5D54] mb-6">Your records remain available. Prefilled monthly verification forms require an active paid subscription.</p>
           <Link to="/upgrade" className="btn-primary inline-flex px-6 py-3 rounded-xl">Upgrade to Export</Link>
         </div>
       </div>

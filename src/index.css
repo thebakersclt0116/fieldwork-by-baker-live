@@ -405,6 +405,15 @@
     color: var(--dark-text-secondary) !important;
   }
 
+  .dark .pricing-professional-cta {
+    background-color: #F5EEE9;
+    color: #332C28;
+  }
+  .dark .pricing-professional-cta:hover {
+    background-color: #FFFFFF;
+    color: #211D1A;
+  }
+
   .dark input,
   .dark textarea,
   .dark select {

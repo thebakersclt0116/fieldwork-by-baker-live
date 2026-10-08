@@ -1,6 +1,5 @@
 import { BAKER_EMILY_EMAIL, BAKER_OWNER_EMAIL, signSession } from './_auth.js';
 
-const THREE_DAYS_SECONDS = 60 * 60 * 24 * 3;
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 function send(res: any, status: number, body: unknown) {
@@ -25,12 +24,10 @@ export default async function handler(req: any, res: any) {
     return send(res, 409, { error: 'This beta account already exists. Use Sign In instead.' });
   }
 
-  const trialEndsAt = Math.floor(Date.now() / 1000) + THREE_DAYS_SECONDS;
   const user = {
     email,
     name,
     role: 'free' as const,
-    trialEndsAt,
   };
 
   // The signed browser session remains valid so the user can upgrade after the trial,
@@ -38,5 +35,5 @@ export default async function handler(req: any, res: any) {
   const token = signSession(user, ONE_YEAR_SECONDS);
   if (!token) return send(res, 503, { error: 'Secure signup is not available on this deployment.' });
 
-  return send(res, 200, { user, token, trialEndsAt });
+  return send(res, 200, { user, token });
 }

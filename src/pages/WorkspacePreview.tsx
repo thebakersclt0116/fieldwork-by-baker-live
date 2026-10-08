@@ -1,0 +1,12 @@
+import {useState} from 'react';
+import {Link} from 'react-router';
+import MonthlyProgress from '@/components/MonthlyProgress';
+import MobileAppAnnouncement from '@/components/MobileAppAnnouncement';
+import {loadEntries,getCurrentUserEmail} from '@/lib/fieldworkStore';
+import {currentMonthKey} from '@/lib/monthlyProgress';
+import type {HourEntry} from '@/types';
+const samples=[{id:'demo-1',date:currentMonthKey()+'-10',duration:2,activityCategory:'UNRESTRICTED',supervisorName:'Example Supervisor',organizationName:'Example Clinic',notes:'Fictional example: literature review and program planning.',status:'PENDING'},{id:'demo-2',date:'2026-08-20',duration:1.5,activityCategory:'RESTRICTED',supervisorName:'Example Supervisor',organizationName:'Example Clinic',notes:'Fictional example: direct-service session.',status:'PENDING'}] as HourEntry[];
+export default function WorkspacePreview({demo=false}:{demo?:boolean}){
+ const [month,setMonth]=useState(currentMonthKey);const entries=demo?samples:loadEntries(getCurrentUserEmail() || undefined);
+ return <main className="mx-auto max-w-7xl px-4 py-8"><span className="text-sm font-semibold text-[#e85d70]">{demo?'FREE DEMO · FICTIONAL RECORDS':'YOUR SAVED RECORDS · READ ONLY'}</span><h1 className="mt-3 font-serif text-4xl text-[#332c28] dark:text-white">{demo?'A clearer path to your BCBA.':'Your progress stays with you.'}</h1><p className="my-4 text-[#6b5d54] dark:text-[#cfc4be]">{demo?'Explore sample monthly progress. A paid membership unlocks saving real hours, imports, Baker Brain, and monthly verification forms.':'Your saved entries remain available to review. Renew your membership to add or edit hours, import records, and create official monthly forms.'}</p><div className="mb-6 flex gap-3"><Link to="/pricing" className="rounded-xl bg-[#e85d70] px-5 py-3 font-semibold text-white">Choose your membership</Link><Link to={demo?'/signup':'/demo'} className="rounded-xl border px-5 py-3 font-semibold">{demo?'Create account':'Explore demo'}</Link></div><MonthlyProgress entries={entries} selectedMonth={month} onSelect={setMonth}/><div className="mt-5 space-y-3">{entries.filter(e=>e.date.slice(0,7)===month).map(e=><article key={e.id} className="rounded-2xl border border-[#eaded4] bg-white p-5"><strong>{e.date} · {e.duration.toFixed(2)} hours · {e.activityCategory}</strong><p className="mt-2 text-sm text-[#6b5d54]">{e.notes}</p></article>)}</div><MobileAppAnnouncement/></main>;
+}

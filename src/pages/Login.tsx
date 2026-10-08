@@ -150,7 +150,7 @@ export default function Login() {
               {managedAccountsEnabled?'Invited supervisors sign in with their verified email, then return to their private review link.':'Supervisors use the private invite link issued by the supervisee or platform owner.'}
             </p>
             <p className="mt-3 text-sm text-center text-[#7B6B62]">
-              New to Baker? <Link to="/signup" className="font-semibold text-[#E85D70] hover:underline">Start your 3-day free trial</Link>
+              New to Baker? <Link to="/signup" className="font-semibold text-[#E85D70] hover:underline">Create your account</Link>
             </p>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import CommunityMembers from '@/components/CommunityMembers';
 import { useMemo, useState } from 'react';
 import { Bell, Bookmark, CalendarDays, Heart, MessageCircle, Search, ShieldAlert, Sparkles, Users, X } from 'lucide-react';
 
@@ -84,6 +85,7 @@ export default function BakerCommons() {
           <div className="flex items-start gap-3"><ShieldAlert size={19} className="mt-0.5 shrink-0 text-[#B36A2E]" /><div><div className="text-sm font-bold text-[#8A5D36] dark:text-[#F2C08D]">Protect client and workplace privacy.</div><p className="mt-1 text-xs leading-5 text-[#7A6049] dark:text-[#CDB59D]">Never post client names, protected health information, confidential employer information, private fieldwork records, or anything that could identify a client. This beta currently stores your own new posts in this browser; the shared multi-user community backend is not live yet.</p></div></div>
         </div>
 
+        <CommunityMembers/>
         <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)_280px]">
           <aside className="space-y-4">
             <div className="rounded-[26px] border border-[#F2EDEA] bg-white p-4 dark:border-white/10 dark:bg-[#211D1A]">

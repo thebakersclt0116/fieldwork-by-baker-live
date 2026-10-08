@@ -1,3 +1,4 @@
+import CommunitySettings from '@/components/CommunitySettings';
 import {Link} from 'react-router';
 import {useAuth} from '@/hooks/useAuth';
 import {currentManagedToken} from '@/lib/managedSession';
@@ -22,6 +23,7 @@ export default function AccountSettings() {
       {message && <p role="status" className="mt-3 text-sm">{message}</p>}
       <p className="mt-4 text-xs text-[#6B5D54] dark:text-[#CFC4BE]">This preference is saved for your account in this browser. Original source records and exported source data retain their exact values.</p>
     </section>
+    {user?.authProvider==='supabase'&&<CommunitySettings/>}
     {user?.authProvider==='supabase'&&<section className="mt-6 rounded-2xl border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><h2 className="text-lg font-semibold">Subscription & billing</h2><p className="mt-2 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Manage your plan, payment method, invoices, and cancellation through Stripe.</p><div className="mt-4 flex flex-wrap gap-3"><button disabled={billingBusy} onClick={openBilling} className="rounded-xl bg-[#332C28] px-5 py-3 font-semibold text-white disabled:opacity-40">{billingBusy?'Opening billing…':'Manage subscription'}</button><Link to="/upgrade" className="rounded-xl border px-5 py-3 font-semibold">View plans</Link></div>{billingMessage&&<p role="status" className="mt-3 text-sm">{billingMessage}</p>}</section>}
   </div></div>;
 }

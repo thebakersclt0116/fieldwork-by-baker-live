@@ -18,7 +18,7 @@ const plans: Array<{
     name: 'Individual',
     price: '$16.99',
     cadence: '/month',
-    badge: '3-day trial',
+    badge: 'Free demo',
     description: 'The connected BCBA workspace for candidates who want more than a basic tracker.',
     features: ['Fieldwork tracking', 'Baker Brain', 'Full Exam Lab + weak-area plans', 'Ripley/CSV migration', 'Form-ready exports', 'Resource Vault'],
   },
@@ -43,7 +43,7 @@ const plans: Array<{
 ];
 
 export default function Upgrade() {
-  const { user, isOwner, hasPaidFeatures, activeTrial, trialEndsAt } = useAuth();
+  const { user, isOwner, hasPaidFeatures, activeTrial } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState('');
   const [billingEnabled, setBillingEnabled] = useState(false);
@@ -101,9 +101,9 @@ export default function Upgrade() {
     <div className="min-h-[100dvh] bg-[#FFFCF9] py-10 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="max-w-3xl mx-auto text-center mb-10">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] text-[#E85D70] px-3 py-1.5 text-xs font-semibold mb-4"><Sparkles size={14} /> 3-day full-access trial</div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] text-[#E85D70] px-3 py-1.5 text-xs font-semibold mb-4"><Sparkles size={14} /> paid membership</div>
           <h1 className="font-serif text-4xl lg:text-5xl font-semibold text-[#332C28] mb-4">Choose your plan after trying the real product.</h1>
-          <p className="text-[#6B5D54] text-lg">Your 3-day trial includes the connected experience. After the trial, continue with Individual or Professional.</p>
+          <p className="text-[#6B5D54] text-lg">Your Free demo includes the connected experience. With a membership, continue with Individual or Professional.</p>
         </div>
 
         {stripeMode !== 'checking' && stripeMode !== 'live' && (
@@ -133,16 +133,16 @@ export default function Upgrade() {
 
         {error && <div className="max-w-2xl mx-auto rounded-2xl bg-[#FFF5F7] border border-[#FFC1CC] px-5 py-4 text-sm text-[#C9445A] text-center mb-8">{error}</div>}
 
-        {activeTrial && trialEndsAt && <div className="mx-auto mb-6 max-w-3xl rounded-2xl border border-[#CFE7D9] bg-[#F4FBF7] px-5 py-4 text-center text-sm text-[#4B8C69]">Your 3-day trial is active until {new Date(trialEndsAt * 1000).toLocaleString()}.</div>}
+
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
-          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><FileDown size={18} className="text-[#E85D70] mb-2" /><strong className="block text-[#332C28] mb-1">3-day trial</strong>Use the connected platform before choosing a paid plan.</div>
+          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><FileDown size={18} className="text-[#E85D70] mb-2" /><strong className="block text-[#332C28] mb-1">Free demo</strong>Preview the workspace using fictional records.</div>
           <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><Upload size={18} className="text-[#D4A574] mb-2" /><strong className="block text-[#332C28] mb-1">Individual</strong>AI, Exam Lab, migration, exports, and the candidate workspace.</div>
           
           <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><UserCheck size={18} className="text-[#5FA37E] mb-2" /><strong className="block text-[#332C28] mb-1">Professional</strong>Secure supervisor review, notes, and messages.</div>
         </div>
 
-        <div className="max-w-3xl mx-auto mt-8 rounded-2xl bg-[#FAF8F6] p-5 flex items-start gap-3 text-sm text-[#6B5D54]"><LockKeyhole size={18} className="text-[#A8998E] shrink-0 mt-0.5" /><div><strong className="text-[#332C28]">Your data stays yours.</strong> After the 3-day trial, an active plan is required to keep using the connected app. Keep independent backups of fieldwork records you are professionally required to retain.</div></div>
+        <div className="max-w-3xl mx-auto mt-8 rounded-2xl bg-[#FAF8F6] p-5 flex items-start gap-3 text-sm text-[#6B5D54]"><LockKeyhole size={18} className="text-[#A8998E] shrink-0 mt-0.5" /><div><strong className="text-[#332C28]">Your data stays yours.</strong> An active plan is required to keep using the connected app. Keep independent backups of fieldwork records you are professionally required to retain.</div></div>
         {user && <p className="text-center text-xs text-[#A8998E] mt-6">Signed in as {user.email}</p>}
       </div>
     </div>

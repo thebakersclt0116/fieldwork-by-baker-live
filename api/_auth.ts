@@ -234,7 +234,7 @@ export async function requireAccountSession(
     if(!Array.isArray(rows)||!rows[0])return null;
     const profile=rows[0];
     const entitlement=await effectiveSubscription(profile,identity.id,token);
-    const active=['active','trialing'].includes(entitlement.status)&&['individual','professional'].includes(entitlement.tier);
+    const active=entitlement.status === 'active'&&['individual','professional'].includes(entitlement.tier);
     const role:BakerRole=['owner','supervisor'].includes(profile.role)?profile.role:active?(entitlement.tier==='professional'?'professional':'paid'):'free';
     if(!roles.includes(role))return null;
     return {accountId:identity.id,authProvider:'supabase',email:identity.email,name:profile.display_name,role,
@@ -259,7 +259,7 @@ export function isEmilySupervisor(session: Pick<BakerSession, 'role' | 'supervis
 }
 
 export function isTrialActive(session: Pick<BakerSession, 'trialEndsAt'>): boolean {
-  return typeof session.trialEndsAt === 'number' && session.trialEndsAt > Math.floor(Date.now() / 1000);
+  void session; return false;
 }
 
 export function canUsePaidTools(session: BakerSession): boolean {

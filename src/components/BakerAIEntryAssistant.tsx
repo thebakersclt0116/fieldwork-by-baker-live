@@ -62,7 +62,7 @@ export default function BakerAIEntryAssistant({ email, entries, onEntriesChange 
   const askBaker = async () => {
     const token = getStoredAccessToken();
     if (!hasPaidFeatures || !token) {
-      setMessage('Baker AI is available during your trial and with eligible paid plans.');
+      setMessage('Baker AI is available with an eligible paid membership.');
       return;
     }
     if (text.trim().length < 3) {

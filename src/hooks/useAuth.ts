@@ -195,10 +195,10 @@ export function useAuth() {
 
   const accessToken = getStoredAccessToken();
   const isOwner = user?.role === 'owner';
-  const activeTrial = Boolean(user?.trialEndsAt && user.trialEndsAt > Math.floor(Date.now() / 1000));
+  const activeTrial = false;
   const trialExpired = Boolean(user?.trialEndsAt && user.trialEndsAt <= Math.floor(Date.now() / 1000));
   const isProfessional = user?.role === 'professional';
-  const isFree = user?.role === 'free' && !activeTrial;
+  const isFree = user?.role === 'free';
   const isDemo = false;
   const subscription = user?.subscription || 'none';
   const isPaid = Boolean(user?.role === 'paid' || ['individual', 'professional', 'enterprise'].includes(subscription));

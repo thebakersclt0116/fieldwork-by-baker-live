@@ -9,8 +9,8 @@ const tiers = [
     cadence: '/month',
     highlight: true,
     description: 'For BCBA candidates who want fieldwork, AI, exam prep, and migration in one connected workspace.',
-    features: ['3-day full-access trial', 'Fieldwork tracking + decimal time conversion', 'Baker Brain BCBA AI', 'Full Exam Lab + weak-area plans', 'Ripley/CSV migration tools', 'Form-ready exports', 'Resource Vault'],
-    note: 'Cancel anytime. Trial gives full access before the first paid month.',
+    features: ['Fieldwork tracking + decimal time conversion', 'Baker Brain BCBA AI', 'Full Exam Lab + weak-area plans', 'Ripley/CSV migration tools', 'Form-ready exports', 'Resource Vault'],
+    note: 'Cancel anytime. Membership begins after payment.',
   },
   {
     name: 'Professional',
@@ -18,7 +18,7 @@ const tiers = [
     cadence: '/month',
     highlight: false,
     description: 'For candidates who want the full platform plus active supervisor collaboration.',
-    features: ['Everything in Individual', '3-day full-access trial', 'Secure supervisor review links', 'Supervisor notes + messages', 'Revision and re-approval workflow', 'Multiple supervisors + organizations', 'Priority beta support'],
+    features: ['Everything in Individual', 'Secure supervisor review links', 'Supervisor notes + messages', 'Revision and re-approval workflow', 'Multiple supervisors + organizations', 'Priority support'],
     note: 'Professional Annual is available in checkout at $349/year — about $29.08/month.',
   },
 ];
@@ -30,10 +30,10 @@ export default function Pricing() {
     <div className="min-h-[100dvh] bg-[#FFFCF9] dark:bg-[#171412]">
       <section className="px-4 pb-12 pt-16 text-center">
         <div className="mx-auto max-w-4xl">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] px-3 py-1.5 text-xs font-semibold text-[#E85D70] dark:bg-[#E85D70]/10"><Sparkles size={14} /> 3 days free. Then choose the plan that fits your workflow.</div>
-          <h1 className="mb-5 font-serif text-5xl font-semibold leading-tight text-[#332C28] dark:text-white lg:text-6xl">Try the full BCBA workspace before you pay.</h1>
-          <p className="mx-auto mb-7 max-w-2xl text-lg text-[#6B5D54] dark:text-[#CFC4BE]">No stripped-down forever-free tier and no one-time export pass. Your trial is for the actual product: fieldwork, Baker Brain, Exam Lab, migration, resources, and supervisor workflows.</p>
-          <Link to={trialHref} className="btn-primary inline-flex rounded-xl px-6 py-3">Start 3-Day Free Trial <ArrowRight size={16} /></Link>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] px-3 py-1.5 text-xs font-semibold text-[#E85D70] dark:bg-[#E85D70]/10"><Sparkles size={14} /> Explore the demo. Choose the membership that fits.</div>
+          <h1 className="mb-5 font-serif text-5xl font-semibold leading-tight text-[#332C28] dark:text-white lg:text-6xl">A workspace worth investing in.</h1>
+          <p className="mx-auto mb-7 max-w-2xl text-lg text-[#6B5D54] dark:text-[#CFC4BE]">No stripped-down forever-free tier and no one-time export pass. Your membership includes: fieldwork, Baker Brain, Exam Lab, migration, resources, and supervisor workflows.</p>
+          <Link to="/demo" className="mr-4 inline-flex rounded-xl border border-[#e2dad5] px-6 py-3 font-semibold">Explore free demo</Link><Link to={trialHref} className="btn-primary inline-flex rounded-xl px-6 py-3">Create account <ArrowRight size={16} /></Link>
         </div>
       </section>
 
@@ -47,7 +47,7 @@ export default function Pricing() {
               <p className="mb-5 text-sm leading-relaxed text-[#6B5D54] dark:text-[#CFC4BE]">{tier.description}</p>
               <ul className="mb-5 flex-1 space-y-2">{tier.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-[#4D423C] dark:text-[#E7DED9]"><Check size={15} className="mt-0.5 shrink-0 text-[#5FA37E]" />{feature}</li>)}</ul>
               <p className="mb-5 text-xs text-[#A8998E]">{tier.note}</p>
-              <Link to={trialHref} className={`w-full rounded-xl py-3 text-center text-sm font-semibold ${tier.highlight ? 'bg-[#E85D70] text-white' : 'bg-[#332C28] text-white dark:bg-white dark:text-[#332C28]'}`}>{isAuthenticated ? `Choose ${tier.name}` : 'Start 3-Day Free Trial'}</Link>
+              <Link to={trialHref} className={`w-full rounded-xl py-3 text-center text-sm font-semibold ${tier.highlight ? 'bg-[#E85D70] text-white' : 'pricing-professional-cta bg-[#332C28] text-white'}`}>{isAuthenticated ? `Choose ${tier.name}` : 'Create account'}</Link>
             </div>
           ))}
         </div>

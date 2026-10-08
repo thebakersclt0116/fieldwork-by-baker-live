@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PaidFeatureRoute from './components/PaidFeatureRoute';
 import PlatformHome from './pages/PlatformHome';
+const WorkspacePreview=lazy(()=>import('./pages/WorkspacePreview'));
 const Suggestions=lazy(()=>import('./pages/Suggestions'));
 const AccountRecovery=lazy(()=>import('./pages/AccountRecovery'));
 import { useAuth } from './hooks/useAuth';
@@ -47,7 +48,8 @@ function RouteFallback() {
 }
 
 function AccountDashboard() {
-  const { isOwner } = useAuth();
+  const { isOwner, hasPaidFeatures } = useAuth();
+  if (!hasPaidFeatures) return <WorkspacePreview />;
   return isOwner ? <Dashboard /> : <MemberDashboard />;
 }
 
@@ -57,6 +59,7 @@ export default function App() {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
         <Route path="/" element={<PlatformHome />} />
+        <Route path="/demo" element={<WorkspacePreview demo />} />
         <Route path="/features" element={<Features />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/enterprise" element={<Enterprise />} />
@@ -82,7 +85,7 @@ export default function App() {
         <Route path="/exam-lab" element={<ProtectedRoute><PaidFeatureRoute><ExamLab /></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/resources" element={<ProtectedRoute><PaidFeatureRoute><ResourceVault /></PaidFeatureRoute></ProtectedRoute>} />
 
-        <Route path="/dashboard" element={<ProtectedRoute><PaidFeatureRoute><AccountDashboard /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
