@@ -114,7 +114,7 @@ export function useAuth() {
         const nextUser: AuthUser={...payload.user,authProvider:'supabase',initials:getInitials(payload.user.name)};
         saveManagedTokens(payload);storeSession(nextUser,payload.token);setUser(nextUser);return true;
       };
-      if (managedAccountsEnabled && await managedLogin()) return true;
+      if (await managedLogin()) return true;
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
