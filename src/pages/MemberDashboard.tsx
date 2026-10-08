@@ -1,3 +1,5 @@
+import MonthlyProgress from '@/components/MonthlyProgress';
+import { currentMonthKey, monthLabel } from '@/lib/monthlyProgress';
 import TimeInput from '@/components/TimeInput';
 import { formatTime } from '@/lib/timeDisplay';
 import { useMemo, useState } from 'react';
@@ -29,6 +31,8 @@ import {
   saveEntries,
 } from '@/lib/fieldworkStore';
 import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import {waitForCloudSave} from '@/lib/cloudWorkspace';
+import {currentManagedToken} from '@/lib/managedSession';
 
 type WorkPresence = 'INDEPENDENT' | 'SUPERVISED';
 type SupervisionFormat = 'INDIVIDUAL' | 'GROUP';
@@ -117,10 +121,12 @@ export default function MemberDashboard() {
   const supervisorCount = knownSupervisors.length;
   const organizationCount = knownOrganizations.length;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const allSelected = entries.length > 0 && selectedIds.length === entries.length;
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
+  const visibleEntries = entries.filter(entry => entry.date.slice(0, 7) === selectedMonth);
+  const allSelected = visibleEntries.length > 0 && visibleEntries.every(entry => selectedIds.includes(entry.id));
   const latestMonth = useMemo(
-    () => [...compliance.months].sort((a, b) => b.month.localeCompare(a.month))[0] || null,
-    [compliance.months]
+    () => compliance.months.find(month => month.month === selectedMonth) || null,
+    [compliance.months, selectedMonth]
   );
 
   const saveManualEntry = () => {
@@ -217,11 +223,11 @@ export default function MemberDashboard() {
   };
 
   const toggleAll = () => {
-    setSelectedIds(allSelected ? [] : entries.map((entry) => entry.id));
+    setSelectedIds(allSelected ? [] : visibleEntries.map((entry) => entry.id));
   };
 
   const createReviewLink = async (entry: DetailedHourEntry) => {
-    const token = getStoredAccessToken();
+    let token = getStoredAccessToken();
     if (!hasSupervisorFeatures) {
       setShareMessage('Supervisor workflow is a Professional feature.');
       return;
@@ -235,6 +241,11 @@ export default function MemberDashboard() {
     setShareMessage('');
     setReviewUrl('');
     try {
+      if(user?.authProvider==='supabase'){
+        await waitForCloudSave();token=await currentManagedToken();
+        const canonical=loadEntries(user.email).find(current=>current.id===entry.id);
+        if(!canonical)throw new Error('This entry is no longer available.');entry=canonical;
+      }
       const response = await fetch('/api/supervisor-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -243,6 +254,7 @@ export default function MemberDashboard() {
           supervisorEmail,
           reviewEntry: {
             id: entry.id,
+            revision:entry.revision||0,
             date: entry.date,
             duration: entry.duration,
             activityCategory: entry.activityCategory,
@@ -305,12 +317,14 @@ export default function MemberDashboard() {
           </div>
         </div>
 
+        <MonthlyProgress entries={entries} selectedMonth={selectedMonth} onSelect={month => { setSelectedMonth(month); setSelectedIds([]); }} />
+
         {latestMonth && (
           <section className="rounded-3xl border border-[#F2EDEA] bg-white p-6 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
               <div>
                 <div className="text-xs uppercase tracking-[0.16em] text-[#A8998E]">Monthly compliance</div>
-                <h2 className="font-serif text-2xl font-semibold text-[#332C28] mt-1">{latestMonth.month}</h2>
+                <h2 className="font-serif text-2xl font-semibold text-[#332C28] mt-1">{monthLabel(latestMonth.month)}</h2>
               </div>
               <p className="text-xs text-[#A8998E]">Baker flags the recorded data; a qualified supervisor makes the final determination.</p>
             </div>
@@ -402,10 +416,10 @@ export default function MemberDashboard() {
           <section className="rounded-3xl border border-[#F2EDEA] bg-white shadow-sm overflow-hidden">
             <div className="p-6 border-b border-[#F2EDEA] space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                <div><h2 className="font-serif text-xl font-semibold text-[#332C28]">Tracked entries</h2><p className="text-sm text-[#A8998E]">Each row shows who supervised it, where it belongs, and exactly how the hours are categorized.</p></div>
-                <span className="text-sm text-[#A8998E]">{entries.length} entries</span>
+                <div><h2 className="font-serif text-xl font-semibold text-[#332C28]">Entries · {monthLabel(selectedMonth)}</h2><p className="text-sm text-[#A8998E]">Each row shows who supervised it, where it belongs, and exactly how the hours are categorized.</p></div>
+                <span className="text-sm text-[#A8998E]">{visibleEntries.length} entries</span>
               </div>
-              {entries.length > 0 && (
+              {visibleEntries.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2">
                   <label className="inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] px-3 py-2 text-xs font-semibold text-[#6B5D54]"><input type="checkbox" checked={allSelected} onChange={toggleAll} /> Select all</label>
                   <button onClick={deleteSelected} disabled={selectedIds.length === 0} className="inline-flex items-center gap-2 rounded-xl border border-[#E8C4C8] px-3 py-2 text-xs font-semibold text-[#C9445A] disabled:opacity-40"><Trash2 size={14} /> Delete selected ({selectedIds.length})</button>
@@ -414,11 +428,11 @@ export default function MemberDashboard() {
               )}
             </div>
 
-            {entries.length === 0 ? (
-              <div className="p-10 text-center"><Bot size={30} className="mx-auto text-[#E85D70] mb-3" /><h3 className="font-serif text-xl font-semibold text-[#332C28] mb-2">Ready for a clean start</h3><p className="text-sm text-[#A8998E]">Import Ripley or log your next session with Baker AI.</p></div>
+            {visibleEntries.length === 0 ? (
+              <div className="p-10 text-center"><Bot size={30} className="mx-auto text-[#E85D70] mb-3" /><h3 className="font-serif text-xl font-semibold text-[#332C28] mb-2">No entries this month</h3><p className="text-sm text-[#A8998E]">Choose a historical month above or log your next session with Baker AI.</p></div>
             ) : (
               <div className="divide-y divide-[#F2EDEA] max-h-[820px] overflow-y-auto">
-                {entries.map((entry) => {
+                {visibleEntries.map((entry) => {
                   const unrestricted = entry.activityCategory === 'UNRESTRICTED' ? entry.duration : 0;
                   const restricted = entry.activityCategory === 'RESTRICTED' ? entry.duration : 0;
                   return (
@@ -469,10 +483,11 @@ export default function MemberDashboard() {
                                 <input type="email" value={supervisorEmail} onChange={(event) => setSupervisorEmail(event.target.value)} placeholder="supervisor@email.com" className="rounded-xl border border-[#E2DAD5] bg-white px-3 py-2.5 text-sm" />
                               </div>
                               <div className="mt-3 flex flex-wrap gap-2">
-                                <button onClick={() => void createReviewLink(entry)} disabled={creatingReview} className="inline-flex items-center gap-2 rounded-xl bg-[#332C28] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"><UserCheck size={14} /> {creatingReview ? 'Creating…' : 'Create signed review link'}</button>
+                                <button onClick={() => void createReviewLink(entry)} disabled={creatingReview} className="inline-flex items-center gap-2 rounded-xl bg-[#332C28] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"><UserCheck size={14} /> {creatingReview ? 'Creating…' : user?.authProvider==='supabase'?'Allow this supervisor to review this entry':'Create signed review link'}</button>
                                 {reviewUrl && <button onClick={() => void navigator.clipboard.writeText(reviewUrl)} className="inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] bg-white px-3 py-2.5 text-xs text-[#6B5D54]"><Copy size={14} /> Copy link</button>}
                                 {reviewUrl && <a href={`mailto:${encodeURIComponent(supervisorEmail)}?subject=${encodeURIComponent('Fieldwork by Baker review request')}&body=${encodeURIComponent(`Please review my fieldwork entry here:\n\n${reviewUrl}`)}`} className="inline-flex items-center gap-2 rounded-xl bg-[#E85D70] px-3 py-2.5 text-xs font-semibold text-white"><Mail size={14} /> Email supervisor</a>}
                               </div>
+                              {user?.authProvider==='supabase'&&<p className="mt-3 text-xs text-[#6B5D54]">This grants the named email access to this entry’s narrative and details for 14 days. The supervisor must verify that email and sign in. Editing the entry invalidates this invitation.</p>}
                               {shareMessage && <div className="mt-2 text-xs text-[#6B5D54]">{shareMessage}</div>}
                             </>
                           ) : (

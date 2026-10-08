@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PaidFeatureRoute from './components/PaidFeatureRoute';
 import PlatformHome from './pages/PlatformHome';
+const AccountRecovery=lazy(()=>import('./pages/AccountRecovery'));
 import { useAuth } from './hooks/useAuth';
 
 const Features = lazy(() => import('./pages/Features'));
@@ -68,6 +69,8 @@ export default function App() {
         <Route path="/security" element={<Legal />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<AccountRecovery />} />
+        <Route path="/reset-password" element={<AccountRecovery />} />
 
         <Route path="/settings" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
         <Route path="/my-path" element={<ProtectedRoute><PaidFeatureRoute><MyPathV2 /></PaidFeatureRoute></ProtectedRoute>} />

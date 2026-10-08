@@ -4,6 +4,7 @@ const THREE_DAYS_SECONDS = 60 * 60 * 24 * 3;
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 function send(res: any, status: number, body: unknown) {
+  res.setHeader('Cache-Control', 'private, no-store');
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
 }
 

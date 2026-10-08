@@ -1,4 +1,4 @@
-import { canUsePaidTools, requireSession } from './_auth.js';
+import { canUsePaidTools, requireAccountSession } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
 import { createBakerBrainFallback, runBakerBrain } from '../server/baker-brain-safe.js';
 import { safeAiFailure } from '../server/ai-gateway-client.js';
@@ -143,7 +143,7 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req);
+  const session = await requireAccountSession(req);
   const authorized = Boolean(session && (session.role === 'supervisor' || canUsePaidTools(session)));
   if (!session || !authorized) return send(res, 401, { error: 'A paid or authorized Baker session is required.' });
 

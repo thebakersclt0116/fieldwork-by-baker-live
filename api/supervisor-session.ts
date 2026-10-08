@@ -1,6 +1,8 @@
 import { verifySession } from './_auth.js';
+import {isManagedReview,readManagedReview} from '../server/managed-review.js';
 
 function send(res: any, status: number, body: unknown) {
+  res.setHeader('Cache-Control', 'private, no-store');
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
 }
 
@@ -11,6 +13,7 @@ export default async function handler(req: any, res: any) {
   }
 
   const token = String(req.body?.token || '').trim();
+  if(isManagedReview(token))return readManagedReview(req,res);
   const session = verifySession(token);
   if (!session || session.role !== 'supervisor' || !session.superviseeEmail) {
     return send(res, 401, { error: 'This supervisor invite is invalid or expired.' });

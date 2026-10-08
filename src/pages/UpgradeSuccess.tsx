@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { CheckCircle2, LoaderCircle, XCircle } from 'lucide-react';
-import { getStoredAccessToken, getStoredAuthUser, saveUpgradedSession, type AuthUser, type SubscriptionTier } from '@/hooks/useAuth';
-
-function initials(name: string): string {
-  return name.split(' ').map((part) => part[0]).join('').toUpperCase().slice(0, 2);
-}
+import {currentManagedToken,renewManagedSession} from '@/lib/managedSession';
 
 export default function UpgradeSuccess() {
   const [params] = useSearchParams();
@@ -17,17 +13,9 @@ export default function UpgradeSuccess() {
     let active = true;
     const applyPurchase = async () => {
       const sessionId = params.get('session_id') || '';
-      const token = getStoredAccessToken();
-      const existing = getStoredAuthUser();
-      if (!sessionId || !token || !existing) {
-        if (active) {
-          setState('error');
-          setMessage('Your signed-in Baker session or Stripe Checkout ID is missing.');
-        }
-        return;
-      }
-
+      if (!sessionId) { setState('error'); setMessage('Your checkout reference is missing.'); return; }
       try {
+        const token = await currentManagedToken();
         const response = await fetch('/api/checkout-complete', {
           method: 'POST',
           headers: {
@@ -36,36 +24,13 @@ export default function UpgradeSuccess() {
           },
           body: JSON.stringify({ sessionId }),
         });
-        const payload = await response.json() as {
-          token?: string;
-          plan?: string;
-          user?: {
-            email?: string;
-            name?: string;
-            role?: 'owner' | 'free' | 'paid' | 'professional';
-            subscription?: SubscriptionTier;
-            exportPass?: boolean;
-          };
-          error?: string;
-        };
-        if (!response.ok || !payload.token || !payload.user?.email || !payload.user.name || !payload.user.role) {
-          throw new Error(payload.error || 'The purchase could not be applied to your Baker account.');
-        }
-
-        const nextUser: AuthUser = {
-          ...existing,
-          name: payload.user.name,
-          email: payload.user.email,
-          role: payload.user.role,
-          initials: initials(payload.user.name),
-          subscription: payload.user.subscription || existing.subscription,
-          exportPass: Boolean(payload.user.exportPass),
-        };
-        saveUpgradedSession(nextUser, payload.token);
+        const payload = await response.json() as {verified?:boolean;plan?:string;mode?:string;error?:string};
+        if (!response.ok || !payload.verified) throw new Error(payload.error || 'Your subscription could not be confirmed.');
+        await renewManagedSession();
         if (active) {
           setPlan(payload.plan || 'purchase');
           setState('success');
-          setMessage('Your paid entitlement is active.');
+          setMessage(payload.mode === 'test' ? 'Sandbox subscription verified. Production access remains unchanged.' : 'Your paid subscription is active.');
         }
       } catch (error) {
         if (active) {

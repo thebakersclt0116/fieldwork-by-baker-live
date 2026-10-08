@@ -1,3 +1,4 @@
+import { accountStorage } from '@/lib/accountStorage';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { AlertTriangle, BookOpen, CheckCircle2, Clock3, Flag, FlaskConical, RotateCcw, Save, Sparkles, Target } from 'lucide-react';
@@ -25,7 +26,7 @@ type Session = {
 
 function loadSession(): Session | null {
   try {
-    const parsed = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') as Session | null;
+    const parsed = JSON.parse(accountStorage.getItem(SESSION_KEY) || 'null') as Session | null;
     return parsed?.startedAt ? parsed : null;
   } catch {
     return null;
@@ -49,7 +50,7 @@ export default function ExamLab() {
   const [submitted, setSubmitted] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(() => session ? remainingSeconds(session.startedAt) : BCBA_EXAM_MINUTES * 60);
   const [plan, setPlan] = useState<ReturnType<typeof buildWeakAreaPlan> | null>(() => {
-    try { return JSON.parse(localStorage.getItem(PLAN_KEY) || 'null'); } catch { return null; }
+    try { return JSON.parse(accountStorage.getItem(PLAN_KEY) || 'null'); } catch { return null; }
   });
   const [studyMinutes, setStudyMinutes] = useState(45);
 
@@ -61,7 +62,7 @@ export default function ExamLab() {
 
   useEffect(() => {
     if (!session || submitted) return;
-    const save = () => localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    const save = () => accountStorage.setItem(SESSION_KEY, JSON.stringify(session));
     save();
     const interval = window.setInterval(() => {
       const next = remainingSeconds(session.startedAt);
@@ -74,8 +75,8 @@ export default function ExamLab() {
   useEffect(() => {
     if (!submitted || !session) return;
     const scored = scoreExam(session.answers);
-    localStorage.setItem(RESULT_KEY, JSON.stringify({ ...scored, completedAt: new Date().toISOString() }));
-    localStorage.removeItem(SESSION_KEY);
+    accountStorage.setItem(RESULT_KEY, JSON.stringify({ ...scored, completedAt: new Date().toISOString() }));
+    accountStorage.removeItem(SESSION_KEY);
   }, [submitted, session]);
 
   const startFullExam = () => {
@@ -86,7 +87,7 @@ export default function ExamLab() {
   };
 
   const reset = () => {
-    localStorage.removeItem(SESSION_KEY);
+    accountStorage.removeItem(SESSION_KEY);
     setSession(null);
     setSubmitted(false);
     setSecondsLeft(BCBA_EXAM_MINUTES * 60);
@@ -99,8 +100,8 @@ export default function ExamLab() {
   const buildPlan = () => {
     const next = buildWeakAreaPlan(answers, studyMinutes);
     setPlan(next);
-    localStorage.setItem(PLAN_KEY, JSON.stringify(next));
-    localStorage.setItem(BRAIN_SEED_KEY, JSON.stringify({
+    accountStorage.setItem(PLAN_KEY, JSON.stringify(next));
+    accountStorage.setItem(BRAIN_SEED_KEY, JSON.stringify({
       type: 'weak-area-plan',
       prompt: `Use my Exam Lab results to coach me through my weakest areas. My lowest areas are ${next.weakest.map((area) => `${area.area} (${area.percent}%)`).join(', ')}. Start with a personalized lesson on ${next.weakest[0]?.weakConcepts.join(', ') || next.weakest[0]?.area}.`,
       createdAt: new Date().toISOString(),

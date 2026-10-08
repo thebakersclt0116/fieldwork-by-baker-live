@@ -6,6 +6,8 @@ import { AlertTriangle, CheckCircle2, Edit3, Mail, Pencil, Save, X } from 'lucid
 import type { ActivityCategory, ActivityType, HourEntry, ObservationMode, SupervisionFormat, WorkPresence } from '@/types';
 import { getCurrentUserEmail, hoursBetween, loadEntries, saveEntries } from '@/lib/fieldworkStore';
 import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
+import {waitForCloudSave} from '@/lib/cloudWorkspace';
+import {currentManagedToken} from '@/lib/managedSession';
 
 const EDITABLE_KEYS = [
   'date', 'startTime', 'endTime', 'duration', 'activityCategory', 'supervisorName', 'supervisorEmail',
@@ -212,14 +214,21 @@ export default function TrackedHoursEditor() {
       let notificationConfigured = false;
       let notificationSent = false;
       let notificationChannel = 'none';
+      let managedSaved=false;
 
       if (approvalSensitive) {
-        const token = getStoredAccessToken();
+        const token = user?.authProvider==='supabase'?await currentManagedToken():getStoredAccessToken();
         if (!token) throw new Error('Your session expired. Sign in again before editing an approved entry.');
         revised.status = 'PENDING';
         revised.requiresReapproval = true;
         revised.revisionReason = reason.trim();
         revised.supervisorEmail = supervisorEmail.trim().toLowerCase();
+        if(user?.authProvider==='supabase'){
+          const prior=loadEntries(email);const at=prior.findIndex(entry=>entry.id===revised.id);
+          if(at<0)throw new Error('This entry is no longer available.');prior[at]=revised;saveEntries(prior,email);await waitForCloudSave();managedSaved=true;
+          const canonical=loadEntries(email).find(entry=>entry.id===revised.id);
+          if(!canonical)throw new Error('Saved entry readback is unavailable.');revised.revision=canonical.revision;
+        }
 
         const response = await fetch('/api/supervisor-invite', {
           method: 'POST',
@@ -259,8 +268,8 @@ export default function TrackedHoursEditor() {
       if (index < 0) throw new Error('This entry is no longer stored in this browser. Refresh and try again.');
       const next = [...current];
       next[index] = revised;
-      saveEntries(next, email);
-      setEntries(next);
+      if(!managedSaved){saveEntries(next, email);if(user?.authProvider==='supabase')await waitForCloudSave();}
+      setEntries(loadEntries(email));
       window.dispatchEvent(new CustomEvent('fieldwork:entries-changed'));
 
       if (approvalSensitive) {

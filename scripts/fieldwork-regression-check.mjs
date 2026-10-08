@@ -77,10 +77,10 @@ const signupPage = read('src/pages/SignUp.tsx');
 const checkoutApi = read('api/create-checkout-session.ts');
 const checkoutComplete = read('api/checkout-complete.ts');
 
-const stripePricing = read('api/create-checkout-session.ts');
-assert(stripePricing.includes('amount: 1699'), 'Individual Stripe price is not $16.99');
-assert(stripePricing.includes('amount: 3499'), 'Professional Stripe price is not $34.99');
-assert(stripePricing.includes('amount: 34900'), 'Professional Annual Stripe price is not $349');
+const stripePricing = JSON.parse(read('config/stripe-live-catalog.json'));
+assert(stripePricing.plans.individual_monthly.unitAmount === 1699, 'Individual Stripe price is not $16.99');
+assert(stripePricing.plans.professional_monthly.unitAmount === 3499, 'Professional Stripe price is not $34.99');
+assert(stripePricing.plans.professional_annual.unitAmount === 34900, 'Professional Annual Stripe price is not $349');
 
 const pricing = read('src/pages/Pricing.tsx');
 assert(pricing.includes("3-Day Free Trial"), 'Pricing does not advertise the 3-day trial');
@@ -91,7 +91,7 @@ assert(signupApi.includes('THREE_DAYS_SECONDS'), 'Signup API does not issue a 3-
 assert(authServer.includes('isTrialActive'), 'Server-side paid tools do not recognize active trial entitlement');
 assert(!checkoutApi.includes("export_pass"), 'Export Pass still exists in Stripe checkout');
 assert(!checkoutComplete.includes("plan === 'export_pass'"), 'Export Pass entitlement still exists');
-assert(checkoutComplete.includes("payment_status === 'paid'"), 'Paid checkout must be verified after trial');
+assert(checkoutComplete.includes("checkout.payment_status!=='paid'"), 'Paid checkout must be verified after trial');
 assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
 assert(pricing.includes('3 days free'), 'Pricing does not show the 3-day trial');
 assert(!pricing.includes("name: 'Free'"), 'Pricing still contains a free-forever tier');

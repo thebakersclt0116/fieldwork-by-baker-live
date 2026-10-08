@@ -1,4 +1,5 @@
-import { canUseSupervisorTools, requireSession, signSession } from '../api/_auth.js';
+import { canUseSupervisorTools, requireAccountSession, signSession } from '../api/_auth.js';
+import {createManagedReview} from './managed-review.js';
 
 function send(res: any, status: number, body: unknown) {
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
@@ -144,7 +145,8 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const session = requireSession(req);
+  const session = await requireAccountSession(req);
+  if(session?.authProvider==='supabase')return createManagedReview(req,res);
   if (!session || !canUseSupervisorTools(session)) {
     return send(res, 401, { error: 'Professional supervisor workflow access is required.' });
   }

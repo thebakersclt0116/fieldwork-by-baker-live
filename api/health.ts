@@ -1,3 +1,5 @@
+import {billingConfigured} from '../server/billing.js';
+import {sandboxBillingEnabled} from '../server/billing-entitlement.js';
 import { hasSessionSigningSecret } from './_auth.js';
 import { getAiGatewayToken } from './_gateway.js';
 
@@ -8,10 +10,10 @@ export default async function handler(req: any, res: any) {
   }
 
   const gatewayToken = await getAiGatewayToken();
-  const stripeSecret = String(process.env.STRIPE_SECRET_KEY || '');
-  const stripeMode = stripeSecret.startsWith('sk_live_')
+  const stripeSecret = String((process.env.BAKER_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY) || '');
+  const stripeMode = /^(?:sk|rk)_live_/.test(stripeSecret)
     ? 'live'
-    : stripeSecret.startsWith('sk_test_')
+    : /^(?:sk|rk)_test_/.test(stripeSecret)
       ? 'test'
       : stripeSecret
         ? 'configured'
@@ -27,7 +29,8 @@ export default async function handler(req: any, res: any) {
     stripeMode,
     storageMode: 'browser-local',
     cloudStorageConnected: false,
-    liveBillingEnabled: false,
+    liveBillingEnabled: billingConfigured(),
+    testBillingEnabled: sandboxBillingEnabled(),
     publicLaunchReady: false,
     liveAiVerificationRequired: true,
     recoveryVersion: 'launch-recovery-v1',

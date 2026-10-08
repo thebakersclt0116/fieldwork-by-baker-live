@@ -1,88 +1,18 @@
-import { requireSession, signSession } from './_auth.js';
-
-type StripeSession = {
-  id?: string;
-  livemode?: boolean;
-  status?: string;
-  payment_status?: string;
-  mode?: string;
-  client_reference_id?: string | null;
-  metadata?: Record<string, string>;
-  customer_details?: { email?: string | null } | null;
-};
-
-function send(res: any, status: number, body: unknown) {
-  res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
-}
-
-export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return send(res, 405, { error: 'Method not allowed' });
-  }
-
-  const current = requireSession(req, ['free', 'paid', 'professional', 'owner']);
-  if (!current) return send(res, 401, { error: 'Sign in to apply this purchase.' });
-
-  const checkoutSessionId = String(req.body?.sessionId || '').trim();
-  if (!/^cs_/.test(checkoutSessionId)) return send(res, 400, { error: 'Invalid Stripe Checkout session.' });
-
-  const secret = process.env.STRIPE_SECRET_KEY;
-  if (!secret) return send(res, 503, { error: 'Stripe is not configured on this deployment.' });
-
-  const previewTest = process.env.VERCEL_ENV === 'preview' && process.env.BAKER_ALLOW_TEST_CHECKOUT === 'true';
-  if (!secret.startsWith('sk_live_') && !previewTest) return send(res, 503, { error: 'Test payments cannot unlock production access.', code: 'LIVE_BILLING_NOT_CONFIGURED' });
-  if (!previewTest) return send(res, 503, { error: 'Durable subscription verification must be connected before live access is granted.', code: 'BILLING_BACKEND_REQUIRED' });
-
-  try {
-    const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(checkoutSessionId)}`, {
-      headers: { Authorization: `Bearer ${secret}` },
-    });
-    const stripeSession = await response.json() as StripeSession & { error?: { message?: string } };
-    if (!response.ok) return send(res, 502, { error: stripeSession.error?.message || 'Could not verify Stripe Checkout.' });
-
-    if (stripeSession.mode !== 'subscription' || stripeSession.livemode !== !previewTest) return send(res, 400, { error: 'Checkout mode does not match this deployment.', code: 'CHECKOUT_MODE_MISMATCH' });
-    const paid = stripeSession.status === 'complete' && stripeSession.payment_status === 'paid';
-    if (!paid) return send(res, 402, { error: 'Stripe has not marked this Checkout Session as paid.' });
-
-    const purchasedEmail = String(stripeSession.metadata?.baker_email || stripeSession.client_reference_id || '').toLowerCase();
-    if (!purchasedEmail || purchasedEmail !== current.email.toLowerCase()) {
-      return send(res, 403, { error: 'This purchase belongs to a different Baker account.' });
-    }
-
-    const plan = String(stripeSession.metadata?.baker_plan || '');
-    let upgraded: Omit<Parameters<typeof signSession>[0], 'exp'> | null = null;
-
-    if (plan === 'individual_monthly') {
-      upgraded = {
-        email: current.email,
-        name: current.name,
-        role: current.role === 'owner' ? 'owner' : 'paid',
-        subscription: 'individual',
-        exportPass: true,
-      };
-    } else if (plan === 'professional_monthly' || plan === 'professional_annual') {
-      upgraded = {
-        email: current.email,
-        name: current.name,
-        role: current.role === 'owner' ? 'owner' : 'paid',
-        subscription: 'professional',
-        exportPass: true,
-      };
-    }
-
-    if (!upgraded) return send(res, 400, { error: 'This Stripe purchase is not mapped to a Baker entitlement.' });
-    const token = signSession(upgraded, 60 * 60 * 24 * 365);
-    if (!token) return send(res, 503, { error: 'Could not issue the upgraded Baker session.' });
-
-    return send(res, 200, {
-      token,
-      user: upgraded,
-      plan,
-      checkoutSessionId: stripeSession.id,
-    });
-  } catch (error) {
-    console.error('Stripe Checkout verification failed', error);
-    return send(res, 502, { error: 'Could not verify your Stripe payment.' });
-  }
+import {CloudError} from '../server/cloud-client.js';
+import {billingConfigured,billingIdentity,billingMode,ownCustomer,reconcileSubscription,stripeRequest} from '../server/billing.js';
+export default async function handler(req:any,res:any){
+ res.setHeader('Cache-Control','private, no-store');
+ if(req.method!=='POST'){res.setHeader('Allow','POST');return res.status(405).json({code:'METHOD_NOT_ALLOWED'});}
+ try{
+  const {token,user}=await billingIdentity(req);const mode=billingMode();if(mode==='live'&&!billingConfigured())throw new CloudError('BILLING_BACKEND_REQUIRED');
+  const id=req.body?.sessionId;if(typeof id!=='string'||!/^cs_[A-Za-z0-9_]+$/.test(id)||id.length>200)throw new CloudError('INVALID_CHECKOUT',400);
+  const customer=await ownCustomer(token,user.id,mode);if(!customer)throw new CloudError('BILLING_ACCOUNT_MISMATCH',403);
+  const checkout=await stripeRequest('/v1/checkout/sessions/'+encodeURIComponent(id));
+  if(checkout.livemode!==(mode==='live')||checkout.mode!=='subscription'||checkout.client_reference_id!==user.id||checkout.metadata?.baker_account_id!==user.id||checkout.metadata?.baker_mode!==mode||checkout.customer!==customer)throw new CloudError('BILLING_ACCOUNT_MISMATCH',403);
+  if(checkout.status!=='complete'||checkout.payment_status!=='paid')throw new CloudError('PAYMENT_NOT_CONFIRMED',402);
+  const subscription=typeof checkout.subscription==='string'?checkout.subscription:checkout.subscription?.id;
+  const result=await reconcileSubscription(subscription,mode,'checkout/'+checkout.id,user.id,customer);
+  if(!result.paid)throw new CloudError('SUBSCRIPTION_NOT_ACTIVE',402);
+  return res.status(200).json({verified:true,plan:result.plan,mode});
+ }catch(error){const failure=error instanceof CloudError?error:new CloudError('BILLING_VERIFICATION_UNAVAILABLE');return res.status(failure.status).json({code:failure.code,error:'Your paid subscription was not confirmed. Keep your receipt and contact support if a payment was completed.'});}
 }

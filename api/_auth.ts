@@ -1,3 +1,4 @@
+import { effectiveSubscription } from '../server/billing-entitlement.js';
 import {
   createHash,
   createHmac,
@@ -8,7 +9,7 @@ import {
   verify as verifyDetached,
   type KeyObject,
 } from 'node:crypto';
-import { BAKER_RUNTIME_SECRET } from './_runtime-secret.js';
+import { cloudRequest, verifyCloudUser } from '../server/cloud-client.js';
 
 export type BakerRole = 'owner' | 'free' | 'paid' | 'professional' | 'supervisor';
 
@@ -30,6 +31,8 @@ export interface SupervisorFeedbackPayload {
 }
 
 export interface BakerSession {
+  accountId?: string;
+  authProvider?: 'supabase';
   email: string;
   name: string;
   role: BakerRole;
@@ -63,7 +66,7 @@ function fromBase64Url(input: string): string {
 }
 
 function sessionSecret(): string | null {
-  return process.env.BAKER_SESSION_SECRET || BAKER_RUNTIME_SECRET || null;
+  return process.env.BAKER_SESSION_SECRET || null;
 }
 
 export function hasSessionSigningSecret(): boolean {
@@ -216,14 +219,39 @@ export function requireSession(
   return session;
 }
 
+/** Managed requests verify identity with Supabase and reload protected entitlements. */
+export async function requireAccountSession(
+  req: { headers?: Record<string,string|string[]|undefined> },
+  roles: BakerRole[] = ['owner','free','paid','professional','supervisor']
+): Promise<BakerSession|null> {
+  const token=getBearerToken(req);
+  if(!token)return null;
+  const legacy=verifySession(token);
+  if(legacy)return roles.includes(legacy.role)?legacy:null;
+  try {
+    const identity=await verifyCloudUser(token);
+    const rows=await cloudRequest('/rest/v1/profiles?select=display_name,role,trial_ends_at,subscription_tier,subscription_status&id=eq.'+identity.id,token);
+    if(!Array.isArray(rows)||!rows[0])return null;
+    const profile=rows[0];
+    const entitlement=await effectiveSubscription(profile,identity.id,token);
+    const active=['active','trialing'].includes(entitlement.status)&&['individual','professional'].includes(entitlement.tier);
+    const role:BakerRole=['owner','supervisor'].includes(profile.role)?profile.role:active?(entitlement.tier==='professional'?'professional':'paid'):'free';
+    if(!roles.includes(role))return null;
+    return {accountId:identity.id,authProvider:'supabase',email:identity.email,name:profile.display_name,role,
+      subscription:active?entitlement.tier:undefined,
+      trialEndsAt:profile.trial_ends_at?Math.floor(Date.parse(profile.trial_ends_at)/1000):undefined,
+      exp:Math.floor(Date.now()/1000)+60};
+  } catch {return null;}
+}
+
 export function verifyBetaCredentials(email: string, password: string): Omit<BakerSession, 'exp'> | null {
   const normalized = email.trim().toLowerCase();
   if (!betaCredentialMatches(normalized, password)) return null;
   return betaUserForEmail(normalized);
 }
 
-export function isEmilyBetaAccount(session: Pick<BakerSession, 'email'>): boolean {
-  return session.email.trim().toLowerCase() === EMILY_EMAIL;
+export function isEmilyBetaAccount(session: Pick<BakerSession, 'email'|'authProvider'>): boolean {
+  return session.authProvider !== 'supabase' && session.email.trim().toLowerCase() === EMILY_EMAIL;
 }
 
 export function isEmilySupervisor(session: Pick<BakerSession, 'role' | 'superviseeEmail'>): boolean {

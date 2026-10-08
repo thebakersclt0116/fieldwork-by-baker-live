@@ -1,3 +1,4 @@
+import { accountStorage } from '@/lib/accountStorage';
 import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, Check, Copy, Download, FileText, Filter, Library, Search, Sparkles, X } from 'lucide-react';
 
@@ -160,7 +161,7 @@ const builtInResources: Resource[] = [
 
 function loadBrainResources(): Resource[] {
   try {
-    const items = JSON.parse(localStorage.getItem('fieldworkByBaker:brainResources:v1') || '[]');
+    const items = JSON.parse(accountStorage.getItem('fieldworkByBaker:brainResources:v1') || '[]');
     return Array.isArray(items) ? items : [];
   } catch {
     return [];
@@ -200,7 +201,7 @@ export default function ResourceVault() {
   const [selected, setSelected] = useState<Resource | null>(null);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem('fieldworkByBaker:resourceSaves:v1') || '[]'); } catch { return []; }
+    try { return JSON.parse(accountStorage.getItem('fieldworkByBaker:resourceSaves:v1') || '[]'); } catch { return []; }
   });
 
   const brainResources = useMemo(() => loadBrainResources(), []);
@@ -221,7 +222,7 @@ export default function ResourceVault() {
   const toggle = (id: string) => {
     const next = saved.includes(id) ? saved.filter((x) => x !== id) : [...saved, id];
     setSaved(next);
-    localStorage.setItem('fieldworkByBaker:resourceSaves:v1', JSON.stringify(next));
+    accountStorage.setItem('fieldworkByBaker:resourceSaves:v1', JSON.stringify(next));
   };
 
   const copySelected = async () => {

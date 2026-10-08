@@ -1,6 +1,8 @@
 import { requireSession, signSession } from './_auth.js';
+import {isManagedReview,acceptManagedReview} from '../server/managed-review.js';
 
 function send(res: any, status: number, body: unknown) {
+  res.setHeader('Cache-Control', 'private, no-store');
   res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body));
 }
 
@@ -9,6 +11,7 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Allow', 'POST');
     return send(res, 405, { error: 'Method not allowed' });
   }
+  if(isManagedReview(req.body?.invitation))return acceptManagedReview(req,res);
 
   const session = requireSession(req, ['supervisor']);
   if (!session || !session.superviseeEmail) {
@@ -21,6 +24,8 @@ export default async function handler(req: any, res: any) {
   const note = String(req.body?.note || '').trim().slice(0, 2000);
   const message = String(req.body?.message || '').trim().slice(0, 2000);
   const entryId = String(req.body?.entryId || session.reviewEntry?.id || '').trim();
+
+  if (!session.reviewEntry || entryId !== session.reviewEntry.id) return send(res, 403, { error: 'This invite only permits feedback on its assigned entry.' });
 
   if (!entryId) return send(res, 400, { error: 'This invite is not tied to a reviewable entry.' });
   if (!note && !message && status === 'PENDING') {
