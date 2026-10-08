@@ -3,7 +3,7 @@ const dir=await mkdtemp(join(tmpdir(),'baker-billing-'));const savedFetch=global
 after(async()=>{globalThis.fetch=savedFetch;await rm(dir,{recursive:true,force:true});});
 await build({entryPoints:['server/billing.ts','server/billing-entitlement.ts','api/checkout-complete.ts','api/create-checkout-session.ts','api/billing-portal.ts','api/stripe-webhook.ts'],outdir:dir,bundle:true,platform:'node',format:'esm',outExtension:{'.js':'.mjs'}});
 const {effectiveSubscription}=await import(pathToFileURL(join(dir,'server/billing-entitlement.mjs')));
-const {verifyWebhook,billingMode,billingConfigured}=await import(pathToFileURL(join(dir,'server/billing.mjs')));
+const {verifyWebhook,billingMode,billingConfigured,siteOrigin}=await import(pathToFileURL(join(dir,'server/billing.mjs')));
 const {default:complete}=await import(pathToFileURL(join(dir,'api/checkout-complete.mjs')));
 const {default:createCheckout}=await import(pathToFileURL(join(dir,'api/create-checkout-session.mjs')));
 const {default:portal}=await import(pathToFileURL(join(dir,'api/billing-portal.mjs')));
@@ -66,3 +66,5 @@ test('checkout is backed by an atomic claim and uses a stable provider idempoten
  globalThis.fetch=async(url,options)=>{if(url.endsWith('/checkout/sessions')){checkout=new URLSearchParams(options.body);assert.ok(options.headers['Idempotency-Key'].endsWith('/33333333-3333-4333-8333-333333333333'));}return baseFetch(url,options);};
  const response=res();await createCheckout(req({plan:'individual_monthly',customer:'cus_Attacker',price:'price_Attacker',email:'attacker@example.com'}),response);assert.equal(response.code,200);assert.equal(checkout.get('customer'),customer);assert.equal(checkout.get('line_items[0][price]'),price);assert.equal(checkout.get('subscription_data[metadata][baker_account_id]'),actor);assert.equal(checkout.get('subscription_data[trial_period_days]'),null);
 });
+
+test('preview checkout and portal return to the stable branch origin, while production stays on the public domain',()=>{const saved={env:process.env.VERCEL_ENV,branch:process.env.VERCEL_BRANCH_URL,url:process.env.VERCEL_URL};try{process.env.VERCEL_ENV='preview';process.env.VERCEL_BRANCH_URL='fictional-git-test.vercel.app';process.env.VERCEL_URL='fictional-immutable.vercel.app';assert.equal(siteOrigin(),'https://fictional-git-test.vercel.app');process.env.VERCEL_BRANCH_URL='https://attacker.example';assert.equal(siteOrigin(),'https://fictional-immutable.vercel.app');process.env.VERCEL_ENV='production';assert.equal(siteOrigin(),'https://www.fieldworkbybaker.com');}finally{for(const [key,value] of Object.entries({VERCEL_ENV:saved.env,VERCEL_BRANCH_URL:saved.branch,VERCEL_URL:saved.url})){if(value===undefined)delete process.env[key];else process.env[key]=value;}}});

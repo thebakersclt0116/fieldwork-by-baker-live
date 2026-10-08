@@ -61,4 +61,9 @@ export async function reconcileSubscription(subscriptionId:string,mode:BillingMo
  await billingRPC('apply_billing_snapshot',{p_owner:owner,p_mode:mode,p_customer:customer,p_subscription:subscription.id,p_plan:plan,p_status:subscription.status,p_period_end:periodEnd,p_cancel_at_period_end:subscription.cancel_at_period_end===true,p_checked_at:checkedAt,p_event_id:eventId});
  return {plan,status:subscription.status,paid:plan!=='none'&&subscription.status==='active'};
 }
-export const siteOrigin=()=>process.env.VERCEL_ENV==='preview'&&/^[a-zA-Z0-9.-]+\.vercel\.app$/.test(process.env.VERCEL_URL||'')?'https://'+process.env.VERCEL_URL:'https://www.fieldworkbybaker.com';
+export function siteOrigin(){
+ if(process.env.VERCEL_ENV==='preview'){
+  for(const host of [process.env.VERCEL_BRANCH_URL,process.env.VERCEL_URL])if(host&&/^[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app$/.test(host))return 'https://'+host;
+ }
+ return 'https://www.fieldworkbybaker.com';
+}
