@@ -1,137 +1,27 @@
 import CommunityDemo from '@/components/CommunityDemo';
 import CommunityMembers from '@/components/CommunityMembers';
-import { useMemo, useState } from 'react';
-import { Bell, Bookmark, CalendarDays, Heart, MessageCircle, Search, ShieldAlert, Sparkles, Users, X } from 'lucide-react';
-
-const POST_KEY = 'fieldworkByBaker:commonsPosts:v1';
-const MATCH_KEY = 'fieldworkByBaker:commonsMatch:v1';
-
-const forums = ['Starting the BCBA journey', 'Coursework questions', 'Fieldwork & supervision', 'Ethics discussions', 'Exam preparation', 'Practice-question discussions', 'Study strategies', 'Career advice', 'Job opportunities', 'Research & resources', 'Wins & milestones', 'General discussion'];
-
-const starterPosts = [
-  { id: 'prompt1', author: 'Baker Commons', badge: 'Discussion prompt', forum: 'Fieldwork & supervision', title: 'What makes a monthly supervisor review easiest for you?', body: 'Share a de-identified workflow tip for organizing hours across multiple supervisors or organizations.', likes: 0, replies: 0 },
-  { id: 'prompt2', author: 'Baker Commons', badge: 'Discussion prompt', forum: 'Exam preparation', title: 'What concept do you keep mixing up in practice?', body: 'Post the concepts you are discriminating between and explain what part still feels unclear. Do not post secure exam content.', likes: 0, replies: 0 },
-  { id: 'prompt3', author: 'Baker Commons', badge: 'Discussion prompt', forum: 'Ethics discussions', title: 'Facts first: what information would you need before deciding?', body: 'Use a de-identified ethics scenario and separate known facts, assumptions, and information you would still need.', likes: 0, replies: 0 },
-];
-
-type Post = typeof starterPosts[number];
-
-function loadPosts(): Post[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(POST_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+import {useEffect,useRef,useState} from 'react';
+import {Link} from 'react-router';
+import {Heart,MessageCircle,ShieldCheck,Flag,Trash2,Search,Send,Users} from 'lucide-react';
+import {commonsRequest,type CommonsAuthor,type CommonsPost} from '@/lib/commons';
+import {countries} from '@/lib/community';
+const forums=['General discussion','Starting the BCBA journey','Coursework questions','Fieldwork & supervision','Ethics discussions','Exam preparation','Study strategies','Career advice','Research & resources','Wins & milestones'];
+function Avatar({author,small=false}:{author:CommonsAuthor;small?:boolean}){
+ const initials=author.name.split(' ').map(x=>x[0]).join('').slice(0,2);
+ return author.photo?<img src={author.photo} alt={author.name+' profile picture'} width={small?32:44} height={small?32:44} loading="lazy" className={(small?'h-8 w-8':'h-11 w-11')+' shrink-0 rounded-full object-cover'}/>:<span aria-hidden="true" className={(small?'h-8 w-8 text-[10px]':'h-11 w-11 text-xs')+' flex shrink-0 items-center justify-center rounded-full bg-[#FFF0F3] font-bold text-[#D94D62] dark:bg-[#E85D70]/15 dark:text-[#FF9BAB]'}>{author.official?'FW':initials}</span>;
 }
-
-export default function BakerCommons() {
-  const [query, setQuery] = useState('');
-  const [activeForum, setActiveForum] = useState('All discussions');
-  const [draft, setDraft] = useState('');
-  const [posts, setPosts] = useState<Post[]>(() => [...loadPosts(), ...starterPosts]);
-  const [saved, setSaved] = useState<string[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showMatcher, setShowMatcher] = useState(false);
-  const [eventDetail, setEventDetail] = useState<{ title: string; meta: string } | null>(null);
-  const [examDate, setExamDate] = useState('');
-  const [focus, setFocus] = useState('Exam preparation');
-  const [availability, setAvailability] = useState('');
-  const [matchSaved, setMatchSaved] = useState(false);
-
-  const visible = useMemo(() => posts.filter((post) => (activeForum === 'All discussions' || post.forum === activeForum) && (post.title + ' ' + post.body + ' ' + post.author).toLowerCase().includes(query.toLowerCase())), [posts, activeForum, query]);
-
-  const publish = () => {
-    if (draft.trim().length < 8) return;
-    const post: Post = {
-      id: 'local-' + Date.now(),
-      author: 'You',
-      badge: 'Browser-local beta post',
-      forum: activeForum === 'All discussions' ? 'General discussion' : activeForum,
-      title: draft.trim().slice(0, 90),
-      body: draft.trim(),
-      likes: 0,
-      replies: 0,
-    };
-    const local = [post, ...loadPosts()].slice(0, 50);
-    localStorage.setItem(POST_KEY, JSON.stringify(local));
-    setPosts([post, ...posts]);
-    setDraft('');
-  };
-
-  const saveMatch = () => {
-    localStorage.setItem(MATCH_KEY, JSON.stringify({ examDate, focus, availability, updatedAt: new Date().toISOString() }));
-    setMatchSaved(true);
-  };
-
-  const notifications = [
-    saved.length > 0 ? 'You have ' + saved.length + ' saved Commons discussion' + (saved.length === 1 ? '' : 's') + '.' : 'Bookmark a discussion to build your saved reading list.',
-    loadPosts().length > 0 ? 'Your browser currently has ' + loadPosts().length + ' local Commons post' + (loadPosts().length === 1 ? '' : 's') + '.' : 'Your first Commons post can be created from the composer.',
-    'Shared multi-user notifications are not enabled in this beta yet.',
-  ];
-
-  return (
-    <div className="min-h-[100dvh] bg-[#FFFCF9] px-4 py-8 dark:bg-[#171412]">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-bold text-[#E85D70]"><Users size={17} /> Baker Commons <span className="rounded-full bg-[#FFF0F3] px-2 py-1 text-[9px] font-bold uppercase tracking-wider dark:bg-[#E85D70]/15">Beta</span></div>
-            <h1 className="mt-2 font-serif text-4xl font-semibold text-[#332C28] dark:text-white">Your BCBA professional community workspace.</h1>
-            <p className="mt-2 max-w-3xl text-[#6B5D54] dark:text-[#CFC4BE]">Study together, ask better questions, find accountability, and organize community ideas without turning the experience into a noisy generic social feed.</p>
-          </div>
-          <button onClick={() => setShowNotifications(true)} className="inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B5D54] dark:border-white/10 dark:bg-white/5 dark:text-[#E7DED9]"><Bell size={16} /> Notifications</button>
-        </header>
-
-        <div className="mb-5 rounded-2xl border border-[#F4D9C9] bg-[#FFF8F3] p-4 dark:border-[#D4A574]/20 dark:bg-[#D4A574]/10">
-          <div className="flex items-start gap-3"><ShieldAlert size={19} className="mt-0.5 shrink-0 text-[#B36A2E]" /><div><div className="text-sm font-bold text-[#8A5D36] dark:text-[#F2C08D]">Protect client and workplace privacy.</div><p className="mt-1 text-xs leading-5 text-[#7A6049] dark:text-[#CDB59D]">Never post client names, protected health information, confidential employer information, private fieldwork records, or anything that could identify a client. This beta currently stores your own new posts in this browser; the shared multi-user community backend is not live yet.</p></div></div>
-        </div>
-
-        <CommunityMembers/>
-        <CommunityDemo/>
-        <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)_280px]">
-          <aside className="space-y-4">
-            <div className="rounded-[26px] border border-[#F2EDEA] bg-white p-4 dark:border-white/10 dark:bg-[#211D1A]">
-              <div className="mb-3 text-xs font-bold uppercase tracking-[.16em] text-[#A8998E]">Top forums</div>
-              <button onClick={() => setActiveForum('All discussions')} className={'mb-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold ' + (activeForum === 'All discussions' ? 'bg-[#FFF0F3] text-[#D94D62]' : 'text-[#6B5D54] dark:text-[#CFC4BE]')}>All discussions</button>
-              {forums.map((forum) => <button key={forum} onClick={() => setActiveForum(forum)} className={'mb-1 w-full rounded-xl px-3 py-2 text-left text-sm ' + (activeForum === forum ? 'bg-[#FFF0F3] font-semibold text-[#D94D62] dark:bg-[#E85D70]/10' : 'text-[#6B5D54] hover:bg-[#FAF8F6] dark:text-[#CFC4BE] dark:hover:bg-white/5')}>{forum}</button>)}
-            </div>
-          </aside>
-
-          <main className="space-y-4">
-            <div className="rounded-[26px] border border-[#F2EDEA] bg-white p-5 dark:border-white/10 dark:bg-[#211D1A]">
-              <div className="flex gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFF0F3] text-sm font-bold text-[#E85D70] dark:bg-[#E85D70]/15">YOU</div><div className="flex-1"><textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} placeholder="Ask a question, share a win, start a study discussion…" className="w-full resize-none rounded-2xl border border-[#E2DAD5] bg-[#FFFCF9] px-4 py-3 text-sm text-[#332C28] outline-none focus:border-[#E85D70] dark:border-white/10 dark:bg-white/5 dark:text-white" /><div className="mt-3 flex items-center justify-between gap-3"><div className="text-xs text-[#A8998E]">Posts created today stay in this browser during the community beta.</div><button onClick={publish} disabled={draft.trim().length < 8} className="rounded-xl bg-[#E85D70] px-4 py-2 text-sm font-bold text-white disabled:opacity-40">Post to Commons</button></div></div></div>
-            </div>
-            <div className="relative"><Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A8998E]" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search posts and topics" className="w-full rounded-2xl border border-[#E2DAD5] bg-white py-3 pl-11 pr-4 text-sm text-[#332C28] dark:border-white/10 dark:bg-[#211D1A] dark:text-white" /></div>
-            {visible.map((post) => <article key={post.id} className="rounded-[26px] border border-[#F2EDEA] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#211D1A]"><div className="flex items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span className="font-semibold text-[#332C28] dark:text-white">{post.author}</span><span className="rounded-full bg-[#E8F5EE] px-2 py-1 text-[10px] font-bold text-[#4B8C69]">{post.badge}</span></div><div className="mt-1 text-xs text-[#A8998E]">{post.forum}</div></div><button onClick={() => setSaved((s) => s.includes(post.id) ? s.filter((id) => id !== post.id) : [...s, post.id])} className={saved.includes(post.id) ? 'text-[#E85D70]' : 'text-[#A8998E]'} aria-label="Save discussion"><Bookmark size={18} fill={saved.includes(post.id) ? 'currentColor' : 'none'} /></button></div><h2 className="mt-4 font-serif text-xl font-semibold text-[#332C28] dark:text-white">{post.title}</h2><p className="mt-2 text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]">{post.body}</p><div className="mt-4 flex gap-4 text-xs font-semibold text-[#8B7C73]"><span className="flex items-center gap-1.5"><Heart size={15} /> {post.likes}</span><span className="flex items-center gap-1.5"><MessageCircle size={15} /> {post.replies} replies</span></div></article>)}
-          </main>
-
-          <aside className="space-y-4">
-            <div className="rounded-[26px] bg-[#332C28] p-5 text-white dark:bg-[#211D1A] dark:ring-1 dark:ring-white/10"><div className="flex items-center gap-2 text-sm font-bold text-[#F4C895]"><Sparkles size={16} /> Match me</div><h3 className="mt-2 font-serif text-xl font-semibold">Find your study people.</h3><p className="mt-2 text-sm leading-6 text-white/65">Save your exam date, availability, and focus so matching is ready when the shared community network is enabled.</p><button onClick={() => setShowMatcher(true)} className="mt-4 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#332C28]">Set matching profile</button></div>
-            <div className="rounded-[26px] border border-[#F2EDEA] bg-white p-5 dark:border-white/10 dark:bg-[#211D1A]"><div className="flex items-center gap-2 text-sm font-bold text-[#4D423C] dark:text-white"><CalendarDays size={16} className="text-[#D4A574]" /> Upcoming ideas</div><div className="mt-4 space-y-2"><Event title="Exam-date cohort study sprint" meta="Virtual study format" onOpen={() => setEventDetail({ title: 'Exam-date cohort study sprint', meta: 'A suggested virtual study session format. Live scheduling is not connected yet.' })} /><Event title="Fieldwork documentation Q&A" meta="Supervisor discussion format" onOpen={() => setEventDetail({ title: 'Fieldwork documentation Q&A', meta: 'A suggested Commons event. Shared event registration is not connected yet.' })} /><Event title="Ethics scenario roundtable" meta="45-minute format" onOpen={() => setEventDetail({ title: 'Ethics scenario roundtable', meta: 'A suggested de-identified ethics discussion format. Live event registration is not connected yet.' })} /></div></div>
-          </aside>
-        </div>
-      </div>
-
-      {showNotifications && <Modal title="Commons notifications" onClose={() => setShowNotifications(false)}>{notifications.map((item) => <div key={item} className="rounded-xl bg-[#FAF8F6] p-3 text-sm text-[#6B5D54] dark:bg-white/5 dark:text-[#CFC4BE]">{item}</div>)}</Modal>}
-
-      {showMatcher && <Modal title="Study-partner matching profile" onClose={() => setShowMatcher(false)}>
-        <p className="text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]">This saves your matching criteria locally today. It does not invent other members or pretend the shared network is live.</p>
-        <label className="mt-4 block text-xs font-semibold text-[#7B6B62] dark:text-[#CFC4BE]">Target exam date<input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} className="field-input" /></label>
-        <label className="mt-3 block text-xs font-semibold text-[#7B6B62] dark:text-[#CFC4BE]">Primary focus<select value={focus} onChange={(e) => setFocus(e.target.value)} className="field-input bg-white dark:bg-[#171412]"><option>Exam preparation</option><option>Fieldwork accountability</option><option>Ethics discussions</option><option>Study consistency</option></select></label>
-        <label className="mt-3 block text-xs font-semibold text-[#7B6B62] dark:text-[#CFC4BE]">Availability<input value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="Example: weeknights after 7 PM" className="field-input" /></label>
-        <button onClick={saveMatch} className="mt-4 w-full rounded-xl bg-[#E85D70] px-4 py-3 text-sm font-bold text-white">Save matching profile</button>
-        {matchSaved && <div className="mt-3 rounded-xl bg-[#E8F5EE] p-3 text-sm font-semibold text-[#4B8C69]">Matching profile saved on this device.</div>}
-      </Modal>}
-
-      {eventDetail && <Modal title={eventDetail.title} onClose={() => setEventDetail(null)}><p className="text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]">{eventDetail.meta}</p></Modal>}
-    </div>
-  );
+function Thread({post,refresh}:{post:CommonsPost;refresh:()=>Promise<void>}){
+ const [reply,setReply]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[report,setReport]=useState(false),[reason,setReason]=useState('');const replyId=useRef(crypto.randomUUID());
+ async function act(body:Record<string,unknown>){setBusy(true);setMessage('');try{await commonsRequest(body);if(body.action==='comment'){setReply('');replyId.current=crypto.randomUUID();}if(body.action==='report'){setReport(false);setReason('');setMessage('Report submitted for review.');}else await refresh();}catch(error){setMessage(error instanceof Error?error.message:'Please try again.');}finally{setBusy(false);}}
+ const country=countries.find(([code])=>code===post.author.country)?.[1];
+ return <article className="rounded-[24px] border border-[#F2EDEA] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#211D1A]"><div className="flex items-start gap-3"><Avatar author={post.author}/><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-[#332C28] dark:text-white">{post.author.name}{post.author.official&&<span className="ml-2 text-[10px] font-bold text-[#438463]">Platform team</span>}</div><p className="mt-1 text-[11px] text-[#7B6B62] dark:text-[#BCAFA6]">{post.author.country!=='NONE'&&country?country+' · ':''}{new Date(post.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}</p></div><button disabled={busy} aria-label={'Report discussion '+post.title} onClick={()=>setReport(!report)} className="text-[#8B7C73]"><Flag size={15}/></button>{post.canHide&&<button disabled={busy} aria-label={'Hide your discussion '+post.title} onClick={()=>void act({action:'hide',kind:'post',id:post.id})} className="text-[#8B7C73]"><Trash2 size={15}/></button>}</div><p className="mt-4 text-[10px] font-bold uppercase tracking-[.12em] text-[#D94D62] dark:text-[#FF9BAB]">{post.forum}</p><h2 className="mt-1 font-serif text-xl font-semibold text-[#332C28] dark:text-white">{post.title}</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]">{post.body}</p><div className="mt-4 flex items-center gap-5 border-b border-[#F2EDEA] pb-4 text-xs dark:border-white/10"><button disabled={busy} aria-pressed={post.liked} aria-label={(post.liked?'Unlike ':'Like ')+post.title} onClick={()=>void act({action:'like',postId:post.id,liked:!post.liked})} className={'inline-flex items-center gap-1.5 font-semibold '+(post.liked?'text-[#E85D70]':'text-[#8B7C73] dark:text-[#CFC4BE]')}><Heart size={16} fill={post.liked?'currentColor':'none'}/>{post.likes} {post.likes===1?'like':'likes'}</button><span className="inline-flex items-center gap-1.5 text-[#8B7C73] dark:text-[#CFC4BE]"><MessageCircle size={16}/>{post.replyCount} {post.replyCount===1?'reply':'replies'}</span></div><div className="mt-4 space-y-3">{post.reports?.length? <div className="rounded-xl border border-[#E85D70]/30 p-3"><p className="text-xs font-bold text-[#E85D70]">Member reports · visible only to the platform owner</p>{post.reports.map((r,i)=><p key={i} className="mt-2 text-xs text-[#6B5D54] dark:text-[#CFC4BE]">{r.reason}</p>)}</div>:null}{post.replyCount>post.comments.length&&<p className="text-xs text-[#8B7C73]">Showing the latest {post.comments.length} replies.</p>}{post.comments.map(comment=><div key={comment.id} className="flex gap-2.5 rounded-xl bg-[#FFFAF7] p-3 dark:bg-white/5"><Avatar author={comment.author} small/><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-[#332C28] dark:text-white">{comment.author.name}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-[#6B5D54] dark:text-[#CFC4BE]">{comment.body}</p></div>{comment.canHide&&<button disabled={busy} onClick={()=>void act({action:'hide',kind:'comment',id:comment.id})} aria-label="Hide your reply" className="text-[#8B7C73]"><Trash2 size={13}/></button>}</div>)}</div><form className="mt-4" onSubmit={event=>{event.preventDefault();void act({action:'comment',id:replyId.current,postId:post.id,body:reply.trim()});}}><label className="sr-only" htmlFor={'reply-'+post.id}>Reply to {post.title}</label><textarea id={'reply-'+post.id} value={reply} maxLength={1500} disabled={busy} onChange={event=>setReply(event.target.value)} rows={2} placeholder="Add a thoughtful reply…" className="field-input w-full resize-y text-sm"/><button type="submit" disabled={busy||reply.trim().length<2} className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#E85D70] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"><Send size={13}/>Post reply</button></form>{report&&<form className="mt-4 rounded-xl border p-3" onSubmit={event=>{event.preventDefault();void act({action:'report',postId:post.id,reason});}}><label className="block text-xs font-semibold">Why are you reporting this discussion?<textarea maxLength={1000} value={reason} onChange={event=>setReason(event.target.value)} rows={2} className="field-input mt-2 w-full"/></label><button disabled={busy||reason.trim().length<5} className="mt-2 rounded-lg bg-[#332C28] px-3 py-2 text-xs text-white disabled:opacity-40">Send report</button></form>}{message&&<p role="status" className="mt-3 text-xs text-[#6B5D54] dark:text-[#CFC4BE]">{message}</p>}</article>;
 }
-
-function Event({ title, meta, onOpen }: { title: string; meta: string; onOpen: () => void }) {
-  return <button onClick={onOpen} className="w-full rounded-xl border border-[#F2EDEA] p-3 text-left transition hover:border-[#F0C0CA] dark:border-white/10"><div className="font-semibold text-[#4D423C] dark:text-[#E7DED9]">{title}</div><div className="mt-1 text-xs text-[#A8998E]">{meta}</div></button>;
-}
-
-function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
-  return <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"><div className="w-full max-w-lg rounded-[28px] border border-[#F2EDEA] bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#211D1A]"><div className="flex items-center justify-between gap-3"><h2 className="font-serif text-2xl font-semibold text-[#332C28] dark:text-white">{title}</h2><button onClick={onClose} className="rounded-xl p-2 text-[#A8998E] hover:bg-black/5 dark:hover:bg-white/5" aria-label="Close"><X size={19} /></button></div><div className="mt-4 space-y-3">{children}</div></div></div>;
+export default function BakerCommons(){
+ const [posts,setPosts]=useState<CommonsPost[]>([]),[view,setView]=useState<'members'|'samples'>('members'),[query,setQuery]=useState(''),[forum,setForum]=useState('All discussions'),[title,setTitle]=useState(''),[body,setBody]=useState(''),[postForum,setPostForum]=useState('General discussion'),[message,setMessage]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[cursor,setCursor]=useState<string|null>(null);const postId=useRef(crypto.randomUUID()),mounted=useRef(true),refreshing=useRef(false),pages=useRef(1);
+ async function refresh(){if(refreshing.current)return;refreshing.current=true;try{let result=await commonsRequest();const collected=[...result.posts];for(let page=1;page<pages.current&&result.nextCursor;page++){result=await commonsRequest(undefined,result.nextCursor);collected.push(...result.posts);}if(mounted.current){setPosts(collected);setCursor(result.nextCursor);setMessage('');}}catch(error){if(mounted.current)setMessage(error instanceof Error?error.message:'Commons could not load.');}finally{refreshing.current=false;if(mounted.current)setLoading(false);}}
+ useEffect(()=>{mounted.current=true;void refresh();const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh();},60000);return()=>{mounted.current=false;clearInterval(timer);};},[]);
+ async function publish(){setBusy(true);setMessage('');try{await commonsRequest({action:'post',id:postId.current,title:title.trim(),body:body.trim(),forum:postForum});setTitle('');setBody('');postId.current=crypto.randomUUID();await refresh();}catch(error){setMessage(error instanceof Error?error.message:'Your discussion could not be posted.');}finally{setBusy(false);}}
+ async function more(){if(!cursor)return;setBusy(true);try{const result=await commonsRequest(undefined,cursor);setPosts(prior=>[...prior,...result.posts.filter(post=>!prior.some(p=>p.id===post.id))]);setCursor(result.nextCursor);pages.current+=1;}catch(error){setMessage(error instanceof Error?error.message:'Could not load more discussions.');}finally{setBusy(false);}}
+ const visible=posts.filter(post=>(forum==='All discussions'||post.forum===forum)&&(post.title+' '+post.body+' '+post.author.name).toLowerCase().includes(query.toLowerCase()));
+ return <main className="min-h-[100dvh] bg-[#FFFCF9] px-4 py-8 dark:bg-[#171412]"><div className="mx-auto max-w-7xl"><header className="mb-6"><span className="inline-flex items-center gap-2 text-sm font-bold text-[#E85D70]"><Users size={18}/>Baker Commons</span><h1 className="mt-2 font-serif text-4xl text-[#332C28] dark:text-white">Find your people. Move forward together.</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]">Share thoughtful questions, celebrate progress, and build a supportive community around your BCBA journey.</p></header><div className="mb-5 flex items-start gap-3 rounded-2xl border border-[#F4D9C9] bg-[#FFF8F3] p-4 dark:border-[#D4A574]/20 dark:bg-[#D4A574]/10"><ShieldCheck size={19} className="mt-1 shrink-0 text-[#B36A2E]"/><p className="text-xs leading-5 text-[#7A6049] dark:text-[#CDB59D]">Keep conversations de-identified. Never post client names, private fieldwork records, confidential workplace details, or secure exam content. Be respectful and use Report to flag a concern.</p></div><CommunityMembers/><div className="mb-6 flex flex-wrap gap-3" role="group" aria-label="Commons views">{(['members','samples'] as const).map(value=><button key={value} aria-pressed={view===value} onClick={()=>setView(value)} className={'rounded-xl border px-5 py-3 text-sm font-semibold '+(view===value?'border-[#E85D70] bg-[#E85D70] text-white':'border-[#E2DAD5] text-[#6B5D54] dark:border-white/15 dark:text-[#CFC4BE]')}>{value==='members'?'Member discussions':'Sample conversations'}</button>)}<Link to="/settings" className="rounded-xl border px-5 py-3 text-sm font-semibold text-[#6B5D54] dark:border-white/15 dark:text-[#CFC4BE]">My profile & photo</Link></div>{view==='samples'?<><p className="text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Explore the read-only examples below, then open Member discussions to start your own conversation.</p><CommunityDemo/></>:<><form className="mb-6 rounded-[26px] border border-[#F2EDEA] bg-white p-5 dark:border-white/10 dark:bg-[#211D1A]" onSubmit={event=>{event.preventDefault();void publish();}}><h2 className="font-serif text-xl font-semibold text-[#332C28] dark:text-white">Start a conversation</h2><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_240px]"><label className="sr-only" htmlFor="commons-title">Discussion title</label><input id="commons-title" value={title} maxLength={100} disabled={busy} onChange={event=>setTitle(event.target.value)} placeholder="What would you like to discuss?" className="field-input"/><label className="sr-only" htmlFor="commons-forum">Topic</label><select id="commons-forum" value={postForum} disabled={busy} onChange={event=>setPostForum(event.target.value)} className="field-input">{forums.map(f=><option key={f}>{f}</option>)}</select></div><label className="sr-only" htmlFor="commons-body">Discussion</label><textarea id="commons-body" value={body} maxLength={4000} disabled={busy} onChange={event=>setBody(event.target.value)} rows={3} placeholder="Ask a question, share a win, or offer a practical study tip…" className="field-input mt-3 w-full resize-y"/><div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-[#7B6B62] dark:text-[#CFC4BE]">Shared with other paid members · 5 new discussions per day</p><button disabled={busy||title.trim().length<3||body.trim().length<8} className="rounded-xl bg-[#E85D70] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">{busy?'Posting…':'Post to Commons'}</button></div></form><div className="mb-5 flex flex-wrap gap-3"><div className="relative flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B7C73]"/><input aria-label="Search member discussions" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search discussions" className="field-input w-full pl-10"/></div><select aria-label="Filter discussions by topic" value={forum} onChange={event=>setForum(event.target.value)} className="field-input"><option>All discussions</option>{forums.map(f=><option key={f}>{f}</option>)}</select></div>{message&&<p role="status" className="mb-4 rounded-xl border p-4 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">{message}</p>}{loading&&<p className="py-8 text-sm text-[#7B6B62]">Loading member conversations…</p>}<div className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3">{visible.map(post=><Thread key={post.id} post={post} refresh={refresh}/>)}</div>{!loading&&!message&&!visible.length&&<p className="py-8 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">No discussions match yet. Start one above or explore the sample conversations.</p>}{cursor&&<button disabled={busy} onClick={()=>void more()} className="mt-6 rounded-xl border px-5 py-3 text-sm font-semibold text-[#6B5D54] dark:text-[#CFC4BE]">Load older discussions</button>}</>}</div></main>;
 }

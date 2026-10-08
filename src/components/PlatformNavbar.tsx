@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MessageSquare, Brain, Compass, FlaskConical, Library, LogOut, Menu, Moon, Route, Sparkles, Sun, Upload, Users, X } from 'lucide-react';
+import ProfileAvatar from '@/components/ProfileAvatar';
 import { useAuth } from '@/hooks/useAuth';
 
 const coreNav = [
@@ -53,8 +54,8 @@ export default function PlatformNavbar({ isDark, onToggleDark }: { isDark: boole
             </button>
             {isAuthenticated ? (
               <div className="relative">
-                <button onClick={() => setProfileOpen((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#332C28] text-xs font-bold text-[#F4C895] ring-2 ring-[#D4A574]/25">
-                  {user?.initials || 'BB'}
+                <button aria-label="Open account menu" onClick={() => setProfileOpen((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#332C28] text-xs font-bold text-[#F4C895] ring-2 ring-[#D4A574]/25">
+                  <ProfileAvatar/>
                 </button>
                 <AnimatePresence>
                   {profileOpen && (
@@ -107,8 +108,8 @@ export default function PlatformNavbar({ isDark, onToggleDark }: { isDark: boole
               <div className="my-6 h-px bg-[#F2EDEA] dark:bg-white/10" />
               {isAuthenticated ? (
                 <div className="space-y-2">
-                  <div className="rounded-2xl bg-white p-4 dark:bg-white/5"><div className="text-sm font-semibold text-[#332C28] dark:text-white">{user?.name}</div><div className="truncate text-xs text-[#A8998E]">{user?.email}</div></div>
-                  <Link to="/dashboard" className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#6B5D54] dark:text-[#CFC4BE]">Fieldwork workspace</Link>
+                  <div className="rounded-2xl bg-white p-4 dark:bg-white/5"><ProfileAvatar size={44}/><div className="text-sm font-semibold text-[#332C28] dark:text-white">{user?.name}</div><div className="truncate text-xs text-[#A8998E]">{user?.email}</div></div>
+                  <Link to="/settings" className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#6B5D54] dark:text-[#CFC4BE]">Profile & account settings</Link><Link to="/dashboard" className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#6B5D54] dark:text-[#CFC4BE]">Fieldwork workspace</Link>
                   <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-4 py-3 text-left text-sm font-semibold text-[#E85D70]"><LogOut size={17} /> Sign out</button>
                 </div>
               ) : (
@@ -121,3 +122,4 @@ export default function PlatformNavbar({ isDark, onToggleDark }: { isDark: boole
     </>
   );
 }
+

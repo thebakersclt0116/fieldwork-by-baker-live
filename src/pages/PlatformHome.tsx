@@ -1,3 +1,4 @@
+import MobileAppAnnouncement from '@/components/MobileAppAnnouncement';
 import { Link } from 'react-router';
 import { Brain, CheckCircle2, Compass, FlaskConical, Library, Route, ShieldCheck, Sparkles, Users } from 'lucide-react';
 
@@ -57,6 +58,7 @@ export default function PlatformHome() {
         </div>
       </section>
 
+      <div className="mx-auto max-w-7xl px-4"><MobileAppAnnouncement/></div>
       <section className="px-4 pb-20">
         <div className="mx-auto max-w-7xl rounded-[32px] bg-[#332C28] p-7 text-white md:p-10 dark:bg-[#211D1A] dark:ring-1 dark:ring-white/10">
           <div className="grid gap-8 lg:grid-cols-[.75fr_1.25fr] lg:items-center"><div><div className="flex items-center gap-2 text-sm font-bold text-[#F4C895]"><ShieldCheck size={17} /> Compliance & trust</div><h2 className="mt-3 font-serif text-3xl font-semibold">Built to guide—not impersonate the BACB.</h2></div><p className="text-sm leading-7 text-white/70">Fieldwork by Baker is an independent educational and community resource. It is not affiliated with, endorsed by, or operated by the Behavior Analyst Certification Board. Platform guidance does not guarantee certification, examination eligibility, employment, or a passing score. Official requirements should be verified against current official sources.</p></div>
@@ -65,3 +67,4 @@ export default function PlatformHome() {
     </div>
   );
 }
+

@@ -21,6 +21,9 @@ export async function cloudRequest(path: string, token: string | null, options: 
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const detail = payload && typeof payload === 'object' && 'message' in payload ? String(payload.message) : '';
+    if (detail.includes('COMMUNITY_LIMIT')) throw new CloudError('COMMUNITY_LIMIT',429);
+    if (detail.includes('COMMUNITY_CONFLICT')) throw new CloudError('COMMUNITY_CONFLICT',409);
+    if (detail.includes('POST_NOT_AVAILABLE')) throw new CloudError('POST_NOT_AVAILABLE',404);
     if (detail.includes('FORM_EMAIL_LIMIT')) throw new CloudError('FORM_EMAIL_LIMIT',429);
     if (detail.includes('EMAIL_REQUEST_CONFLICT') || detail.includes('EMAIL_REQUEST_EXPIRED')) throw new CloudError('EMAIL_REQUEST_CONFLICT',409);
     if (detail.includes('PAID_SUBSCRIPTION_REQUIRED')) throw new CloudError('PAID_SUBSCRIPTION_REQUIRED',403);

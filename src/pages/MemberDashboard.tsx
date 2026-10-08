@@ -1,3 +1,4 @@
+import ProfileAvatar from '@/components/ProfileAvatar';
 import MobileAppAnnouncement from '@/components/MobileAppAnnouncement';
 import MonthlyProgress from '@/components/MonthlyProgress';
 import { currentMonthKey, monthLabel } from '@/lib/monthlyProgress';
@@ -296,7 +297,7 @@ export default function MemberDashboard() {
               <span className="text-sm font-semibold text-[#E85D70]">Fieldwork workspace</span>
               <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider ${isFree ? 'bg-[#FAF8F6] text-[#6B5D54]' : 'bg-[#E8F5EE] text-[#4B8C69]'}`}>{badge}</span>
             </div>
-            <h1 className="font-serif text-4xl font-semibold text-[#332C28] mb-2">Welcome, {user?.name?.split(' ')[0] || 'there'}</h1>
+            <div className="mb-4"><ProfileAvatar size={56}/></div><h1 className="font-serif text-4xl font-semibold text-[#332C28] mb-2">Welcome, {user?.name?.split(' ')[0] || 'there'}</h1>
             <p className="text-[#6B5D54]">Every entry now ties the hours to a supervisor, organization, category, and supervision/observation context.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -555,3 +556,4 @@ function SummaryStrip({ label, value }: { label: string; value: string }) {
 function TrackingLine({ title, description }: { title: string; description: string }) {
   return <div className="rounded-xl bg-[#FAF8F6] p-3"><div className="font-semibold text-[#4D423C]">{title}</div><div className="text-xs text-[#A8998E] mt-1 leading-relaxed">{description}</div></div>;
 }
+

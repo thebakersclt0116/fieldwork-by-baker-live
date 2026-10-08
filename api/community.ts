@@ -1,3 +1,4 @@
+import {communityPhotos} from '../server/community-photos.js';
 import {getBearerToken} from './_auth.js';
 import {CloudError,cloudRequest,verifyCloudUser} from '../server/cloud-client.js';
 export default async function handler(req:any,res:any){
@@ -6,8 +7,9 @@ export default async function handler(req:any,res:any){
   const token=getBearerToken(req);if(!token)throw new CloudError('AUTH_REQUIRED',401);const user=await verifyCloudUser(token);
   if(req.method==='GET'){
    const preferences:any=await cloudRequest(`/rest/v1/community_profiles?owner_id=eq.${user.id}&select=country,show_country,share_presence`,token);
-   const members=await cloudRequest('/rest/v1/rpc/community_members',token,{method:'POST',body:'{}'});
-   return res.status(200).json({preferences:preferences[0]||{country:'NONE',show_country:false,share_presence:false},members});
+   const members:any=await cloudRequest('/rest/v1/rpc/community_members',token,{method:'POST',body:'{}'});
+   const photos=await communityPhotos(token,members.map((member:any)=>member.member_id));
+   return res.status(200).json({preferences:preferences[0]||{country:'NONE',show_country:false,share_presence:false},members:members.map((member:any)=>({...member,photo:photos[member.member_id]||null}))});
   }
   if(req.method!=='POST'){res.setHeader('Allow','GET, POST');return res.status(405).json({code:'METHOD_NOT_ALLOWED'});}
   const b=req.body||{};
