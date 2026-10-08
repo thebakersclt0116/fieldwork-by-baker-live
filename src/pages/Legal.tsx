@@ -17,10 +17,12 @@ const pages: Record<LegalKey, {
     intro: 'Fieldwork by Baker is designed to help BCBA candidates organize fieldwork and study data while minimizing unnecessary collection of sensitive information.',
     sections: [
       { title: 'Information you provide', body: 'The app may process account details, fieldwork records, supervisor information, study progress, imported files, and messages you intentionally submit to Baker AI. Do not enter protected health information or unnecessary client-identifying information.' },
-      { title: 'Browser-local beta data', body: 'Some current beta features store fieldwork and personalization data in your browser. Clearing browser storage, changing devices, or using private browsing can remove browser-local records. Keep independent copies of records required for professional or regulatory purposes.' },
+      { title: 'Account storage and browser preferences', body: 'Verified accounts store fieldwork records, learning progress and private uploaded originals in Supabase account storage. Access rules restrict private records and originals to the account owner, with limited current-entry access for an assigned verified supervisor. Theme, time format, session information and local drafts may also use browser storage. Clearing browser storage can remove local preferences and unsaved drafts; it does not delete records already saved to your account. Keep independent copies of required records and signed forms.' },
       { title: 'AI processing', body: 'When you use Baker AI or Baker Brain, the text and relevant app context needed to answer your request may be sent to the configured AI service. The platform is designed to minimize unrelated context and does not intentionally ask for client-identifying information.' },
-      { title: 'Payments', body: 'Payments are processed by Stripe Checkout when Stripe is configured. Fieldwork by Baker does not collect or store full payment card numbers in the application.' },
-      { title: 'Contact', body: 'Questions about privacy can be sent through the Contact page. This policy will be updated as the platform adds persistent accounts, notifications, and other production services.' },
+      { title: 'Payments and service providers', body: 'Vercel hosts the application, Supabase supports verified accounts and private storage, Stripe processes subscription payments, and Resend delivers account and product emails. These services process the information needed to provide their respective functions. Full payment card numbers are entered on Stripe-hosted pages and are not stored in the Fieldwork application.' },
+      { title: 'Supervisor emails and owner notifications', body: 'When you choose to email a monthly form, the entered supervisor address receives your name, BACB ID, form details and an unsigned PDF, with your account email as the reply address. Verified-signup and confirmed-plan notifications send your name, email and selected membership information to the Fieldwork owner. Suggestions send your submitted text and account details to the owner inboxes.' },
+      { title: 'Community and profile visibility', body: 'A saved profile photo is visible to verified members across the site, including beside your posts and replies. Shared Commons posts and replies are visible to other verified members. Country badges and Active now sharing start off and can be enabled or disabled in settings. Active now does not display an exact last-seen time. Sample discussions are labeled fictional and cannot be interacted with.' },
+      { title: 'Contact', body: 'For privacy, access, correction or deletion questions, contact support@fieldworkbybaker.com. Retain an independent export of records you need for professional documentation.' },
     ],
   },
   terms: {
@@ -33,17 +35,18 @@ const pages: Record<LegalKey, {
       { title: 'Your responsibility', body: 'You are responsible for the accuracy of the information you enter or import and for reviewing AI-generated classifications, summaries, calculations, and study guidance before relying on them.' },
       { title: 'Supervisor review', body: 'Supervisor review tools support documentation workflows but do not replace professional judgment, supervision contracts, employer requirements, or official verification processes.' },
       { title: 'Exam preparation', body: 'Exam Lab uses original, unofficial practice material. It does not contain secure BACB examination questions and does not guarantee a passing score.' },
-      { title: 'Beta availability', body: 'Some features are in active beta and may change. Keep independent copies of important fieldwork records and verification documents.' },
+      { title: 'Membership and cancellation', body: 'Public demos are read-only and do not start a free trial. Paid membership unlocks the features shown for the selected plan. Subscriptions renew at the price and interval displayed in checkout until canceled. You can manage billing and cancellation through the Stripe customer portal in Account settings. Existing saved records remain readable when paid access ends; features requiring an active membership are disabled.' },
+      { title: 'Product availability', body: 'Features may be updated as the platform develops. Native iOS and Android apps are coming soon; the current workspace is available through a mobile browser. Keep independent copies of important fieldwork records and signed verification documents.' },
     ],
   },
   cookies: {
-    title: 'Cookie & Local Storage Notice',
+    title: 'Cookie & Storage Notice',
     eyebrow: 'Storage',
     icon: Cookie,
-    intro: 'The current app primarily relies on browser storage and secure session tokens to remember preferences and beta account state.',
+    intro: 'Fieldwork uses secure session information and browser preferences alongside protected account storage.',
     sections: [
-      { title: 'What is stored', body: 'The app may store theme preference, signed-in session information, fieldwork entries, study progress, saved resources, exam progress, and other personalization data in browser storage.' },
-      { title: 'Why it is used', body: 'Browser storage keeps the app responsive and lets beta users continue where they left off. It is also why clearing site data can remove locally stored records.' },
+      { title: 'What is stored', body: 'Browser storage may hold theme and time-format preferences, signed-in session information, working drafts and local caches. Saved account records, learning progress and private originals are stored separately in protected Supabase storage.' },
+      { title: 'Why it is used', body: 'Session information supports verified sign-in, while preferences and local drafts help you continue your work. Clearing site data can sign you out and remove local preferences and unsaved drafts. Saved cloud records remain available after signing back in.' },
       { title: 'Your controls', body: 'You can clear browser storage through your browser settings. Before doing so, export or otherwise preserve any fieldwork information you need to retain.' },
     ],
   },
@@ -51,9 +54,9 @@ const pages: Record<LegalKey, {
     title: 'Security & Trust',
     eyebrow: 'Security',
     icon: LockKeyhole,
-    intro: 'Fieldwork by Baker uses signed application sessions, protected premium routes, server-side secrets, and Stripe-hosted checkout for payment details when payments are enabled.',
+    intro: 'Fieldwork by Baker uses verified accounts, protected private storage, server-side paid access checks and Stripe-hosted checkout.',
     sections: [
-      { title: 'What we do today', body: 'Sensitive server credentials are kept server-side. Premium API routes require signed authorization. Supervisor review links are signed. Stripe Checkout, when enabled, keeps card entry on Stripe-hosted payment pages.' },
+      { title: 'What we do today', body: 'Server credentials remain server-side. Private account records and originals use owner access rules. Assigned supervisor review requires the invited verified email, expires after 14 days, and applies only to the current entry revision. Signed Stripe webhooks update protected billing status; sandbox payments cannot grant live access. Card entry stays on Stripe-hosted checkout pages.' },
       { title: 'What we do not claim', body: 'The platform should not be described as HIPAA compliant, SOC 2 certified, or as having any other third-party certification unless and until that status has been formally established and documented.' },
       { title: 'Client privacy', body: 'Do not upload or enter unnecessary client-identifying information. Use initials or de-identified descriptions only when needed for fieldwork organization and allowed by your supervisor or organization.' },
       { title: 'Report an issue', body: 'If you discover a security or privacy issue, use the Contact page and include enough technical detail for the team to reproduce it without including client data.' },
@@ -89,7 +92,7 @@ export default function Legal() {
           ))}
         </div>
         <div className="mt-8 rounded-2xl bg-[#FAF8F6] p-4 text-xs leading-6 text-[#7B6B62] dark:bg-white/5 dark:text-[#CFC4BE]">
-          Last updated September 20, 2026. This page describes the current beta architecture and will be revised as production infrastructure changes.
+          Last updated October 8, 2026. This page describes the current live service.
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link to="/contact" className="rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-bold text-white dark:bg-[#E85D70]">Contact Baker</Link>
