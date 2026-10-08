@@ -13,13 +13,13 @@ process.env.SUPABASE_URL='https://synthetic-project.supabase.co';process.env.SUP
 const res=()=>({code:0,body:null,headers:{},setHeader(k,v){this.headers[k]=v;},status(n){this.code=n;return this;},json(v){this.body=v;return this;}});
 const req=(body={})=>({method:'POST',headers:{authorization:'Bearer fictional-jwt'},body});
 let writes=[];
-function mock({checkoutOwner=actor,status='active',existing=false}={}){writes=[];globalThis.fetch=async(url,options)=>{
+function mock({checkoutOwner=actor,status='active',existing=false,cancelAt=null}={}){writes=[];globalThis.fetch=async(url,options)=>{
  if(url.endsWith('/auth/v1/user')){assert.equal(options.headers.Authorization,'Bearer fictional-jwt');return Response.json({id:actor,email:'fictional@example.com',email_confirmed_at:'2026-01-01'});}
  if(url.includes('/rest/v1/billing_customers?')){assert.ok(url.includes('owner_id=eq.'+actor));assert.equal(options.headers.Authorization,'Bearer fictional-jwt');return Response.json([{customer_id:customer}]);}
  if(url.includes('/rest/v1/rpc/')){assert.equal(options.headers.apikey,'sb_secret_fictional');assert.equal(options.headers.Authorization,undefined);const body=JSON.parse(options.body);writes.push({url,body});if(url.endsWith('/claim_billing_checkout'))return Response.json({id:'33333333-3333-4333-8333-333333333333',origin:'https://www.fieldworkbybaker.com',expiresAt:Math.floor(Date.now()/1000)+2100});return Response.json({saved:true});}
  assert.ok(url.startsWith('https://api.stripe.com/'));assert.equal(options.headers.Authorization,'Bearer sk_live_fictional');
  if(url.endsWith('/checkout/sessions/cs_Fictional'))return Response.json({id:'cs_Fictional',livemode:true,mode:'subscription',status:'complete',payment_status:'paid',client_reference_id:checkoutOwner,customer,subscription,metadata:{baker_account_id:checkoutOwner,baker_mode:'live'}});
- if(url.endsWith('/subscriptions/'+subscription))return Response.json({id:subscription,livemode:true,customer,status,metadata:{baker_account_id:actor,baker_mode:'live'},items:{data:[{quantity:1,price:{id:price},current_period_end:1792000000}]},cancel_at_period_end:false});
+ if(url.endsWith('/subscriptions/'+subscription))return Response.json({id:subscription,livemode:true,customer,status,metadata:{baker_account_id:actor,baker_mode:'live'},items:{data:[{quantity:1,price:{id:price},current_period_end:1792000000}]},cancel_at_period_end:false,cancel_at:cancelAt});
  if(url.includes('/subscriptions?'))return Response.json({data:existing?[{status:'active'}]:[],has_more:false});
  if(url.endsWith('/checkout/sessions'))return Response.json({id:'cs_Fictional',livemode:true,url:'https://checkout.stripe.com/c/pay/fictional'});
  if(url.endsWith('/billing_portal/sessions')){assert.equal(new URLSearchParams(options.body).get('customer'),customer);return Response.json({url:'https://billing.stripe.com/p/session/fictional'});}
@@ -68,3 +68,5 @@ test('checkout is backed by an atomic claim and uses a stable provider idempoten
 });
 
 test('preview checkout and portal return to the stable branch origin, while production stays on the public domain',()=>{const saved={env:process.env.VERCEL_ENV,branch:process.env.VERCEL_BRANCH_URL,url:process.env.VERCEL_URL};try{process.env.VERCEL_ENV='preview';process.env.VERCEL_BRANCH_URL='fictional-git-test.vercel.app';process.env.VERCEL_URL='fictional-immutable.vercel.app';assert.equal(siteOrigin(),'https://fictional-git-test.vercel.app');process.env.VERCEL_BRANCH_URL='https://attacker.example';assert.equal(siteOrigin(),'https://fictional-immutable.vercel.app');process.env.VERCEL_ENV='production';assert.equal(siteOrigin(),'https://www.fieldworkbybaker.com');}finally{for(const [key,value] of Object.entries({VERCEL_ENV:saved.env,VERCEL_BRANCH_URL:saved.branch,VERCEL_URL:saved.url})){if(value===undefined)delete process.env[key];else process.env[key]=value;}}});
+
+test('Stripe scheduled cancellation at period end is preserved without ending active access early',async()=>{mock({cancelAt:1792000000});const response=res();await complete(req({sessionId:'cs_Fictional'}),response);assert.equal(response.code,200);assert.equal(writes[0].body.p_cancel_at_period_end,true);assert.equal(writes[0].body.p_status,'active');mock({cancelAt:1791900000});await complete(req({sessionId:'cs_Fictional'}),res());assert.equal(writes[0].body.p_cancel_at_period_end,false);});

@@ -58,7 +58,7 @@ export async function reconcileSubscription(subscriptionId:string,mode:BillingMo
  const items=subscription.items?.data;if(!Array.isArray(items)||items.length!==1||items[0].quantity!==1)throw new CloudError('BILLING_PLAN_MISMATCH',400);
  const plan=planForPrice(items[0].price?.id,mode);
  const periodEnd=subscription.current_period_end || items[0].current_period_end || null;
- await billingRPC('apply_billing_snapshot',{p_owner:owner,p_mode:mode,p_customer:customer,p_subscription:subscription.id,p_plan:plan,p_status:subscription.status,p_period_end:periodEnd,p_cancel_at_period_end:subscription.cancel_at_period_end===true,p_checked_at:checkedAt,p_event_id:eventId});
+ await billingRPC('apply_billing_snapshot',{p_owner:owner,p_mode:mode,p_customer:customer,p_subscription:subscription.id,p_plan:plan,p_status:subscription.status,p_period_end:periodEnd,p_cancel_at_period_end:subscription.cancel_at_period_end===true||(Number.isSafeInteger(subscription.cancel_at)&&subscription.cancel_at===periodEnd),p_checked_at:checkedAt,p_event_id:eventId});
  return {plan,status:subscription.status,paid:plan!=='none'&&subscription.status==='active'};
 }
 export function siteOrigin(){
