@@ -1,24 +1,13 @@
-import { Link } from 'react-router';
-import { ArrowUpRight, Smartphone } from 'lucide-react';
-
-function PreviewScreen({ wide = false }: { wide?: boolean }) {
-  return <div className="h-full rounded-[inherit] bg-[#fffaf6] p-4 text-[#332c28]">
-    <div className="mb-5 flex items-center justify-between text-[9px] font-semibold"><span>9:41</span><span>● ▰</span></div>
-    <div className="font-serif text-lg font-bold">Fieldwork <span className="font-sans text-[8px] text-[#E85D70]">by Baker</span></div>
-    <p className="mt-3 text-[9px] text-[#9B8575]">YOUR FIELDWORK JOURNEY</p><p className="font-serif text-xl">A little closer, every day.</p>
-    <div className="my-4 rounded-2xl bg-[#332C28] p-4 text-white"><p className="text-[8px] text-[#f4c895]">OCTOBER · SAMPLE PREVIEW</p><p className="mt-2 text-3xl">24.5 <span className="text-[10px] text-white/60">hours</span></p><div className="mt-3 h-1 rounded-full bg-white/20"><div className="h-full w-3/5 rounded-full bg-[#f4c895]" /></div></div>
-    <div className={`grid gap-2 ${wide ? 'grid-cols-2' : ''}`}><div className="rounded-xl border border-[#eaded4] p-3 text-[10px]">Unrestricted <strong className="block text-lg">18.0h</strong></div><div className="rounded-xl border border-[#eaded4] p-3 text-[10px]">Supervision <strong className="block text-lg">2.5h</strong></div></div>
-    <div className="mt-4 rounded-xl bg-[#fce7eb] p-3 text-[10px] font-semibold text-[#b94256]">＋ Log your next session</div>
-  </div>;
-}
-export default function MobileAppAnnouncement() {
-  return <section aria-labelledby="mobile-app-title" className="relative my-6 overflow-hidden rounded-[2rem] border border-[#eaded4] bg-gradient-to-br from-[#332c28] via-[#45332f] to-[#76514b] text-white">
-    <div className="grid items-center gap-6 px-6 pt-8 md:grid-cols-2 md:px-10">
-      <div className="pb-6"><span className="inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1.5 text-xs text-[#f4c895]"><Smartphone size={14} /> A new chapter is coming</span><h2 id="mobile-app-title" className="mt-5 font-serif text-4xl leading-tight md:text-5xl">Your journey.<br />Soon, in your pocket.</h2><p className="mt-5 text-xl font-semibold text-[#ffadb8]">iOS and Android app coming soon!</p><p className="mt-3 max-w-md text-sm leading-relaxed text-white/75">A little more freedom to move forward. Your fieldwork workspace is already available in your mobile browser.</p><Link to="/suggestions" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#f4c895] px-4 py-3 text-sm font-semibold text-[#332c28]">Help shape what comes next <ArrowUpRight size={16} /></Link><p className="mt-4 text-[11px] text-white/50">Illustrative app preview. Device illustrations inspired by iPhone and your iPhone Duo reference.</p></div>
-      <div aria-label="Fieldwork dashboard previews on a regular iPhone and an iPhone Duo-inspired foldable phone" role="img" className="relative mx-auto flex h-[520px] w-full max-w-[480px] items-end justify-center gap-2 overflow-hidden pt-4 sm:gap-3">
-        <div className="relative z-10 w-[120px] shrink-0 sm:w-[170px] translate-y-5 -rotate-6 rounded-[2rem] border-[6px] border-[#161616] bg-[#161616] shadow-2xl"><div className="absolute left-1/2 top-2 z-10 h-3 w-14 -translate-x-1/2 rounded-full bg-black" /><PreviewScreen /></div>
-        <div className="relative w-[200px] shrink-0 sm:w-[300px] translate-y-12 rotate-6 rounded-[1.5rem] border-[6px] border-[#242424] bg-[#242424] shadow-2xl"><div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-px bg-black/10" /><PreviewScreen wide /></div>
-      </div>
-    </div>
-  </section>;
+import {useState} from 'react';
+import {Link} from 'react-router';
+import {ArrowUpRight,Smartphone} from 'lucide-react';
+const devices={phone:{label:'Phone · Fieldwork',src:'/images/mobile/fieldwork-phone-premium.jpg',alt:'A graphite smartphone showing the Fieldwork by Baker monthly dashboard with cream, pink and peach details',width:1145,height:1374},duo:{label:'Duo · Exam Lab',src:'/images/mobile/fieldwork-duo-premium.jpg',alt:'A Duo-inspired foldable smartphone showing the Fieldwork by Baker Exam Lab in a bright studio setting',width:1312,height:1199}};
+export default function MobileAppAnnouncement(){
+ const [selected,setSelected]=useState<'phone'|'duo'>('phone');const device=devices[selected];
+ return <section aria-labelledby="mobile-app-title" className="my-8 overflow-hidden rounded-[2rem] border border-[#eaded4]" style={{backgroundColor:'#fffcf9',color:'#332c28'}}>
+  <div className="grid items-center gap-3 px-6 py-8 sm:px-10 lg:grid-cols-[.9fr_1.1fr] lg:gap-8 lg:px-12 lg:py-10">
+   <div className="relative z-10 max-w-lg py-4"><span className="inline-flex items-center gap-2 rounded-full border border-[#eaded4] px-3 py-1.5 text-xs" style={{color:'#8d6e58'}}><Smartphone size={14}/>A new chapter is coming</span><h2 id="mobile-app-title" className="mt-6 font-serif text-[clamp(2.25rem,4vw,3.75rem)] leading-[1.08] tracking-[-.035em]" style={{color:'#332c28'}}>Your journey.<br/>Soon, in your pocket.</h2><p className="mt-6 text-lg font-semibold sm:text-xl" style={{color:'#c4475b'}}>iOS and Android app coming soon!</p><p className="mt-4 max-w-sm text-sm leading-7" style={{color:'#79685d'}}>A little more freedom to move forward. Your fieldwork workspace is already available in your mobile browser.</p><Link to="/suggestions" className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition hover:brightness-95" style={{backgroundColor:'#f4c895',color:'#332c28'}}>Help shape what comes next<ArrowUpRight size={16}/></Link><p className="mt-5 text-[11px] leading-5" style={{color:'#918177'}}>Illustrative mobile app preview. Native apps are coming soon.</p></div>
+   <div className="min-w-0"><div className="flex min-h-[380px] items-center justify-center sm:min-h-[440px] lg:min-h-[480px]"><img key={selected} src={device.src} alt={device.alt} width={device.width} height={device.height} loading="lazy" decoding="async" className="h-auto max-h-[540px] w-full object-contain"/></div><div className="mx-auto mt-4 flex w-fit flex-wrap justify-center gap-1 rounded-full border border-[#eaded4] bg-[#f6f0eb] p-1" role="group" aria-label="Choose mobile app preview">{(Object.keys(devices) as Array<keyof typeof devices>).map(key=><button key={key} type="button" aria-pressed={selected===key} onClick={()=>setSelected(key)} className="rounded-full px-4 py-2 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e85d70]" style={{backgroundColor:selected===key?'#ffffff':'transparent',color:selected===key?'#332c28':'#8d7b6e',boxShadow:selected===key?'0 2px 8px rgba(51,44,40,.06)':'none'}}>{devices[key].label}</button>)}</div></div>
+  </div>
+ </section>;
 }
