@@ -173,8 +173,8 @@ export default function ExportCenter() {
           <button onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] bg-white px-4 py-2.5 text-sm text-[#6B5D54]"><Printer size={16} /> Print review</button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[.72fr_1.28fr] gap-6">
-          <aside className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,.72fr)_minmax(0,1.28fr)] gap-6">
+          <aside className="min-w-0 space-y-6">
             <section className="bg-white rounded-3xl border border-[#F2EDEA] p-6 shadow-sm">
               <h2 className="font-serif text-xl font-semibold text-[#332C28] mb-4">Form identity fields</h2>
               <div className="space-y-3">
@@ -201,7 +201,7 @@ export default function ExportCenter() {
             </section>
           </aside>
 
-          <main className="space-y-6">
+          <main className="min-w-0 space-y-6">
             <section className="monthly-verification-panel rounded-3xl border border-[#F0D5DA] bg-[#FFF6F8] p-6">
               <h2 className="font-serif text-2xl text-[#332C28]">Prefilled monthly verification form</h2>
               <p className="mt-2 text-sm text-[#6B5D54]">One month and organization at a time. Signature and date fields stay blank for you and your supervisor.</p>
