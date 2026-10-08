@@ -3,7 +3,7 @@ const dir=await mkdtemp(join(tmpdir(),'baker-billing-'));const savedFetch=global
 after(async()=>{globalThis.fetch=savedFetch;await rm(dir,{recursive:true,force:true});});
 await build({entryPoints:['server/billing.ts','server/billing-entitlement.ts','api/checkout-complete.ts','api/create-checkout-session.ts','api/billing-portal.ts','api/stripe-webhook.ts'],outdir:dir,bundle:true,platform:'node',format:'esm',outExtension:{'.js':'.mjs'}});
 const {effectiveSubscription}=await import(pathToFileURL(join(dir,'server/billing-entitlement.mjs')));
-const {verifyWebhook,billingMode}=await import(pathToFileURL(join(dir,'server/billing.mjs')));
+const {verifyWebhook,billingMode,billingConfigured}=await import(pathToFileURL(join(dir,'server/billing.mjs')));
 const {default:complete}=await import(pathToFileURL(join(dir,'api/checkout-complete.mjs')));
 const {default:createCheckout}=await import(pathToFileURL(join(dir,'api/create-checkout-session.mjs')));
 const {default:portal}=await import(pathToFileURL(join(dir,'api/billing-portal.mjs')));
@@ -32,6 +32,13 @@ test('modified payloads, stale timestamps and invalid signatures cannot pass web
  assert.throws(()=>verifyWebhook(Buffer.from(raw+' '),signature,secret,1000));assert.throws(()=>verifyWebhook(raw,signature,secret,1301));assert.throws(()=>verifyWebhook(raw,'t=1000,v1='+'0'.repeat(64),secret,1000));
 });
 test('test-mode keys cannot operate against production',()=>{process.env.STRIPE_SECRET_KEY='sk_test_fictional';assert.throws(()=>billingMode());process.env.STRIPE_SECRET_KEY='sk_live_fictional';});
+test('restricted keys preserve live configuration and preview-only test boundaries',()=>{
+ process.env.STRIPE_SECRET_KEY='rk_live_fictional';assert.equal(billingMode(),'live');assert.equal(billingConfigured(),true);
+ process.env.STRIPE_SECRET_KEY='rk_test_fictional';process.env.BAKER_ALLOW_TEST_CHECKOUT='true';assert.throws(()=>billingMode());assert.equal(billingConfigured(),false);
+ process.env.VERCEL_ENV='preview';assert.equal(billingMode(),'test');
+ delete process.env.BAKER_ALLOW_TEST_CHECKOUT;assert.throws(()=>billingMode());
+ process.env.VERCEL_ENV='production';process.env.STRIPE_SECRET_KEY='sk_live_fictional';
+});
 test('production ignores sandbox entitlements even when the testing flag is accidentally set',async()=>{
  process.env.BAKER_ALLOW_TEST_CHECKOUT='true';process.env.STRIPE_SECRET_KEY='sk_test_fictional';let calls=0;globalThis.fetch=async()=>{calls++;throw Error('No sandbox read in production');};
  const result=await effectiveSubscription({subscription_tier:'none',subscription_status:'none'},actor,'fictional-jwt');assert.deepEqual(result,{tier:'none',status:'none',mode:'live'});assert.equal(calls,0);
