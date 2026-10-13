@@ -1,0 +1,75 @@
+name: Public acquisition verification
+on:
+  push:
+    branches: [main]
+    paths: ['src/**','api/**','server/**','.github/workflows/acquisition-public-verification.yml']
+permissions: { contents: read }
+concurrency:
+  group: public-acquisition-verification
+  cancel-in-progress: true
+jobs:
+  public-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install independent public browser checks
+        run: |
+          mkdir -p /tmp/fieldwork-public-check /tmp/fieldwork-public-evidence
+          npm install --prefix /tmp/fieldwork-public-check playwright@1.61.1 --no-audit --no-fund
+          /tmp/fieldwork-public-check/node_modules/.bin/playwright install chromium
+      - name: Read-only production acceptance
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          cd /tmp/fieldwork-public-check
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          import fs from 'node:fs/promises';
+          const origin='https://www.fieldworkbybaker.com';
+          const report={checkedAt:new Date().toISOString(),expectedCommit:process.env.EXPECTED_COMMIT,checks:[],scope:'Read-only public production UI and unauthenticated API boundaries. No account, email verification, payment, or ad conversion was created.'};
+          const check=(name,passed)=>{report.checks.push({name,passed:Boolean(passed)});if(!passed)throw new Error(name);};
+          let browser;
+          try{
+            let health;
+            for(let i=0;i<60;i++){
+              try{const r=await fetch(origin+'/api/health?public_smoke='+Date.now(),{signal:AbortSignal.timeout(10000)});const h=await r.json();if(r.ok&&h.deployedCommit===process.env.EXPECTED_COMMIT&&h.acquisitionFunnelVersion==='funnel-v1'){health=h;break;}}catch{}
+              await new Promise(r=>setTimeout(r,5000));
+            }
+            check('Exact production release is serving',Boolean(health));report.deployedCommit=health.deployedCommit;
+            const config=await fetch(origin+'/api/ad-measurement-config').then(r=>r.json());
+            check('Expanded measurement declares renewed consent',config.consentVersion==='ads-v2'&&config.funnelVersion==='funnel-v1'&&config.consentRequired===true);
+            const privateResult=await fetch(origin+'/api/funnel');check('Anonymous visitors cannot read funnel reports',privateResult.status===401);
+            const accountResult=await fetch(origin+'/api/account');check('Account API does not mutate on GET',accountResult.status===405);
+            browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844}});const page=await context.newPage();let errors=0;page.on('pageerror',()=>errors++);
+            await page.goto(origin+'/signup?bf_qa=1',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.getByRole('heading',{name:'Create your account',exact:true}).waitFor({timeout:20000});
+            const decline=page.getByRole('button',{name:'Decline optional measurement',exact:true});if(await decline.count())await decline.click();
+            const first=await page.getByLabel('First name',{exact:true}).boundingBox();const proof=await page.getByRole('heading',{name:'A detailed monthly PDF becomes individual entries.',exact:true}).boundingBox();
+            check('Mobile signup inputs precede sales content',first&&proof&&first.y<proof.y&&first.y<844);
+            check('Signup displays the approved price',/16\.99\/month/.test(await page.locator('body').innerText()));
+            await page.screenshot({path:'/tmp/fieldwork-public-evidence/signup-mobile-live.png',fullPage:true});
+            await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'/tmp/fieldwork-public-evidence/signup-desktop-live.png',fullPage:true});
+            await page.goto(origin+'/login?verified=1&return=%2Fupgrade',{waitUntil:'domcontentloaded'});await page.getByLabel('Email',{exact:true}).waitFor();
+            check('Email verification handoff has a labelled sign-in form',await page.getByLabel('Password',{exact:true}).count()===1);
+            for(const variant of ['home','signup']){
+              const arm=await browser.newContext();const p=await arm.newPage();
+              await p.addInitScript(value=>sessionStorage.setItem('baker-signup-destination-test-v1',value),variant);
+              await p.goto(origin+'/start?utm_source=qa&bf_qa=1',{waitUntil:'domcontentloaded'});
+              await p.waitForURL(u=>u.pathname===(variant==='home'?'/':'/signup')&&u.searchParams.get('bf_variant')===variant,{timeout:20000});
+              check('Destination test routes '+variant+' on the same domain',new URL(p.url()).origin===origin);await arm.close();
+            }
+            check('Public pages have no runtime errors',errors===0);
+            report.result='PUBLIC_SMOKE_PASSED';
+          }catch(e){report.result='PUBLIC_SMOKE_FAILED';report.error=e instanceof Error?e.message.slice(0,150):'Unknown verification failure';}
+          finally{if(browser)await browser.close();await fs.writeFile('/tmp/fieldwork-public-evidence/public-verification.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));}
+          if(report.result!=='PUBLIC_SMOKE_PASSED')process.exitCode=1;
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-acquisition-evidence
+          path: /tmp/fieldwork-public-evidence
+          retention-days: 7
