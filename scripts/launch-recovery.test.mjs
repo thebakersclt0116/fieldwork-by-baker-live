@@ -6,7 +6,6 @@ const read = path => fs.readFileSync(path,'utf8');
 const params = { token: 'synthetic-test-token-never-valid', model: 'openai/gpt-5.6-sol', instructions: 'Explain a BCBA concept.', input: 'What is latency?', schemaName: 'test', schema: { type:'object', properties:{answer:{type:'string'}}, required:['answer'],additionalProperties:false }, feature:'product:baker-test', maxOutputTokens:2000 };
 const good = { answer: 'Latency is the time from the specified antecedent to response onset.' };
 const responsePayload = { status:'completed', output:[{ type:'message', content:[{type:'output_text',text:JSON.stringify(good)}] }] };
-
 test('classifies account billing, authentication, rate, model and format failures separately',()=>{
   assert.equal(classifyGatewayFailure(402,'payment required').code,'AI_BILLING_REQUIRED');
   assert.equal(classifyGatewayFailure(429,{error:{code:'insufficient_quota'}}).code,'AI_BILLING_REQUIRED');
@@ -21,8 +20,7 @@ test('safe failures cannot leak provider bodies, user data or credentials',()=>{
   const raw = 'Bearer SECRET_EXAMPLE User example and private fieldwork text';
   const a=safeAiFailure(classifyGatewayFailure(403,raw)), b=safeAiFailure(new Error(raw));
   assert.equal(a.liveModelResponded,false); assert.equal(b.liveModelResponded,false);
-  assert.equal(JSON.stringify([a,b]).includes(raw),false);
-  assert.equal(JSON.stringify([a,b]).includes('SECRET_EXAMPLE'),false);
+  assert.equal(JSON.stringify([a,b]).includes(raw),false); assert.equal(JSON.stringify([a,b]).includes('SECRET_EXAMPLE'),false);
 });
 test('Responses JSON and compatible Chat JSON parse correctly',()=>{
   assert.deepEqual(parseStructuredResponse(responsePayload,'responses'),good);
@@ -39,8 +37,7 @@ test('live request has fixed upstream origin, same model, privacy flag and bound
   let request;
   const result=await requestStructuredGateway({...params,fetchImpl:async(url,init)=>{request={url,...init};return Response.json(responsePayload);}});
   assert.deepEqual(result.data,good); assert.equal(result.transport,'responses');
-  assert.equal(request.url,'https://ai-gateway.vercel.sh/v1/responses');
-  assert.ok(request.signal instanceof AbortSignal);
+  assert.equal(request.url,'https://ai-gateway.vercel.sh/v1/responses'); assert.ok(request.signal instanceof AbortSignal);
   const body=JSON.parse(request.body); assert.equal(body.model,params.model); assert.equal(body.store,false); assert.equal(body.max_output_tokens,2000);
   assert.equal(Object.keys(request.headers).some(k=>k==='ai-reporting-user'),false);
 });
@@ -54,9 +51,7 @@ test('format incompatibility retries once using same-model Chat Completions',asy
   assert.ok(seen.every(s=>s.body.model===params.model)); assert.ok(seen[1].url.endsWith('/chat/completions'));
 });
 for(const [status,code] of [[402,'AI_BILLING_REQUIRED'],[401,'AI_AUTH_REQUIRED'],[403,'AI_AUTH_REQUIRED'],[429,'AI_RATE_LIMITED'],[503,'AI_PROVIDER_UNAVAILABLE']])test(`does not retry or circumvent upstream ${status}`,async()=>{
-  let calls=0;
-  await assert.rejects(requestStructuredGateway({...params,fetchImpl:async()=>{calls++;return Response.json({error:{code:'generic'}},{status});}}),e=>e.code===code);
-  assert.equal(calls,1);
+  let calls=0; await assert.rejects(requestStructuredGateway({...params,fetchImpl:async()=>{calls++;return Response.json({error:{code:'generic'}},{status});}}),e=>e.code===code); assert.equal(calls,1);
 });
 test('network and timeout failures are safe and never successful fallback answers',async()=>{
   await assert.rejects(requestStructuredGateway({...params,fetchImpl:async()=>{throw new Error('network detail SECRET');}}),e=>e.code==='AI_PROVIDER_UNAVAILABLE'&&!e.message.includes('SECRET'));
@@ -76,16 +71,15 @@ test('known recovery origin no longer redirects back to a broken custom domain',
 });
 test('production billing requires verified identity and matching live payment rather than legacy local entitlements',()=>{
   const start=read('api/create-checkout-session.ts'), complete=read('api/checkout-complete.ts'), billing=read('server/billing.ts');
-  assert.ok(start.includes('billingIdentity(req)'));assert.ok(start.includes('claim_billing_checkout'));assert.ok(start.includes('priceFor(plan,mode)'));
-  assert.ok(complete.includes('billingIdentity(req)'));assert.ok(complete.includes("checkout.payment_status!=='paid'"));assert.ok(complete.includes('reconcileSubscription'));
-  assert.ok(billing.includes("key.startsWith('sk_live_')||key.startsWith('rk_live_')"));assert.ok(billing.includes("env.VERCEL_ENV==='preview'"));
+  assert.ok(start.includes('billingIdentity(req)')); assert.ok(start.includes('claim_billing_checkout')); assert.ok(start.includes('priceFor(plan,mode)'));
+  assert.ok(complete.includes('billingIdentity(req)')); assert.ok(complete.includes("checkout.payment_status!=='paid'")); assert.ok(complete.includes('reconcileSubscription'));
+  assert.ok(billing.includes('/^(?:sk|rk)_live_/')); assert.ok(billing.includes("process.env.VERCEL_ENV==='preview'"));
+  assert.ok(billing.includes("throw new CloudError('LIVE_BILLING_NOT_CONFIGURED')"));
 });
 test('verified live catalog is consistent with approved launch prices and does not start subscriptions',()=>{
   const catalog=JSON.parse(read('config/stripe-live-catalog.json'));
   assert.equal(catalog.mode,'live'); assert.equal(catalog.checkoutEnabled,false);
-  assert.equal(catalog.plans.individual_monthly.unitAmount,1699);
-  assert.equal(catalog.plans.professional_monthly.unitAmount,3499);
-  assert.equal(catalog.plans.professional_annual.unitAmount,34900);
+  assert.equal(catalog.plans.individual_monthly.unitAmount,1699); assert.equal(catalog.plans.professional_monthly.unitAmount,3499); assert.equal(catalog.plans.professional_annual.unitAmount,34900);
   assert.equal(catalog.trial.days,3); assert.equal(catalog.trial.automaticChargeOnDayFour,false);
   assert.ok(Object.values(catalog.plans).every(p=>p.priceId.startsWith('price_')));
 });
