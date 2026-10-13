@@ -16,18 +16,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
-      - name: Integrate reviewed changes on feature branch only
+      - name: Apply reviewed compatibility tests on feature branch
         if: github.ref == 'refs/heads/baker-measured-signup-funnel-20261013'
         run: |
-          if test -f scripts/integrate-measured-funnel.mjs; then
-            node scripts/prepare-funnel-integration.mjs
-            node scripts/integrate-measured-funnel.mjs
-            npm install --save-exact @vercel/functions --registry=https://registry.npmjs.org/
+          if test -f scripts/review-funnel-compatibility.mjs; then
+            node scripts/review-funnel-compatibility.mjs
             git config user.name 'Baker Funnel Acceptance'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add src/App.tsx src/hooks/useAuth.ts src/pages/PlatformHome.tsx src/pages/Login.tsx src/pages/Upgrade.tsx src/components/StripeCheckout.tsx src/components/AdMeasurementChoice.tsx src/pages/Legal.tsx api/account.ts api/create-checkout-session.ts api/stripe-webhook.ts api/funnel.ts api/ad-measurement-config.ts api/health.ts server/cloud-client.ts server/ad-measurement.ts server/funnel-events.ts package.json package-lock.json scripts/fieldwork-regression-check.mjs
-            git rm -f scripts/prepare-funnel-integration.mjs scripts/integrate-measured-funnel.mjs
-            git commit -m 'Connect measured signup journey with renewed consent and authoritative billing stages'
+            git add scripts/cloud-boundary.test.mjs scripts/launch-recovery.test.mjs
+            git rm scripts/review-funnel-compatibility.mjs
+            git commit -m 'Retain account boundary coverage and match current live billing verification'
             git push origin HEAD:baker-measured-signup-funnel-20261013
           fi
           echo "Tested source: $(git rev-parse HEAD)"
@@ -59,7 +57,8 @@ jobs:
         if: always()
         run: |
           mkdir -p funnel-evidence
-          zip -q funnel-evidence/review-source.zip src/pages/SignUp.tsx src/pages/AdminFunnel.tsx src/pages/AcquisitionStart.tsx src/pages/Login.tsx src/lib/adMeasurement.ts src/lib/acquisitionFunnel.ts src/App.tsx src/pages/Legal.tsx src/components/AdMeasurementChoice.tsx src/hooks/useAuth.ts server/funnel-ledger.ts server/funnel-events.ts server/ad-measurement.ts api/funnel.ts api/account.ts api/create-checkout-session.ts api/stripe-webhook.ts api/health.ts package.json scripts/acquisition-funnel.test.mjs scripts/acquisition-funnel.browser.mjs
+          git rev-parse HEAD > funnel-evidence/tested-commit.txt
+          zip -qr funnel-evidence/review-source.zip src server api scripts config package.json package-lock.json index.html tsconfig*.json vite.config.ts vercel.json -x 'api/_runtime-secret.ts' '*/.env*' '*.pdf' '*.mp4' '*.png' '*.jpg' '*.webp' '*.ttf' '*.woff*'
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: acquisition-funnel-evidence, path: funnel-evidence, retention-days: 7 }
