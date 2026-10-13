@@ -36,7 +36,7 @@ export default async function handler(req:any,res:any){
   }
   const checkout=await stripeRequest('/v1/checkout/sessions',params,`baker/checkout/${mode}/${user.id}/${claim.id}${attributionKey}`);
   if(checkout.livemode!==(mode==='live')||!/^cs_[A-Za-z0-9_]+$/.test(checkout.id||'')||typeof checkout.url!=='string'||!checkout.url.startsWith('https://checkout.stripe.com/'))throw new CloudError('INVALID_CHECKOUT_RESPONSE');
-  if(mode==='live')scheduleFunnelEvent({stage:'checkout_opened',context:{...funnel,qa:funnel.qa||isFunnelQaEmail(user.email)},adMeasurement:req.headers?.['sec-gpc']==='1'?undefined:req.body?.adMeasurement,email:user.email,userAgent:req.headers?.['user-agent']});
+  if(mode==='live')scheduleFunnelEvent({stage:'checkout_opened',subjectId:user.id,context:{...funnel,qa:funnel.qa||isFunnelQaEmail(user.email)},adMeasurement:req.headers?.['sec-gpc']==='1'?undefined:req.body?.adMeasurement,email:user.email,userAgent:req.headers?.['user-agent']});
   return res.status(200).json({id:checkout.id,url:checkout.url,plan});
  }catch(error){const failure=error instanceof CloudError?error:new CloudError('CHECKOUT_UNAVAILABLE');return res.status(failure.status).json({code:failure.code,error:failure.code==='EXISTING_SUBSCRIPTION_USE_PORTAL'?'Manage your existing subscription from Account settings.':'Checkout could not open. No new payment was confirmed.'});}
 }

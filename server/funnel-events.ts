@@ -4,7 +4,7 @@ import { billingMode, planForPrice, stripeRequest } from './billing.js';
 import { CloudError } from './cloud-client.js';
 import { digest, funnelKey, hasFunnelMarker, isFunnelQaEmail, normalizeFunnelContext, recordFunnelStage, writeFunnelMarker, type FunnelContext, type FunnelStage } from './funnel-ledger.js';
 
-export type MeasuredEvent = { stage: Exclude<FunnelStage, 'first_paid_membership'>; context: FunnelContext; adMeasurement?: unknown; email?: string; userAgent?: unknown; occurredAt?: string; path?: '/' | '/signup' };
+export type MeasuredEvent = { stage: Exclude<FunnelStage, 'first_paid_membership'>; context: FunnelContext; adMeasurement?: unknown; email?: string; userAgent?: unknown; occurredAt?: string; path?: '/' | '/signup'; subjectId?: string };
 const META_NAMES = { landing_page_loaded: 'ViewContent', account_created: 'AccountCreated', email_verified: 'CompleteRegistration', checkout_opened: 'InitiateCheckout' } as const;
 export function stageMetaEvent(args: MeasuredEvent, now = Date.now()) {
   if (args.context.qa || isFunnelQaEmail(args.email) || (args.adMeasurement as {consent?:string}|undefined)?.consent !== 'ads-v2') return null;
@@ -15,11 +15,11 @@ export function stageMetaEvent(args: MeasuredEvent, now = Date.now()) {
   if (!args.email) { const { em: _email, ...rest } = data; data = rest; }
   if (!data.client_user_agent) return null;
   const source = args.stage === 'landing_page_loaded' ? args.path === '/signup' ? '/signup' : '/' : args.stage === 'account_created' ? '/signup' : args.stage === 'email_verified' ? '/login' : '/upgrade';
-  return { event_name: META_NAMES[args.stage], event_time: Math.floor(now / 1000), event_id: 'baker_funnel_' + digest(funnelKey(args.stage, args.context)), action_source: 'website', event_source_url: 'https://www.fieldworkbybaker.com' + source, user_data: data,
+  return { event_name: META_NAMES[args.stage], event_time: Math.floor(now / 1000), event_id: 'baker_funnel_' + digest(funnelKey(args.stage, args.context, args.subjectId)), action_source: 'website', event_source_url: 'https://www.fieldworkbybaker.com' + source, user_data: data,
     custom_data: { content_name: 'Fieldwork membership', funnel_version: 'funnel-v1' } };
 }
 export async function reportFunnelEvent(args: MeasuredEvent) {
-  const marker = await recordFunnelStage(args.stage, args.context, args.occurredAt);
+  const marker = await recordFunnelStage(args.stage, args.context, args.occurredAt, args.subjectId);
   if (process.env.VERCEL_ENV === 'preview' || !adMeasurementConfigured()) return { recorded: process.env.VERCEL_ENV !== 'preview', metaAccepted: false };
   const event = stageMetaEvent(args); if (!event) return { recorded: true, metaAccepted: false };
   const sentMarker = marker.replace(/^funnel-v1\//, 'funnel-meta-v1/');
@@ -58,7 +58,7 @@ export async function recordFirstPaidMembership(invoiceId: string, subscriptionI
   if (!Array.isArray(previous.data) || previous.has_more || !eligibleFirstMembership(invoice, subscription, previous.data)) return false;
   const paidAt = invoice.status_transitions?.paid_at;
   if (!Number.isSafeInteger(paidAt) || paidAt > Math.floor(Date.now() / 1000)) return false;
-  await recordFunnelStage('first_paid_membership', context, new Date(paidAt * 1000).toISOString());
+  await recordFunnelStage('first_paid_membership', context, new Date(paidAt * 1000).toISOString(), subscription.metadata?.baker_account_id);
   // Purchase advertising stays with the existing, separately consent-checked Stripe webhook integration.
   return true;
 }

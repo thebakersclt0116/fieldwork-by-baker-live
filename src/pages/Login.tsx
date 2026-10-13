@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,12 @@ export default function Login() {
   const params = new URLSearchParams(location.search);
   const returnTo = safeReturnPath(params.get('return'));
   const sessionRefresh = params.get('reason') === 'session-refresh';
+  const fromVerification = params.get('verified') === '1';
+  useEffect(()=>{
+    // Provider confirmation links can include a one-time session in the URL fragment.
+    // This app requires a normal password sign-in and never keeps or forwards these fragment credentials.
+    if(/(?:access_token|refresh_token|error_code|error_description)=/.test(window.location.hash))window.history.replaceState(null,'',window.location.pathname+window.location.search);
+  },[]);
   const [email, setEmail] = useState(() => {
     try { return window.sessionStorage.getItem('bakerRefreshEmail') || ''; } catch { return ''; }
   });
@@ -84,6 +90,7 @@ export default function Login() {
             <h2 className="font-serif text-3xl font-semibold text-[#332C28] mb-2">Welcome back</h2>
             <p className="text-sm text-[#A8998E] mb-6">Sign in to your Fieldwork by Baker account.</p>
 
+            {fromVerification && <div role="status" className="mb-4 rounded-xl border border-[#CFE7D9] p-3 text-sm">Continue after email verification. Sign in below to choose your membership. No payment has been taken.</div>}
             {sessionRefresh && (
               <div className="mb-5 rounded-xl bg-[#F4F7FF] border border-[#CFD8F7] px-4 py-3 text-sm leading-relaxed text-[#4B5EA8]">
                 <strong>Your Baker access is still active.</strong> We detected an older browser session and cleared it automatically. Sign in once and you&apos;ll return directly to Import.
@@ -98,10 +105,11 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-[#4D423C] mb-2">Email</label>
+                <label htmlFor="login-email" className="block text-sm font-medium text-[#4D423C] mb-2">Email</label>
                 <div className="relative">
                   <Mail size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8998E]" />
                   <Input
+                    id="login-email"
                     type="email"
                     autoComplete="email"
                     value={email}
@@ -113,10 +121,11 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#4D423C] mb-2">Password</label>
+                <label htmlFor="login-password" className="block text-sm font-medium text-[#4D423C] mb-2">Password</label>
                 <div className="relative">
                   <Lock size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8998E]" />
                   <Input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     value={password}

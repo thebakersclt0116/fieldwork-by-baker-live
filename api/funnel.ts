@@ -1,7 +1,7 @@
 import { getBearerToken } from './_auth.js';
 import { CloudError, cloudRequest, verifyCloudUser } from '../server/cloud-client.js';
 import { adMeasurementConfigured, attributionMetadata } from '../server/ad-measurement.js';
-import { normalizeFunnelContext, readFunnelSummary } from '../server/funnel-ledger.js';
+import { normalizeFunnelContext, readFunnelSummary, readOwnFunnelStages } from '../server/funnel-ledger.js';
 import { reportFunnelEvent } from '../server/funnel-events.js';
 import { createHash } from 'node:crypto';
 const recent = new Map<string, { count: number; until: number }>();
@@ -22,6 +22,12 @@ export default async function handler(req: any, res: any) {
     if (req.method === 'GET') {
       const token = getBearerToken(req); if (!token) throw new CloudError('AUTH_REQUIRED', 401);
       const user = await verifyCloudUser(token);
+      if(req.query?.view==='self') {
+        const context=normalizeFunnelContext(user.user_metadata?.baker_funnel);
+        if(!context)return res.status(200).json({version:'funnel-v1',stages:[],instrumented:false});
+        // Identity comes from the provider, not a user ID or journey supplied in the request.
+        return res.status(200).json({...await readOwnFunnelStages(context,user.id),instrumented:true});
+      }
       const rows: any = await cloudRequest('/rest/v1/profiles?select=role&id=eq.' + user.id, token);
       if (rows?.[0]?.role !== 'owner') throw new CloudError('OWNER_REQUIRED', 403);
       const days = Number(req.query?.days || 30);

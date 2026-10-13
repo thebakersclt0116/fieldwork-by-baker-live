@@ -22,9 +22,9 @@ export function newFunnelContext(input: unknown, qaEmail = false): FunnelContext
 export function isFunnelQaEmail(email: unknown): boolean {
   return typeof email === 'string' && (/\+fieldwork-funnel-qa-[a-f0-9]+@/i.test(email) || /@example\.(?:com|org|net)$/i.test(email));
 }
-export function funnelKey(stage: FunnelStage, context: FunnelContext): string {
+export function funnelKey(stage: FunnelStage, context: FunnelContext, subjectId?: string): string {
   if (!FUNNEL_STAGES.includes(stage) || !normalizeFunnelContext(context)) throw new CloudError('INVALID_FUNNEL_EVENT', 400);
-  return [FUNNEL_VERSION, context.qa ? 'qa' : 'live', context.campaign, context.variant, stage, digest(context.flowId)].join('/');
+  return [FUNNEL_VERSION, context.qa ? 'qa' : 'live', context.campaign, context.variant, stage, digest(stage !== 'landing_page_loaded' && subjectId && uuid.test(subjectId) ? subjectId : context.flowId)].join('/');
 }
 function ledgerHeaders() {
   const { url } = cloudConfiguration();
@@ -47,8 +47,8 @@ export async function hasFunnelMarker(eventId: string): Promise<boolean> {
   const rows = await response.json(); if (!Array.isArray(rows)) throw new CloudError('FUNNEL_LEDGER_READ_FAILED', 502);
   return rows.length > 0;
 }
-export async function recordFunnelStage(stage: FunnelStage, context: FunnelContext, occurredAt?: string) {
-  const key = funnelKey(stage, context);
+export async function recordFunnelStage(stage: FunnelStage, context: FunnelContext, occurredAt?: string, subjectId?: string) {
+  const key = funnelKey(stage, context, subjectId);
   const time = occurredAt && Number.isFinite(Date.parse(occurredAt)) && Date.parse(occurredAt) <= Date.now() + 1000 ? occurredAt : new Date().toISOString();
   await writeFunnelMarker(key, time); return key;
 }
@@ -81,4 +81,10 @@ export async function readFunnelSummary(days = 30) {
     rows.push(...batch); if (batch.length < 1000) break; if (offset === 19000) limited = true;
   }
   return { ...summarizeFunnelRows(rows, limited), since, checkedAt: new Date().toISOString() };
+}
+
+export async function readOwnFunnelStages(context: FunnelContext, verifiedUserId: string) {
+  if (!uuid.test(verifiedUserId)) throw new CloudError('AUTH_REQUIRED',401);
+  const values=await Promise.all(FUNNEL_STAGES.map(async stage=>({stage,recorded:await hasFunnelMarker(funnelKey(stage,context,verifiedUserId))})));
+  return {version:FUNNEL_VERSION,qa:context.qa,stages:values};
 }
