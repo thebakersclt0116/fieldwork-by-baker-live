@@ -4,6 +4,8 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PaidFeatureRoute from './components/PaidFeatureRoute';
 import PlatformHome from './pages/PlatformHome';
+const AcquisitionStart=lazy(()=>import('./pages/AcquisitionStart'));
+const AdminFunnel=lazy(()=>import('./pages/AdminFunnel'));
 const WorkspacePreview=lazy(()=>import('./pages/WorkspacePreview'));
 const Suggestions=lazy(()=>import('./pages/Suggestions'));
 const AccountRecovery=lazy(()=>import('./pages/AccountRecovery'));
@@ -62,6 +64,8 @@ export default function App() {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
         <Route path="/" element={<PlatformHome />} />
+        <Route path="/start" element={<AcquisitionStart />} />
+        <Route path="/admin/funnel" element={<ProtectedRoute><AdminFunnel /></ProtectedRoute>} />
         <Route path="/demo" element={<WorkspacePreview demo />} />
         <Route path="/features" element={<Features />} />
         <Route path="/pricing" element={<Pricing />} />

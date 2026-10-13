@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { accountFunnelInput } from '@/lib/acquisitionFunnel';
 import { managedAccountsEnabled, MANAGED_SESSION_KEY, accountRequest, saveManagedTokens, renewManagedSession } from '@/lib/managedSession';
 
 export type SubscriptionTier = 'individual' | 'professional' | 'enterprise' | 'none';
@@ -109,7 +110,7 @@ export function useAuth() {
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
       const managedLogin=async()=>{
-        const {response,payload}=await accountRequest({action:'login',email,password});
+        const {response,payload}=await accountRequest({action:'login',email,password,...accountFunnelInput()});
         if (!response.ok || !payload.token || !payload.refreshToken || !payload.user?.name || !payload.user.email) return false;
         const nextUser: AuthUser={...payload.user,authProvider:'supabase',initials:getInitials(payload.user.name)};
         saveManagedTokens(payload);storeSession(nextUser,payload.token);setUser(nextUser);return true;
@@ -153,7 +154,7 @@ export function useAuth() {
   const registerFree = useCallback(async (name: string, email: string, password: string): Promise<boolean|'verify-email'> => {
     try {
       if (managedAccountsEnabled) {
-        const {response,payload}=await accountRequest({action:'signup',name,email,password});
+        const {response,payload}=await accountRequest({action:'signup',name,email,password,...accountFunnelInput()});
         return response.status===202 && payload.verificationRequired ? 'verify-email' : false;
       }
       const response = await fetch('/api/free-signup', {

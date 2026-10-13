@@ -1,3 +1,4 @@
+import PublicLandingMeasurement from '@/components/PublicLandingMeasurement';
 import MobileAppAnnouncement from '@/components/MobileAppAnnouncement';
 import { Link } from 'react-router';
 import { Brain, CheckCircle2, Compass, FlaskConical, Library, Route, ShieldCheck, Sparkles, Users } from 'lucide-react';
@@ -14,6 +15,7 @@ const pillars = [
 export default function PlatformHome() {
   return (
     <div className="overflow-hidden bg-[#FFFCF9] text-[#332C28] dark:bg-[#171412] dark:text-[#F8F4F1]">
+      <PublicLandingMeasurement path="/" />
       <section className="relative min-h-[88dvh] overflow-hidden px-4 py-24 lg:py-32">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -left-28 top-14 h-96 w-96 rounded-full bg-[#F9D4DC]/50 blur-3xl dark:bg-[#E85D70]/10" />

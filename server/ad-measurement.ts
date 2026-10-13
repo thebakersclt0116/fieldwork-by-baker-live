@@ -7,8 +7,8 @@ export function adMeasurementConfigured() {
   return process.env.BAKER_META_ADS_ENABLED === 'true' && /^\d{5,30}$/.test(process.env.META_DATASET_ID || '') && (process.env.META_CAPI_ACCESS_TOKEN || '').length >= 20;
 }
 export function attributionMetadata(input: any, email: string, userAgent: unknown, now = Date.now()): Record<string, string> {
-  if (!input || input.consent !== 'ads-v1' || !Number.isSafeInteger(input.consentAt) || input.consentAt > now || now - input.consentAt > MAX_CONSENT_AGE || typeof input.visitorId !== 'string' || !/^[a-f0-9-]{36}$/.test(input.visitorId)) return {};
-  const metadata: Record<string, string> = { baker_ads_consent: 'ads-v1', baker_ads_consent_at: String(input.consentAt), baker_ads_external: hash(input.visitorId), baker_ads_email: hash(email.trim().toLowerCase()), baker_ads_captured_at: String(now) };
+  if (!input || !['ads-v1','ads-v2'].includes(input.consent) || !Number.isSafeInteger(input.consentAt) || input.consentAt > now || now - input.consentAt > MAX_CONSENT_AGE || typeof input.visitorId !== 'string' || !/^[a-f0-9-]{36}$/.test(input.visitorId)) return {};
+  const metadata: Record<string, string> = { baker_ads_consent: input.consent, baker_ads_consent_at: String(input.consentAt), baker_ads_external: hash(input.visitorId), baker_ads_email: hash(email.trim().toLowerCase()), baker_ads_captured_at: String(now) };
   if (typeof input.fbc === 'string' && /^fb\.1\.\d{13}\.[A-Za-z0-9_-]{8,200}$/.test(input.fbc)) {
     const created = Number(input.fbc.split('.')[2]);
     if (created <= now && now - created <= MAX_CONSENT_AGE) metadata.baker_ads_fbc = input.fbc;
@@ -19,7 +19,7 @@ export function attributionMetadata(input: any, email: string, userAgent: unknow
 export function adUserData(metadata: any, now = Date.now()) {
   const consentAt = Number(metadata?.baker_ads_consent_at);
   const capturedAt = Number(metadata?.baker_ads_captured_at);
-  if (metadata?.baker_ads_consent !== 'ads-v1' || !Number.isSafeInteger(consentAt) || consentAt > now || now - consentAt > MAX_CONSENT_AGE || !Number.isSafeInteger(capturedAt) || capturedAt > now || now - capturedAt > 7 * 24 * 60 * 60 * 1000 || !/^[a-f0-9]{64}$/.test(metadata?.baker_ads_email || '') || !/^[a-f0-9]{64}$/.test(metadata?.baker_ads_external || '')) return null;
+  if (!['ads-v1','ads-v2'].includes(metadata?.baker_ads_consent) || !Number.isSafeInteger(consentAt) || consentAt > now || now - consentAt > MAX_CONSENT_AGE || !Number.isSafeInteger(capturedAt) || capturedAt > now || now - capturedAt > 7 * 24 * 60 * 60 * 1000 || !/^[a-f0-9]{64}$/.test(metadata?.baker_ads_email || '') || !/^[a-f0-9]{64}$/.test(metadata?.baker_ads_external || '')) return null;
   return { em: [metadata.baker_ads_email], external_id: [metadata.baker_ads_external], ...(typeof metadata.baker_ads_ua === 'string' && metadata.baker_ads_ua ? { client_user_agent: metadata.baker_ads_ua.slice(0, 480) } : {}), ...(typeof metadata.baker_ads_fbc === 'string' && /^fb\.1\.\d{13}\.[A-Za-z0-9_-]{8,200}$/.test(metadata.baker_ads_fbc) ? { fbc: metadata.baker_ads_fbc } : {}) };
 }
 export function firstPaymentEvent(invoice: any, metadata: any, previous: any[], now = Date.now()) {
@@ -48,6 +48,7 @@ export async function reportFirstPayment(invoiceId: string, subscriptionId: stri
   const invoiceSubscription = invoice.subscription || invoice.parent?.subscription_details?.subscription;
   if ((typeof invoiceSubscription === 'string' ? invoiceSubscription : invoiceSubscription?.id) !== subscriptionId) throw new CloudError('AD_PAYMENT_MISMATCH', 400);
   const subscription = await stripeRequest('/v1/subscriptions/' + encodeURIComponent(subscriptionId));
+  if (subscription.metadata?.baker_funnel_qa === 'true') return false;
   if (subscription.livemode !== true || subscription.metadata?.baker_mode !== 'live' || subscription.customer !== invoice.customer) return false;
   if (!adUserData(subscription.metadata) || invoice.billing_reason !== 'subscription_create' || invoice.amount_paid <= 0) return false;
   const previous = await stripeRequest('/v1/invoices?customer=' + encodeURIComponent(invoice.customer) + '&status=paid&limit=100');

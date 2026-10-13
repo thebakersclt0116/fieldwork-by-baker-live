@@ -35,6 +35,7 @@ export default async function handler(req: any, res: any) {
     // Browsers cannot claim signup, verification, checkout or payment success. Those stages are server-owned.
     if (stage !== 'landing_page_loaded' || !['/', '/signup'].includes(path)) throw new CloudError('INVALID_FUNNEL_EVENT', 400);
     const context = normalizeFunnelContext(raw); if (!context) throw new CloudError('INVALID_FUNNEL_CONTEXT', 400);
+    if(adMeasurement?.consent!=='ads-v2')return res.status(200).json({recorded:false,reason:'CURRENT_CONSENT_REQUIRED'});
     const consent = attributionMetadata(adMeasurement, '', req.headers?.['user-agent']);
     if (!Object.keys(consent).length) return res.status(200).json({ recorded: false, reason: 'CONSENT_REQUIRED' });
     if (req.headers?.['sec-gpc'] === '1') return res.status(200).json({ recorded: false, reason: 'PRIVACY_SIGNAL' });

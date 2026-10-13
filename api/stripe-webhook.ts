@@ -1,3 +1,4 @@
+import {scheduleFirstPaidMembership} from '../server/funnel-events.js';
 import {deliverLaunchNotifications} from '../server/launch-notifications.js';
 import {reportFirstPayment} from '../server/ad-measurement.js';
 import {CloudError} from '../server/cloud-client.js';
@@ -17,7 +18,7 @@ export default async function handler(req:any,res:any){
   }else return res.status(200).json({received:true,ignored:true});
   if(!subscription)return res.status(200).json({received:true,ignored:true});
   await reconcileSubscription(subscription,mode,event.id);if(mode==='live')await deliverLaunchNotifications();
-  if(mode==='live' && event.type==='invoice.paid')await reportFirstPayment(object.id,subscription);
+  if(mode==='live' && event.type==='invoice.paid'){scheduleFirstPaidMembership(object.id,subscription);await reportFirstPayment(object.id,subscription);}
   return res.status(200).json({received:true});
  }catch(error){const failure=error instanceof CloudError?error:new CloudError('WEBHOOK_PROCESSING_FAILED',500);return res.status(failure.status).json({code:failure.code});}
 }

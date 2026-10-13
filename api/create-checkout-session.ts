@@ -1,3 +1,5 @@
+import {scheduleFunnelEvent,subscriptionFunnelMetadata} from '../server/funnel-events.js';
+import {newFunnelContext,normalizeFunnelContext,isFunnelQaEmail} from '../server/funnel-ledger.js';
 import {CloudError} from '../server/cloud-client.js';
 import {createHash} from 'node:crypto';
 import {adMeasurementConfigured,attributionMetadata} from '../server/ad-measurement.js';
@@ -20,9 +22,12 @@ export default async function handler(req:any,res:any){
   const params=new URLSearchParams({mode:'subscription',customer,'line_items[0][price]':price,'line_items[0][quantity]':'1',success_url:claim.origin+'/upgrade/success?session_id={CHECKOUT_SESSION_ID}',cancel_url:claim.origin+'/upgrade?canceled=1',client_reference_id:user.id,expires_at:String(claim.expiresAt),
    'metadata[baker_account_id]':user.id,'metadata[baker_mode]':mode,'metadata[baker_plan]':plan,
    'subscription_data[metadata][baker_account_id]':user.id,'subscription_data[metadata][baker_mode]':mode,'subscription_data[metadata][baker_plan]':plan});
+  const originFunnel=normalizeFunnelContext(user.user_metadata?.baker_funnel);
+  const funnel=originFunnel || newFunnelContext(req.body?.funnel,isFunnelQaEmail(user.email));
+  for(const [key,value] of Object.entries(subscriptionFunnelMetadata({...funnel,qa:funnel.qa||isFunnelQaEmail(user.email)})))params.set('subscription_data[metadata]['+key+']',value);
   let attributionKey='';
   if(mode==='live' && adMeasurementConfigured()) {
-   const attribution=attributionMetadata(req.body?.adMeasurement,user.email,req.headers?.['user-agent']);
+   const attribution=attributionMetadata(req.headers?.['sec-gpc']==='1'?undefined:req.body?.adMeasurement,user.email,req.headers?.['user-agent']);
    if(Object.keys(attribution).length){
     attribution.baker_ads_captured_at=String(claim.expiresAt*1000-35*60*1000);
     attributionKey='/ads-v1/'+createHash('sha256').update(JSON.stringify(attribution)).digest('hex');
@@ -31,6 +36,7 @@ export default async function handler(req:any,res:any){
   }
   const checkout=await stripeRequest('/v1/checkout/sessions',params,`baker/checkout/${mode}/${user.id}/${claim.id}${attributionKey}`);
   if(checkout.livemode!==(mode==='live')||!/^cs_[A-Za-z0-9_]+$/.test(checkout.id||'')||typeof checkout.url!=='string'||!checkout.url.startsWith('https://checkout.stripe.com/'))throw new CloudError('INVALID_CHECKOUT_RESPONSE');
+  if(mode==='live')scheduleFunnelEvent({stage:'checkout_opened',context:{...funnel,qa:funnel.qa||isFunnelQaEmail(user.email)},adMeasurement:req.headers?.['sec-gpc']==='1'?undefined:req.body?.adMeasurement,email:user.email,userAgent:req.headers?.['user-agent']});
   return res.status(200).json({id:checkout.id,url:checkout.url,plan});
  }catch(error){const failure=error instanceof CloudError?error:new CloudError('CHECKOUT_UNAVAILABLE');return res.status(failure.status).json({code:failure.code,error:failure.code==='EXISTING_SUBSCRIPTION_USE_PORTAL'?'Manage your existing subscription from Account settings.':'Checkout could not open. No new payment was confirmed.'});}
 }

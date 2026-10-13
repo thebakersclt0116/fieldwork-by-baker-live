@@ -83,17 +83,17 @@ assert(stripePricing.plans.professional_monthly.unitAmount === 3499, 'Profession
 assert(stripePricing.plans.professional_annual.unitAmount === 34900, 'Professional Annual Stripe price is not $349');
 
 const pricing = read('src/pages/Pricing.tsx');
-assert(pricing.includes("3-Day Free Trial"), 'Pricing does not advertise the 3-day trial');
+assert(!pricing.includes('3-Day Free Trial'), 'Paid-only launch must not advertise an unavailable trial');
 assert(!pricing.includes("name: 'Free'"), 'Permanent Free pricing tier still exists');
 assert(!pricing.includes("Export Pass"), 'Export Pass still appears on pricing');
-assert(signupPage.includes('Start 3-Day Free Trial'), 'Signup is not framed as the 3-day trial');
-assert(signupApi.includes('THREE_DAYS_SECONDS'), 'Signup API does not issue a 3-day trial');
+assert(signupPage.includes('Create your account') && signupPage.includes('paid plan'), 'Signup must explain the paid membership requirement');
+assert(read('api/account.ts').includes('EMAIL_CONFIRMATION_NOT_CONFIGURED'), 'Managed signup must require verified email');
 assert(authServer.includes('isTrialActive'), 'Server-side paid tools do not recognize active trial entitlement');
 assert(!checkoutApi.includes("export_pass"), 'Export Pass still exists in Stripe checkout');
 assert(!checkoutComplete.includes("plan === 'export_pass'"), 'Export Pass entitlement still exists');
 assert(checkoutComplete.includes("checkout.payment_status!=='paid'"), 'Paid checkout must be verified after trial');
 assert(pricing.includes("'/upgrade'"), 'Pricing paid CTA does not lead to upgrade');
-assert(pricing.includes('3 days free'), 'Pricing does not show the 3-day trial');
+assert(pricing.includes('/demo'), 'Pricing must provide the promised free demo');
 assert(!pricing.includes("name: 'Free'"), 'Pricing still contains a free-forever tier');
 assert(!pricing.includes('Export Pass'), 'Pricing still contains Export Pass');
 assert(pricing.includes("price: '$16.99'"), 'Individual launch price is missing');
@@ -101,7 +101,7 @@ assert(pricing.includes("price: '$34.99'"), 'Professional launch price is missin
 const loginPage = read('src/pages/Login.tsx');
 assert(!loginPage.includes('private beta'), 'Login still presents the launched product as a private beta');
 assert(!loginPage.includes("Emily&apos;s beta account"), 'Login exposes a person-specific beta account');
-assert(loginPage.includes('Start your 3-day free trial'), 'Login does not offer a clear path to self-serve signup');
+assert(loginPage.includes('/signup'), 'Login must link to self-serve signup');
 assert(read('src/App.tsx').includes('lazy(() => import'), 'Routes are not code-split for launch performance');
 const launchCheck = read('src/pages/AdminLaunchCheck.tsx');
 assert(launchCheck.includes("mode: 'bcba-brain'"), 'Owner launch diagnostics does not perform a real Baker Brain request');
@@ -115,7 +115,7 @@ assert(resourceVault.includes("title: 'Measurement Flashcard Pack'"), 'Built-in 
 assert(resourceVault.includes("heading: 'Quick discrimination'"), 'Built-in resource bodies are not populated');
 
 const upgradePage = read('src/pages/Upgrade.tsx');
-assert(upgradePage.includes("Choose this plan now"), 'Trial users cannot choose a paid plan before trial ends');
+assert(upgradePage.includes('Continue to Stripe'), 'Paid upgrade must use the real Stripe flow');
 assert(upgradePage.includes("stripeMode === 'test'"), 'Billing page does not disclose Stripe test mode');
 const stripeComponent = read('src/components/StripeCheckout.tsx');
 assert(stripeComponent.includes('/api/create-checkout-session'), 'Stripe UI is not wired to the real checkout endpoint');

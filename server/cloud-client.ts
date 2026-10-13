@@ -40,7 +40,7 @@ export async function cloudRequest(path: string, token: string | null, options: 
   }
   return payload;
 }
-export type VerifiedCloudUser = { id: string; email: string; email_confirmed_at: string; user_metadata?: { name?: string } };
+export type VerifiedCloudUser = { id: string; email: string; email_confirmed_at: string; user_metadata?: { name?: string; baker_funnel?: unknown } };
 export async function verifyCloudUser(token: string): Promise<VerifiedCloudUser> {
   const result = await cloudRequest('/auth/v1/user',token);
   if (!result || typeof result !== 'object' || !('id' in result) || !('email' in result) || !('email_confirmed_at' in result) || !result.email_confirmed_at) throw new CloudError('EMAIL_VERIFICATION_REQUIRED',401);

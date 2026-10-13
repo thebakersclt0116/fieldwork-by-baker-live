@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {managedAccountsEnabled} from '@/lib/managedSession';
 
 function safeReturnPath(value: string | null): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
+  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/dashboard';
   return value;
 }
 
@@ -53,7 +53,7 @@ export default function Login() {
   return (
     <div className="min-h-[calc(100dvh-72px)] bg-[#FFFCF9] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 bg-white rounded-3xl border border-[#F2EDEA] overflow-hidden shadow-[0_24px_80px_rgba(51,44,40,0.08)]">
-        <div className="p-8 lg:p-12 bg-gradient-to-br from-[#FFF5F7] via-[#FFFCF9] to-[#FBF3EB] flex flex-col justify-between min-h-[420px]">
+        <div className="p-8 lg:p-12 bg-gradient-to-br from-[#FFF5F7] via-[#FFFCF9] to-[#FBF3EB] hidden lg:flex flex-col justify-between min-h-[420px]">
           <div>
             <Link to="/" className="inline-flex items-baseline gap-1 mb-12">
               <span className="font-serif text-2xl font-bold text-[#332C28]">Fieldwork</span>

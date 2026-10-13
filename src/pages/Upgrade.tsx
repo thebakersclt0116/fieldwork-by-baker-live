@@ -1,3 +1,4 @@
+import { accountFunnelInput } from '@/lib/acquisitionFunnel';
 import { useEffect, useState } from 'react';
 import { Check, FileDown, LockKeyhole, Sparkles, UserCheck, Upload } from 'lucide-react';
 import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
@@ -82,7 +83,7 @@ export default function Upgrade() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan, adMeasurement: checkoutAdMeasurement() }),
+        body: JSON.stringify({ plan, ...accountFunnelInput(), adMeasurement: checkoutAdMeasurement() }),
       });
       const payload = await response.json() as { url?: string; error?: string; code?: string };
       if (!response.ok || !payload.url) {

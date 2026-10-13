@@ -1,3 +1,4 @@
+import { accountFunnelInput } from '@/lib/acquisitionFunnel';
 import { useState } from 'react';
 import { CreditCard, Loader2 } from 'lucide-react';
 import { getStoredAccessToken } from '@/hooks/useAuth';
@@ -50,7 +51,7 @@ export default function StripeCheckout({
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ plan: selectedPlan }),
+        body: JSON.stringify({ plan: selectedPlan, ...accountFunnelInput() }),
       });
       const payload = await response.json() as { url?: string; error?: string };
       if (!response.ok || !payload.url) throw new Error(payload.error || 'Stripe Checkout could not be opened.');

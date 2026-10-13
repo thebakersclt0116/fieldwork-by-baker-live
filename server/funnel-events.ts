@@ -7,7 +7,7 @@ import { digest, funnelKey, hasFunnelMarker, isFunnelQaEmail, normalizeFunnelCon
 export type MeasuredEvent = { stage: Exclude<FunnelStage, 'first_paid_membership'>; context: FunnelContext; adMeasurement?: unknown; email?: string; userAgent?: unknown; occurredAt?: string; path?: '/' | '/signup' };
 const META_NAMES = { landing_page_loaded: 'ViewContent', account_created: 'AccountCreated', email_verified: 'CompleteRegistration', checkout_opened: 'InitiateCheckout' } as const;
 export function stageMetaEvent(args: MeasuredEvent, now = Date.now()) {
-  if (args.context.qa || isFunnelQaEmail(args.email)) return null;
+  if (args.context.qa || isFunnelQaEmail(args.email) || (args.adMeasurement as {consent?:string}|undefined)?.consent !== 'ads-v2') return null;
   const metadata = attributionMetadata(args.adMeasurement, args.email || '', args.userAgent, now);
   if (!Object.keys(metadata).length) return null;
   let data: any = adUserData(metadata, now);

@@ -1,3 +1,5 @@
+import { scheduleFunnelEvent } from '../server/funnel-events.js';
+import { newFunnelContext, normalizeFunnelContext, isFunnelQaEmail } from '../server/funnel-ledger.js';
 import {deliverLaunchNotifications} from '../server/launch-notifications.js';
 import { effectiveSubscription } from '../server/billing-entitlement.js';
 import { CloudError, cloudConfiguration, cloudRequest, verifyCloudUser } from '../server/cloud-client.js';
@@ -11,6 +13,13 @@ export default async function handler(req: any, res: any) {
     const body = req.body || {};
     const action = body.action;
     cloudConfiguration();
+    if (action === 'resend-verification') {
+      const email=String(body.email||'').trim().toLowerCase();
+      if(!/^\S+@\S+\.\S+$/.test(email)||email.length>254)return send(400,{code:'INVALID_ACCOUNT_INPUT'});
+      // Supabase enforces email send limits; no new account or conversion is created by resending.
+      await cloudRequest('/auth/v1/resend',null,{method:'POST',body:JSON.stringify({type:'signup',email})});
+      return send(202,{verificationRequired:true});
+    }
     if (action === 'recover') {
       const email=String(body.email||'').trim().toLowerCase();
       if(!/^\S+@\S+\.\S+$/.test(email)||email.length>254)return send(400,{code:'INVALID_ACCOUNT_INPUT'});
@@ -37,16 +46,27 @@ export default async function handler(req: any, res: any) {
       const name = String(body.name || '').trim();
       const refreshToken = typeof body.refreshToken === 'string' ? body.refreshToken : '';
       if (action === 'refresh' ? refreshToken.length < 8 || refreshToken.length > 8192 : !/^\S+@\S+\.\S+$/.test(email) || email.length > 254 || password.length < 8 || password.length > 1024 || (action === 'signup' && (name.length < 2 || name.length > 120))) return send(400, { code: 'INVALID_ACCOUNT_INPUT' });
+      const funnel = newFunnelContext(body.funnel, isFunnelQaEmail(email));
+      const adMeasurement = req.headers?.['sec-gpc'] === '1' ? undefined : body.adMeasurement;
       const payload: any = await cloudRequest(action === 'signup' ? '/auth/v1/signup' : action === 'refresh' ? '/auth/v1/token?grant_type=refresh_token' : '/auth/v1/token?grant_type=password', null, {
-        method: 'POST', body: JSON.stringify(action === 'signup' ? { email, password, data: { name } } : action === 'refresh' ? { refresh_token: refreshToken } : { email, password }),
+        method: 'POST', body: JSON.stringify(action === 'signup' ? { email, password, data: { name, baker_funnel: funnel } } : action === 'refresh' ? { refresh_token: refreshToken } : { email, password }),
       });
       // A signup must require email confirmation; never create a trial from unverified input.
       if (action === 'signup') {
         if (payload?.access_token) throw new CloudError('EMAIL_CONFIRMATION_NOT_CONFIGURED');
+        const created = payload?.user || payload;
+        const createdContext = normalizeFunnelContext(created?.user_metadata?.baker_funnel);
+        const age = Date.now() - Date.parse(created?.created_at || '');
+        // Supabase returns obfuscated data for an existing confirmed email. Do not count that or a resend as a new account.
+        if (typeof created?.id === 'string' && /^[a-f0-9-]{36}$/i.test(created.id) && Array.isArray(created.identities) && created.identities.length > 0 && age >= -1000 && age < 300000 && createdContext?.flowId === funnel.flowId) {
+          scheduleFunnelEvent({stage:'account_created',context:createdContext,adMeasurement,email,userAgent:req.headers?.['user-agent'],occurredAt:created.created_at});
+        }
         return send(202, { verificationRequired: true });
       }
       if (!payload?.access_token || !payload?.refresh_token) throw new CloudError('AUTH_REQUIRED', 401);
       const identity = await verifyCloudUser(payload.access_token);
+      const originFunnel = normalizeFunnelContext(identity.user_metadata?.baker_funnel);
+      if (action === 'login' && originFunnel) scheduleFunnelEvent({stage:'email_verified',context:{...originFunnel,qa:originFunnel.qa||isFunnelQaEmail(identity.email)},adMeasurement,email:identity.email,userAgent:req.headers?.['user-agent'],occurredAt:identity.email_confirmed_at});
       const profiles: any = await cloudRequest('/rest/v1/profiles?select=display_name,email,role,trial_ends_at,subscription_tier,subscription_status&id=eq.' + identity.id, payload.access_token);
       const profile = profiles?.[0];
       if (!profile) throw new CloudError('ACCOUNT_NOT_READY');
