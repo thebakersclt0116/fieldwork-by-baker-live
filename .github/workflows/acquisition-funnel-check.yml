@@ -1,0 +1,65 @@
+name: Acquisition funnel acceptance
+on:
+  push:
+    branches: [baker-measured-signup-funnel-20261013, main]
+    paths: ['src/**','api/**','server/**','scripts/*funnel*','scripts/acquisition*','package.json','.github/workflows/acquisition-funnel-check.yml']
+  workflow_dispatch:
+permissions: { contents: write }
+concurrency:
+  group: acquisition-funnel-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Integrate reviewed changes on feature branch only
+        if: github.ref == 'refs/heads/baker-measured-signup-funnel-20261013'
+        run: |
+          if test -f scripts/integrate-measured-funnel.mjs; then
+            node scripts/prepare-funnel-integration.mjs
+            node scripts/integrate-measured-funnel.mjs
+            npm install --save-exact @vercel/functions --registry=https://registry.npmjs.org/
+            git config user.name 'Baker Funnel Acceptance'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add src/App.tsx src/hooks/useAuth.ts src/pages/PlatformHome.tsx src/pages/Login.tsx src/pages/Upgrade.tsx src/components/StripeCheckout.tsx src/components/AdMeasurementChoice.tsx src/pages/Legal.tsx api/account.ts api/create-checkout-session.ts api/stripe-webhook.ts api/funnel.ts api/ad-measurement-config.ts api/health.ts server/cloud-client.ts server/ad-measurement.ts server/funnel-events.ts package.json package-lock.json scripts/fieldwork-regression-check.mjs
+            git rm scripts/prepare-funnel-integration.mjs scripts/integrate-measured-funnel.mjs
+            git commit -m 'Connect measured signup journey with renewed consent and authoritative billing stages'
+            git push origin HEAD:baker-measured-signup-funnel-20261013
+          fi
+          echo "Tested source: $(git rev-parse HEAD)"
+      - name: Install reproducible production dependencies
+        run: npm ci --registry=https://registry.npmjs.org/
+      - name: Five-stage funnel, privacy and server identity acceptance
+        run: node --test scripts/acquisition-funnel.test.mjs
+      - name: Existing production data and billing tests
+        run: |
+          node scripts/fieldwork-regression-check.mjs
+          node --experimental-strip-types --test scripts/*.test.mjs
+      - name: Production TypeScript, Vite and API bundles
+        env:
+          VITE_MANAGED_ACCOUNTS: 'true'
+        run: |
+          npm run build
+          mkdir -p /tmp/baker-funnel-api-check
+          for route in api/*.ts; do
+            case "$route" in api/_*) continue ;; esac
+            ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/baker-funnel-api-check/$(basename "$route" .ts).mjs"
+          done
+      - name: Install isolated browser QA
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.61.1
+          npx playwright install chromium
+      - name: Mobile signup, consent and destination experiment browser tests
+        run: npx playwright test --config=scripts/acquisition-playwright.config.mjs
+      - name: Collect safe build and browser evidence
+        if: always()
+        run: |
+          mkdir -p funnel-evidence
+          zip -q funnel-evidence/review-source.zip src/pages/SignUp.tsx src/pages/AdminFunnel.tsx src/pages/AcquisitionStart.tsx src/pages/Login.tsx src/lib/adMeasurement.ts src/lib/acquisitionFunnel.ts src/App.tsx src/pages/Legal.tsx src/components/AdMeasurementChoice.tsx src/hooks/useAuth.ts server/funnel-ledger.ts server/funnel-events.ts server/ad-measurement.ts api/funnel.ts api/account.ts api/create-checkout-session.ts api/stripe-webhook.ts api/health.ts package.json scripts/acquisition-funnel.test.mjs scripts/acquisition-funnel.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: acquisition-funnel-evidence, path: funnel-evidence, retention-days: 7 }
