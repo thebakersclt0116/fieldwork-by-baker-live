@@ -1,0 +1,28 @@
+name: Funnel baseline inspection
+on:
+  push:
+    branches: [baker-measured-signup-funnel-20261013]
+    paths: ['.github/workflows/funnel-readiness-inspect.yml']
+permissions: { contents: read }
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Collect source and public configuration
+        run: |
+          mkdir -p evidence
+          zip -qr evidence/funnel-current-source.zip src server api scripts supabase docs config public index.html package.json package-lock.json tsconfig*.json vite.config.ts vercel.json tailwind.config.js postcss.config.js .github/workflows -x 'api/_runtime-secret.ts' '*/.env*' '*.pdf' '*.jpg' '*.png' '*.mp4' '*.webp' '*.jpeg' '*.ttf' '*.woff*'
+          node --input-type=module <<'JS'
+          import fs from 'node:fs/promises';
+          const results={checkedAt:new Date().toISOString()};
+          for (const path of ['/api/health','/api/ad-measurement-config','/signup','/demo']) {
+            try { const r=await fetch('https://www.fieldworkbybaker.com'+path,{signal:AbortSignal.timeout(15000)}); const t=await r.text(); results[path]={status:r.status, ...(path.startsWith('/api/')?{response:JSON.parse(t)}:{bytes:t.length})}; } catch(e){results[path]={error:e.name};}
+          }
+          await fs.writeFile('evidence/public-baseline.json',JSON.stringify(results,null,2));
+          JS
+      - uses: actions/upload-artifact@v4
+        with: { name: funnel-source-baseline, path: evidence, retention-days: 5 }
