@@ -26,7 +26,7 @@ jobs:
             git config user.name 'Baker Funnel Acceptance'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add src/App.tsx src/hooks/useAuth.ts src/pages/PlatformHome.tsx src/pages/Login.tsx src/pages/Upgrade.tsx src/components/StripeCheckout.tsx src/components/AdMeasurementChoice.tsx src/pages/Legal.tsx api/account.ts api/create-checkout-session.ts api/stripe-webhook.ts api/funnel.ts api/ad-measurement-config.ts api/health.ts server/cloud-client.ts server/ad-measurement.ts server/funnel-events.ts package.json package-lock.json scripts/fieldwork-regression-check.mjs
-            git rm scripts/prepare-funnel-integration.mjs scripts/integrate-measured-funnel.mjs
+            git rm -f scripts/prepare-funnel-integration.mjs scripts/integrate-measured-funnel.mjs
             git commit -m 'Connect measured signup journey with renewed consent and authoritative billing stages'
             git push origin HEAD:baker-measured-signup-funnel-20261013
           fi
