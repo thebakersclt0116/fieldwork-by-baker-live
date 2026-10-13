@@ -74,13 +74,11 @@ test('known recovery origin no longer redirects back to a broken custom domain',
   assert.equal(main.includes('target.host = CANONICAL_HOST'),false);
   assert.ok(layout.includes('Temporary recovery address.')); assert.ok(layout.includes('Do not clear browser data'));
 });
-test('production blocks both test payments and unsafe live entitlement grants',()=>{
-  for(const path of ['api/create-checkout-session.ts','api/checkout-complete.ts']){
-    const src=read(path); assert.ok(src.includes('LIVE_BILLING_NOT_CONFIGURED')); assert.ok(src.includes('BILLING_BACKEND_REQUIRED'));
-    assert.ok(src.includes("process.env.VERCEL_ENV === 'preview'"));
-  }
-  assert.ok(read('api/checkout-complete.ts').includes('CHECKOUT_MODE_MISMATCH'));
-  assert.ok(read('src/pages/Upgrade.tsx').includes('!billingEnabled || Boolean(loadingPlan)'));
+test('production billing requires verified identity and matching live payment rather than legacy local entitlements',()=>{
+  const start=read('api/create-checkout-session.ts'), complete=read('api/checkout-complete.ts'), billing=read('server/billing.ts');
+  assert.ok(start.includes('billingIdentity(req)'));assert.ok(start.includes('claim_billing_checkout'));assert.ok(start.includes('priceFor(plan,mode)'));
+  assert.ok(complete.includes('billingIdentity(req)'));assert.ok(complete.includes("checkout.payment_status!=='paid'"));assert.ok(complete.includes('reconcileSubscription'));
+  assert.ok(billing.includes("key.startsWith('sk_live_')||key.startsWith('rk_live_')"));assert.ok(billing.includes("env.VERCEL_ENV==='preview'"));
 });
 test('verified live catalog is consistent with approved launch prices and does not start subscriptions',()=>{
   const catalog=JSON.parse(read('config/stripe-live-catalog.json'));

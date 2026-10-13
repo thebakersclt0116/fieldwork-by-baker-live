@@ -52,10 +52,10 @@ test('stale concurrent writes fail explicitly and never retry as an overwrite',a
 test('provider failures never echo upstream credential or data details',async()=>{
  globalThis.fetch=async()=>Response.json({message:'private prompt SECRET_EXAMPLE'},{status:500});const response=res();await workspace(req(null,'GET'),response);assert.equal(response.code,502);assert.equal(JSON.stringify(response.body).includes('SECRET_EXAMPLE'),false);
 });
-test('signup sends only name metadata and requires confirmation rather than granting client roles',async()=>{
+test('signup permits only name and normalized non-authorizing journey metadata and requires confirmation',async()=>{
  let sent;globalThis.fetch=async(url,options)=>{sent=JSON.parse(options.body);return Response.json({user:{id:owner}});};
  const response=res();await account(req({action:'signup',name:'Example User',email:'a@example.com',password:'synthetic-password',role:'owner',trialEndsAt:9999999999}),response);
- assert.equal(response.code,202);assert.deepEqual(sent,{email:'a@example.com',password:'synthetic-password',data:{name:'Example User'}});assert.equal(response.body.token,undefined);
+ assert.equal(response.code,202);assert.deepEqual(Object.keys(sent).sort(),['data','email','password']);assert.equal(sent.email,'a@example.com');assert.equal(sent.password,'synthetic-password');assert.deepEqual(Object.keys(sent.data).sort(),['baker_funnel','name']);assert.equal(sent.data.name,'Example User');assert.deepEqual(Object.keys(sent.data.baker_funnel).sort(),['campaign','flowId','qa','variant','version']);assert.equal(sent.data.baker_funnel.version,'funnel-v1');assert.equal(sent.data.baker_funnel.campaign,'direct');assert.equal(sent.data.baker_funnel.variant,'direct');assert.equal(sent.data.baker_funnel.qa,true);assert.match(sent.data.baker_funnel.flowId,/^[a-f0-9-]{36}$/i);assert.equal(sent.data.role,undefined);assert.equal(sent.data.subscription,undefined);assert.equal(response.body.token,undefined);
 });
 test('signup detects accidentally disabled email confirmation',async()=>{
  globalThis.fetch=async()=>Response.json({access_token:'synthetic-token'});const response=res();await account(req({action:'signup',name:'Example User',email:'a@example.com',password:'synthetic-password'}),response);assert.equal(response.code,503);assert.equal(response.body.code,'EMAIL_CONFIRMATION_NOT_CONFIGURED');
