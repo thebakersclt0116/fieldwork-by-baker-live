@@ -3,7 +3,7 @@ import { CloudError, cloudConfiguration } from './cloud-client.js';
 import { USAGE_VERSION, USAGE_INTRODUCED, USAGE_RETENTION_DAYS, USAGE_BUCKET_MS, USAGE_FEATURES, validUsageEvent } from '../src/lib/featureUsageSchema.js';
 const DAY = 86400000;
 export function usageIdentity(userId: string) {
-  const secret = process.env.BAKER_SESSION_SECRET;
+  const secret = process.env.BAKER_SESSION_SECRET || process.env.SUPABASE_SECRET_KEY;
   if (!secret || secret.length < 32) throw new CloudError('USAGE_NOT_CONFIGURED');
   return createHmac('sha256', secret).update('fieldwork/optional-usage/v1/' + userId).digest('hex');
 }

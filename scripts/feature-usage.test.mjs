@@ -138,3 +138,11 @@ test('rendered route markers guard measurement and opt-out still works after eve
  for (let i = 0; i < 31; i++) { const result = await call(event); if (result.code === 429) { limited = true; break; } }
  assert.equal(limited, true); const off = await call({ type: 'consent', enabled: false }); assert.equal(off.code, 200); assert.equal(off.body.enabled, false);
 });
+
+test('identity reuses existing server credentials and fails closed when none are configured', () => {
+ const session = process.env.BAKER_SESSION_SECRET, supabase = process.env.SUPABASE_SECRET_KEY;
+ delete process.env.BAKER_SESSION_SECRET; process.env.SUPABASE_SECRET_KEY = 'sb_secret_synthetic_existing_server_key_at_least_32';
+ assert.match(usageIdentity(actor), /^[a-f0-9]{64}$/);
+ delete process.env.SUPABASE_SECRET_KEY; assert.throws(() => usageIdentity(actor), /USAGE_NOT_CONFIGURED/);
+ process.env.BAKER_SESSION_SECRET = session; process.env.SUPABASE_SECRET_KEY = supabase;
+});

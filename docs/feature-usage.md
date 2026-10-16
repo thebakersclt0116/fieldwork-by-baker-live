@@ -14,7 +14,7 @@ Stored event fields in the existing protected Supabase `billing_events` ledger a
 - `event_id = usage-v1/<allowlisted feature>/<allowlisted action>/<HMAC-SHA256 pseudonym>/<30-minute UTC bucket>`.
 - `processed_at` equal to the server's UTC bucket start, rounded down to 30 minutes.
 
-The pseudonym is derived using a purpose-specific HMAC with the already-configured server session secret and the verified account UUID. Raw UUID, name/email, IP, browser/device fingerprint, location, arbitrary URL/query string, file/document name, fieldwork entry, student/client detail, message/AI conversation, form input and payment credentials are not stored in these usage records. Existing hosting/security request logs are separate and may process normal HTTP metadata.
+The pseudonym is derived using a purpose-specific HMAC with the already-configured server session secret (or the existing server-only Supabase secret when no session secret is configured) and the verified account UUID. Raw UUID, name/email, IP, browser/device fingerprint, location, arbitrary URL/query string, file/document name, fieldwork entry, student/client detail, message/AI conversation, form input and payment credentials are not stored in these usage records. Existing hosting/security request logs are separate and may process normal HTTP metadata.
 
 Consent markers contain only `mode`, `event_id = usage-v1-consent/<same pseudonym>` and the server opt-in timestamp. No opt-out marker is retained after revocation. Managed members can read only their consent state, not event records. Only `profiles.role = owner`, checked through the verified user's JWT, may read aggregates. The owner API never returns pseudonyms or per-user feature timelines, and the directory is not joined to usage.
 
