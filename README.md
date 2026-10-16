@@ -317,20 +317,9 @@ cp .env.example .env
 
 ---
 
-## Owner Login
+## Owner access
 
-Use these credentials for full admin access:
-
-- **Email**: `Justin@bakerholdings.co`
-- **Password**: `Thebakers0116@`
-
-Owner features:
-- Admin dashboard tab with platform stats
-- User management controls
-- Subscription/revenue overview
-- Owner badge throughout UI
-
----
+Sign in with the managed cloud owner account. Owner reports require a verified Supabase identity and server-managed `profiles.role = 'owner'`. No shared password is documented here.
 
 ## Demo Mode
 

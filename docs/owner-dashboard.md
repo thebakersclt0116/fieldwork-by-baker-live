@@ -1,0 +1,43 @@
+# Owner business dashboard
+
+Local implementation based on commit `576b083a79681ebb10ca630d46259a2af5b6f376`.
+
+## Sources and definitions
+
+`GET /api/owner-metrics` verifies the bearer token with Supabase Auth, then reads the caller's protected profile using that same JWT. Only a managed `profiles.role = 'owner'` permits subsequent privileged reads. Email, browser role labels and legacy beta sessions do not authorize the endpoint. Responses are private/no-store and vary by Authorization. The read path performs no provider or database writes and adds no RLS policies or credentials.
+
+The existing server Supabase secret reads the paginated Auth user directory and profile IDs/trial expiries. The existing Stripe request boundary reads fully paginated live subscriptions and invoices. Registered accounts include unverified signups; verified accounts count existing cloud profiles, not all attempted signups. QA email patterns and account funnel QA metadata are excluded. Manual professional/owner access never proves payment.
+
+Only recognized positive-priced Fieldwork catalog subscriptions qualify for billing metrics. A historical positive, provider-paid, in-band invoice is required for paid counts. A current credited/$0 invoice therefore does not erase prior payment history. A genuinely free subscription or canceled $0 test does not create a payer. Test mode and QA subscription/customer metadata are excluded. Account groups may overlap for accounts with multiple subscriptions. Account metadata links subscriptions to registered accounts; missing links are counted explicitly and fall back to unique Stripe customers, not guessed email matches.
+
+- Active paid accounts: unique account/customer identities with an active qualifying subscription and paid invoice history.
+- Active paid subscriptions: qualifying subscription count, distinct from account count.
+- Unique historical payers: unique identities with positive paid invoice history, including canceled subscriptions.
+- Past due/unpaid and canceled: distinct historically paying identities in those provider states.
+- Scheduled cancellation: still-active paid accounts with a future cancellation; counted as active until Stripe changes status.
+- Stripe trials: current trialing catalog accounts; legacy profile access trials are separate.
+- Free verified accounts: profiles without qualifying paid billing history/current Stripe trial or a current legacy access trial. This includes manual access, and does not mean all free users have identical entitlements.
+- MRR: active historically paid subscriptions' current recurring prices/quantities, with supported current discounts, normalized by recurring interval count; annual amounts are divided by 12. Trials and past-due subscriptions are excluded. Product-restricted/unexpanded discounts, partial subscription items, and ambiguous fixed discounts across multiple items fail closed instead of guessing. Currency totals remain separate; the current catalog is USD.
+- Collected invoice revenue: all-time positive paid invoice amounts, including tax, before refunds. Not net revenue, profit, cash settlement, or MRR. Out-of-band marked-paid invoices are excluded. Mixed/unrecognized or truncated invoice lines cause the report to become unavailable rather than attributing the whole invoice to Fieldwork.
+
+All provider pagination must finish; provider/format/safety-limit errors fail the report closed. The provider reads are a snapshot taken over a time interval, not a cross-provider atomic transaction. `startedAt` and `checkedAt` bound that interval. Refresh is manual; the UI marks snapshots stale after five minutes or a failed refresh. No unavailable count is synthesized as zero.
+
+## Directory
+
+Owner responses contain only account name/email, registration time, verification state, last sign-in time, catalog plan/status and cancellation scheduling. Directory pages contain at most 50 users and support all/active/canceled/trialing/past_due/unpaid filters. Last sign-in is Auth activity, not feature activity. No fieldwork records, client/student information, AI conversation contents, full provider records, tokens or payment credentials are returned.
+
+## Feature engagement and privacy
+
+No historical feature/tab instrumentation exists in the inspected repository. Existing funnel events measure signup/payment stages, not member feature preferences. The dashboard labels tab visits, unique active users by feature and actions unavailable; tracking start is explicitly not started. It does not infer usage from private content or repeat clicks.
+
+The current privacy policy's first-party counter disclosure covers signup/account/transaction diagnosis; optional ad consent covers public-page/Meta measurement. A member feature-event stream is materially broader. Before collecting it, approve the purpose, consent UI/disclosure, event allowlist, pseudonymous identity, retention and date-window definitions. Suggested future metrics: tab-open events, distinct pseudonymous users per tab/window, and allowlisted feature actions; no narratives, document names or query text. No new tracking, provider, database access or persistent event store was introduced in this patch.
+
+## Validation and release
+
+Run `node --test scripts/owner-metrics.test.mjs`, existing `scripts/*.test.mjs`, `tsc -b`, and `vite build`. The server files also need an explicit TypeScript check because the repository build only includes src and vite.config.ts.
+
+`npm ci` currently fails because the existing package/lockfile omit required canvas dependency entries. Local verification used `npm install --ignore-scripts --package-lock=false --no-audit --no-fund`; this patch does not change dependency manifests.
+
+Deployment approval was supplied by Justin for the owner dashboard. The connected API previously returned a team-scope 403. After Justin signed into Safari, the Vercel UI verified authorized access to team `fieldwork-by-baker`, project `fieldwork-by-baker-testing`, the production custom domain `www.fieldworkbybaker.com`, and production commit `576b083a79681ebb10ca630d46259a2af5b6f376`. Use this verified existing project and its Git integration; do not assume the similarly named `fieldwork-by-baker-live` project serves production. The current Safari Fieldwork session is legacy/local: the existing managed-owner funnel page rejects it, so live data acceptance requires a managed cloud owner sign-in. Do not use the legacy README password. No contact validation change is included.
+
+Before release, recheck live Stripe using authorized read-only access (the earlier 1-payer/$16.99 observation is a cross-check, never a fixture in application code), and verify the existing Supabase secret can read the required Auth admin endpoint without broader credentials. Deploy to a preview of the verified existing project first. Test real owner success, unauthenticated/ordinary-user denial, directory pagination/filtering, failure/staleness and member hour-tracking regression. Then promote only this reviewed dashboard change via the authorized production project and repeat owner/nonowner checks. Keep feature tracking disabled until its separate privacy decision is resolved. Roll back to the verified prior deployment if authorization or counts disagree.
