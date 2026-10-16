@@ -11,6 +11,8 @@ const Suggestions=lazy(()=>import('./pages/Suggestions'));
 const AccountRecovery=lazy(()=>import('./pages/AccountRecovery'));
 const AdMeasurementTest=lazy(()=>import('./pages/AdMeasurementTest'));
 import { useAuth } from './hooks/useAuth';
+import MeasuredTab from './components/MeasuredTab';
+import FeatureUsage from './components/FeatureUsage';
 import AdMeasurementChoice from './components/AdMeasurementChoice';
 
 const Features = lazy(() => import('./pages/Features'));
@@ -59,6 +61,8 @@ function AccountDashboard() {
 
 export default function App() {
   return (
+    <>
+    <FeatureUsage />
     <Layout>
       <AdMeasurementChoice />
       <Suspense fallback={<RouteFallback />}>
@@ -84,23 +88,23 @@ export default function App() {
         <Route path="/reset-password" element={<AccountRecovery />} />
 
         <Route path="/suggestions" element={<ProtectedRoute><Suggestions /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
-        <Route path="/my-path" element={<ProtectedRoute><PaidFeatureRoute><MyPathV2 /></PaidFeatureRoute></ProtectedRoute>} />
-        <Route path="/roadmap" element={<BCBARoadmap />} />
-        <Route path="/commons" element={<ProtectedRoute><PaidFeatureRoute><BakerCommons /></PaidFeatureRoute></ProtectedRoute>} />
-        <Route path="/baker-brain" element={<ProtectedRoute><PaidFeatureRoute><BakerBrainHub /></PaidFeatureRoute></ProtectedRoute>} />
-        <Route path="/exam-lab" element={<ProtectedRoute><PaidFeatureRoute><ExamLab /></PaidFeatureRoute></ProtectedRoute>} />
-        <Route path="/resources" element={<ProtectedRoute><PaidFeatureRoute><ResourceVault /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><MeasuredTab feature="settings"><AccountSettings /></MeasuredTab></ProtectedRoute>} />
+        <Route path="/my-path" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="my_path"><MyPathV2 /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/roadmap" element={<MeasuredTab feature="roadmap"><BCBARoadmap /></MeasuredTab>} />
+        <Route path="/commons" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="commons"><BakerCommons /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/baker-brain" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="baker_brain"><BakerBrainHub /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/exam-lab" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="exam_lab"><ExamLab /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/resources" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="resources"><ResourceVault /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
 
-        <Route path="/dashboard" element={<ProtectedRoute><AccountDashboard /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><MeasuredTab feature="fieldwork"><AccountDashboard /></MeasuredTab></ProtectedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
-        <Route path="/export" element={<ProtectedRoute><ExportCenter /></ProtectedRoute>} />
-        <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><DetailedMigration /></PaidFeatureRoute></ProtectedRoute>} />
-        <Route path="/import/ripley" element={<ProtectedRoute><PaidFeatureRoute><DetailedMigration /></PaidFeatureRoute></ProtectedRoute>} />
-        <Route path="/audit-history" element={<ProtectedRoute><DetailedMigration /></ProtectedRoute>} />
+        <Route path="/export" element={<ProtectedRoute><MeasuredTab feature="exports"><ExportCenter /></MeasuredTab></ProtectedRoute>} />
+        <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="imports"><DetailedMigration /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/import/ripley" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="imports"><DetailedMigration /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/audit-history" element={<ProtectedRoute><MeasuredTab feature="audit_history"><DetailedMigration /></MeasuredTab></ProtectedRoute>} />
         <Route path="/import-monthly" element={<Navigate to="/import" replace />} />
-        <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><BakerAI /></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/baker-ai" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="baker_ai"><BakerAI /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/admin/supervisor-preview" element={<ProtectedRoute><AdminSupervisorPreview /></ProtectedRoute>} />
         <Route path="/admin/launch-check" element={<ProtectedRoute><AdminLaunchCheck /></ProtectedRoute>} />
         <Route path="/admin/ad-measurement-test" element={<ProtectedRoute><AdMeasurementTest /></ProtectedRoute>} />
@@ -110,5 +114,6 @@ export default function App() {
         </Routes>
       </Suspense>
     </Layout>
+    </>
   );
 }

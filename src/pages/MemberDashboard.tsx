@@ -357,7 +357,7 @@ export default function MemberDashboard() {
               <div className="text-xs uppercase tracking-[0.16em] text-[#A8998E]">Log Hours</div>
               <h2 className="font-serif text-2xl font-semibold text-[#332C28] mt-1">Use Baker AI or enter the details manually</h2>
             </div>
-            <button onClick={() => setShowManual((value) => !value)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E2DAD5] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B5D54]"><Plus size={16} /> {showManual ? 'Hide manual' : 'Manual entry'}</button>
+            <button data-usage-feature="fieldwork" data-usage-action={showManual ? undefined : 'manual_form_open'} onClick={() => setShowManual((value) => !value)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E2DAD5] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B5D54]"><Plus size={16} /> {showManual ? 'Hide manual' : 'Manual entry'}</button>
           </div>
 
           <BakerAIEntryAssistant email={email} entries={entries} onEntriesChange={(next) => setEntries(next as DetailedHourEntry[])} />

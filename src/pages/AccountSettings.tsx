@@ -15,6 +15,7 @@ export default function AccountSettings() {
   const [message, setMessage] = useState('');
   return <div className="min-h-screen bg-[#FFFCF9] px-4 py-8 text-[#332C28] dark:bg-[#171412] dark:text-white"><div className="mx-auto max-w-2xl">
     <h1 className="font-serif text-4xl">Account settings</h1>
+    <p className="mt-4 text-sm">Managed members can change optional usage measurement using the Usage privacy panel on this page. It starts off and is separate from ad measurement.</p>
     <section className="mt-6 rounded-2xl border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]">
       <fieldset><legend className="text-lg font-semibold">Time format</legend><p className="mt-2 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Choose how times appear when reviewing and logging fieldwork.</p>
         <label className="mt-5 flex items-center gap-3"><input type="radio" name="time-format" value="12" checked={format === '12'} onChange={() => setFormat('12')}/>12-hour · 2:30 PM (default)</label>
@@ -25,7 +26,7 @@ export default function AccountSettings() {
       <p className="mt-4 text-xs text-[#6B5D54] dark:text-[#CFC4BE]">This preference is saved for your account in this browser. Original source records and exported source data retain their exact values.</p>
     </section>
     {user?.authProvider==='supabase'&&<><ProfilePhotoSettings/><CommunitySettings/></>}
-    {user?.authProvider==='supabase'&&<section className="mt-6 rounded-2xl border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><h2 className="text-lg font-semibold">Subscription & billing</h2><p className="mt-2 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Manage your plan, payment method, invoices, and cancellation through Stripe.</p><div className="mt-4 flex flex-wrap gap-3"><button disabled={billingBusy} onClick={openBilling} className="rounded-xl bg-[#332C28] px-5 py-3 font-semibold text-white disabled:opacity-40">{billingBusy?'Opening billing…':'Manage subscription'}</button><Link to="/upgrade" className="rounded-xl border px-5 py-3 font-semibold">View plans</Link></div>{billingMessage&&<p role="status" className="mt-3 text-sm">{billingMessage}</p>}</section>}
+    {user?.authProvider==='supabase'&&<section className="mt-6 rounded-2xl border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><h2 className="text-lg font-semibold">Subscription & billing</h2><p className="mt-2 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Manage your plan, payment method, invoices, and cancellation through Stripe.</p><div className="mt-4 flex flex-wrap gap-3"><button data-usage-feature="settings" data-usage-action="billing_portal_request" disabled={billingBusy} onClick={openBilling} className="rounded-xl bg-[#332C28] px-5 py-3 font-semibold text-white disabled:opacity-40">{billingBusy?'Opening billing…':'Manage subscription'}</button><Link to="/upgrade" className="rounded-xl border px-5 py-3 font-semibold">View plans</Link></div>{billingMessage&&<p role="status" className="mt-3 text-sm">{billingMessage}</p>}</section>}
   </div></div>;
 }
 

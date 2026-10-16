@@ -127,7 +127,7 @@ export default function ExamLab() {
                 <Stat label="Unscored" value="10" />
                 <Stat label="Time" value="4:00" />
               </div>
-              <button onClick={startFullExam} className="mt-6 w-full rounded-2xl bg-[#E85D70] px-6 py-4 text-base font-bold text-white transition hover:brightness-105">Start full BCBA simulation</button>
+              <button data-usage-feature="exam_lab" data-usage-action="simulation_start_request" onClick={startFullExam} className="mt-6 w-full rounded-2xl bg-[#E85D70] px-6 py-4 text-base font-bold text-white transition hover:brightness-105">Start full BCBA simulation</button>
               <p className="mt-3 text-center text-xs text-white/55">The practice timer continues if you leave and resume, matching real-exam pacing discipline.</p>
             </div>
 
