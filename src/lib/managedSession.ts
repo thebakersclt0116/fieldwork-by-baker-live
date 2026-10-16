@@ -7,6 +7,9 @@ export interface ManagedAccount {
   expiresAt: number;
   user: { name: string; email: string; role: 'owner'|'free'|'paid'|'professional'|'supervisor'; subscription?: 'none'|'individual'|'professional'; subscriptionStatus?: string; trialEndsAt?: number };
 }
+export function managedDisplayName(user: { name?: unknown; email: string }): string {
+  return typeof user.name === 'string' && user.name.trim() ? user.name.trim() : user.email.split('@')[0] || 'Member';
+}
 export async function accountRequest(body: Record<string,unknown>): Promise<{ response: Response; payload: ManagedAccount & { verificationRequired?: boolean } }> {
   const response = await fetch('/api/account', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });
   const payload = await response.json();
@@ -28,7 +31,8 @@ export function renewManagedSession(): Promise<ManagedAccount> {
     if(current?.refreshToken!==saved.refreshToken)throw new Error('Account changed during renewal.');
     saveManagedTokens(payload);
     localStorage.setItem('bakerSessionToken',payload.token);
-    localStorage.setItem('authUser',JSON.stringify({...payload.user,authProvider:'supabase',initials:payload.user.name.split(' ').map(part=>part[0]).join('').toUpperCase().slice(0,2)}));
+    const name = managedDisplayName(payload.user);
+    localStorage.setItem('authUser',JSON.stringify({...payload.user,name,authProvider:'supabase',initials:name.split(' ').map(part=>part[0]).join('').toUpperCase().slice(0,2)}));
     if(typeof window!=='undefined')window.dispatchEvent(new Event('fieldwork:session-changed'));
     return payload;
   })().finally(()=>{renewing=null;});

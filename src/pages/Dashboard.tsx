@@ -87,7 +87,7 @@ function OwnerAdminTab() {
   const money = (values: Record<string, number>) => Object.entries(values).map(([currency, cents]) => new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100)).join(' · ') || '0 (no qualifying payments)';
   return <section className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-serif text-2xl">Owner dashboard</h2><p className="text-sm">Live Supabase accounts and Stripe billing · business and account overview</p></div><button type="button" disabled={busy || user?.authProvider !== 'supabase'} onClick={() => void load()} className="rounded-xl bg-[#E85D70] px-4 py-3 text-white disabled:opacity-50">{busy ? 'Loading…' : 'Refresh metrics'}</button></div>
-    {user?.authProvider !== 'supabase' && <p role="alert">Sign in with your managed cloud owner account to load metrics.</p>}
+    {user?.authProvider !== 'supabase' && <p role="alert">Your current session is legacy/local and cannot read private owner reports. <Link to="/login?mode=cloud-owner&amp;return=%2Fdashboard" className="underline">Sign in to your cloud owner account</Link>.</p>}
     {busy && <p role="status">Reading current account and billing data…</p>}
     {error && <p role="alert" className="rounded-xl border border-red-400 p-4">{error}</p>}
     {report && <><p role="status" className={stale ? 'text-amber-700' : 'text-sm'}>{stale ? 'Stale snapshot — refresh required. ' : 'Snapshot checked '} {new Date(report.checkedAt).toLocaleString()}. Refresh manually; snapshots become stale after five minutes.</p>
