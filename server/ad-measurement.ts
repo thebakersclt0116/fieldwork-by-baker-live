@@ -24,7 +24,7 @@ export function adUserData(metadata: any, now = Date.now()) {
 }
 export function firstPaymentEvent(invoice: any, metadata: any, previous: any[], now = Date.now()) {
   const userData = adUserData(metadata, now);
-  if (!userData || invoice?.livemode !== true || invoice.status !== 'paid' || invoice.paid !== true || invoice.billing_reason !== 'subscription_create' || !Number.isSafeInteger(invoice.amount_paid) || invoice.amount_paid <= 0 || invoice.currency !== 'usd' || !/^in_[A-Za-z0-9]+$/.test(invoice.id || '')) return null;
+  if (!userData || invoice?.livemode !== true || invoice.status !== 'paid' || invoice.paid === false || invoice.billing_reason !== 'subscription_create' || !Number.isSafeInteger(invoice.amount_paid) || invoice.amount_paid <= 0 || invoice.currency !== 'usd' || !/^in_[A-Za-z0-9]+$/.test(invoice.id || '')) return null;
   // A returning member is not a new paying user. Unpaid invoices and $0 tests do not qualify.
   if (previous.some(value => value.id !== invoice.id && value.livemode === true && value.status === 'paid' && value.amount_paid > 0)) return null;
   const paidAt = invoice.status_transitions?.paid_at;

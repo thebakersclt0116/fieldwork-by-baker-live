@@ -104,6 +104,9 @@ test('only an authoritative first nonzero live membership invoice qualifies as p
  const invoice={id:'in_Fictional',livemode:true,status:'paid',paid:true,billing_reason:'subscription_create',amount_paid:1699,currency:'usd',customer:'cus_Fictional',subscription:'sub_Fictional'};
  const subscription={id:'sub_Fictional',livemode:true,customer:'cus_Fictional',metadata:{baker_mode:'live'},items:{data:[{quantity:1,price:{id:'price_1UNMr5AbMYqDEncBkDbWXXRX'}}]}};
  assert.equal(events.eligibleFirstMembership(invoice,subscription,[invoice]),true);
+ const {paid:_legacyPaid,...modernInvoice}=invoice;
+ assert.equal(events.eligibleFirstMembership(modernInvoice,subscription,[modernInvoice]),true);
+ assert.equal(events.eligibleFirstMembership({...modernInvoice,status:'open'},subscription,[]),false);
  for(const patch of [{livemode:false},{amount_paid:0},{amount_paid:-1},{paid:false},{status:'open'},{billing_reason:'subscription_cycle'},{customer:'cus_Other'},{subscription:'sub_Other'}])assert.equal(events.eligibleFirstMembership({...invoice,...patch},subscription,[]),false);
  assert.equal(events.eligibleFirstMembership(invoice,subscription,[{...invoice,id:'in_Previous'}]),false);
  assert.equal(events.eligibleFirstMembership(invoice,{...subscription,items:{data:[{quantity:1,price:{id:'price_Unknown'}}]}},[]),false);
