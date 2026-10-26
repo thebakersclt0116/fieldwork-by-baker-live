@@ -52,7 +52,6 @@ const EMILY_EMAIL = 'ayalaemily52@gmail.com';
 // from the password supplied at login and is never stored in source control.
 const BETA_PUBLIC_KEYS: Record<string, string> = {
   [EMILY_EMAIL]: 'MCowBQYDK2VwAyEA3mxdQfx0eHqbYKff7KO5J3Ecu8E23MJlKdriCp2SCbM=',
-  [OWNER_EMAIL]: 'MCowBQYDK2VwAyEASvSw2YHydkRdsXdZnrz328w4flO7rZvONuF1VW7DQYE=',
 };
 
 const ED25519_PKCS8_SEED_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
@@ -81,7 +80,8 @@ function signatureFor(encodedPayload: string): string | null {
 
 function betaUserForEmail(email: string): Omit<BakerSession, 'exp'> | null {
   const normalized = email.trim().toLowerCase();
-  if (normalized === OWNER_EMAIL) return { email: OWNER_EMAIL, name: 'Justin Baker', role: 'owner' };
+  // Administrator access requires a managed account. The old beta owner identity
+  // is revoked, including previously issued b2 tokens signed by its former key.
   if (normalized === EMILY_EMAIL) {
     return {
       email: EMILY_EMAIL,
@@ -157,6 +157,7 @@ function verifyStableBetaSession(token: string): BakerSession | null {
     const normalized = parsed.email?.trim().toLowerCase();
     if (!normalized || !parsed.role || !parsed.exp) return null;
     if (parsed.exp <= Math.floor(Date.now() / 1000)) return null;
+    if (normalized === OWNER_EMAIL || parsed.role === 'owner') return null;
 
     const publicKeyBase64 = BETA_PUBLIC_KEYS[normalized];
     if (!publicKeyBase64) return null;

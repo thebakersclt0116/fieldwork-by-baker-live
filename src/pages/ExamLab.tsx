@@ -1,6 +1,5 @@
 import { accountStorage } from '@/lib/accountStorage';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router';
 import { AlertTriangle, BookOpen, CheckCircle2, Clock3, Flag, FlaskConical, RotateCcw, Save, Sparkles, Target } from 'lucide-react';
 import {
   BCBA_EXAM_MINUTES,
@@ -15,7 +14,6 @@ import {
 const SESSION_KEY = 'fieldworkByBaker:examLab:fullExam:v2';
 const RESULT_KEY = 'fieldworkByBaker:examLab:lastResult:v2';
 const PLAN_KEY = 'fieldworkByBaker:weakAreaPlan:v1';
-const BRAIN_SEED_KEY = 'fieldworkByBaker:bakerBrainSeed:v1';
 
 type Session = {
   startedAt: number;
@@ -54,7 +52,7 @@ export default function ExamLab() {
   });
   const [studyMinutes, setStudyMinutes] = useState(45);
 
-  const answers = session?.answers || {};
+  const answers = useMemo(() => session?.answers || {}, [session?.answers]);
   const flagged = session?.flagged || [];
   const index = Math.min(Math.max(0, session?.index || 0), fullBCBAExam.length - 1);
   const q = fullBCBAExam[index];
@@ -101,11 +99,7 @@ export default function ExamLab() {
     const next = buildWeakAreaPlan(answers, studyMinutes);
     setPlan(next);
     accountStorage.setItem(PLAN_KEY, JSON.stringify(next));
-    accountStorage.setItem(BRAIN_SEED_KEY, JSON.stringify({
-      type: 'weak-area-plan',
-      prompt: `Use my Exam Lab results to coach me through my weakest areas. My lowest areas are ${next.weakest.map((area) => `${area.area} (${area.percent}%)`).join(', ')}. Start with a personalized lesson on ${next.weakest[0]?.weakConcepts.join(', ') || next.weakest[0]?.area}.`,
-      createdAt: new Date().toISOString(),
-    }));
+
   };
 
   if (!session && !submitted) {
@@ -113,7 +107,7 @@ export default function ExamLab() {
       <div className="min-h-[100dvh] bg-[#FFFCF9] px-4 py-8 dark:bg-[#171412]">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
-            <div className="flex items-center gap-2 text-sm font-bold text-[#E85D70]"><FlaskConical size={17} /> Exam Lab</div>
+            <div className="flex items-center gap-2 text-sm font-bold text-[#E85D70]"><FlaskConical size={17} /> Exam Prep</div>
             <h1 className="mt-2 max-w-4xl font-serif text-4xl font-semibold text-[#332C28] dark:text-white">A full-length BCBA practice simulation built to expose exactly what you need to learn next.</h1>
             <p className="mt-3 max-w-3xl leading-7 text-[#6B5D54] dark:text-[#CFC4BE]">This simulation mirrors the current exam structure: 185 original multiple-choice practice questions, 4 choices each, 4 hours, and a scored blueprint distributed across the nine BCBA Test Content Outline (6th ed.) content areas. Ten items are blended in as unscored experimental practice items, just like the official structure.</p>
           </header>
@@ -127,7 +121,7 @@ export default function ExamLab() {
                 <Stat label="Unscored" value="10" />
                 <Stat label="Time" value="4:00" />
               </div>
-              <button onClick={startFullExam} className="mt-6 w-full rounded-2xl bg-[#E85D70] px-6 py-4 text-base font-bold text-white transition hover:brightness-105">Start full BCBA simulation</button>
+              <button data-usage-feature="exam_lab" data-usage-action="simulation_start_request" onClick={startFullExam} className="mt-6 w-full rounded-2xl bg-[#E85D70] px-6 py-4 text-base font-bold text-white transition hover:brightness-105">Start full BCBA simulation</button>
               <p className="mt-3 text-center text-xs text-white/55">The practice timer continues if you leave and resume, matching real-exam pacing discipline.</p>
             </div>
 
@@ -166,12 +160,12 @@ export default function ExamLab() {
 
           {plan && (
             <section className="space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-xs font-bold uppercase tracking-[.16em] text-[#A8998E]">Personalized seven-day repair cycle</div><h2 className="mt-1 font-serif text-3xl font-semibold text-[#332C28] dark:text-white">Your custom lesson plan</h2></div><Link to="/baker-brain" className="inline-flex items-center gap-2 rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-bold text-white dark:bg-[#E85D70]"><Sparkles size={15} /> Teach this to me in Baker Brain</Link></div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-xs font-bold uppercase tracking-[.16em] text-[#A8998E]">Personalized seven-day repair cycle</div><h2 className="mt-1 font-serif text-3xl font-semibold text-[#332C28] dark:text-white">Your custom lesson plan</h2></div></div>
               <div className="grid gap-4 lg:grid-cols-2">{plan.days.map((day) => <article key={day.day} className="rounded-[26px] border border-[#F2EDEA] bg-white p-5 dark:border-white/10 dark:bg-[#211D1A]"><div className="flex items-start justify-between gap-3"><div><div className="text-xs font-bold uppercase tracking-[.15em] text-[#E85D70]">Day {day.day} · {day.minutes} min</div><h3 className="mt-1 font-serif text-xl font-semibold text-[#332C28] dark:text-white">{day.title}</h3></div><BookOpen size={18} className="text-[#D4A574]" /></div><p className="mt-2 text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]">{day.action}</p><div className="mt-4 space-y-2">{day.blocks.map((block) => <div key={block.label} className="rounded-xl bg-[#FAF8F6] p-3 dark:bg-white/5"><div className="flex items-center justify-between gap-3"><span className="text-xs font-bold text-[#4D423C] dark:text-white">{block.label}</span><span className="font-mono text-xs text-[#A8998E]">{block.minutes}m</span></div><p className="mt-1 text-xs leading-5 text-[#7B6B62] dark:text-[#CFC4BE]">{block.instruction}</p></div>)}</div></article>)}</div>
             </section>
           )}
 
-          <section className="rounded-[30px] border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><div className="flex items-center gap-2"><Save size={16} className="text-[#5FA37E]" /><div className="font-semibold text-[#4D423C] dark:text-white">Autosaved learning history</div></div><p className="mt-2 text-sm text-[#7B6B62] dark:text-[#CFC4BE]">Your latest content-area results and generated weak-area plan are saved in this browser so My Path and Baker Brain can use them as personalized context.</p></section>
+          <section className="rounded-[30px] border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><div className="flex items-center gap-2"><Save size={16} className="text-[#5FA37E]" /><div className="font-semibold text-[#4D423C] dark:text-white">Autosaved learning history</div></div><p className="mt-2 text-sm text-[#7B6B62] dark:text-[#CFC4BE]">Your latest content-area results and study plan are saved for your account. Return to Exam Prep to continue studying.</p></section>
         </div>
       </div>
     );

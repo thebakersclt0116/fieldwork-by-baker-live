@@ -56,3 +56,19 @@ test('email sends an unsigned attachment to exactly the typed supervisor, replyi
  const res=response();await handler(request({...input,action:'email',supervisorEmail:'supervisor@example.com',confirmSharing:true,requestId:'22222222-2222-4222-8222-222222222222',email:'attacker@example.com'}),res);
  assert.equal(res.code,200);assert.deepEqual(sent.to,['supervisor@example.com']);assert.equal(sent.reply_to,'trainee@example.com');assert.equal(sent.attachments.length,1);assert.equal(res.body.emailAccepted,true);
 });
+
+test('unfinished timer hours stay out of monthly totals and official forms', async () => {
+ const draft={...entries[0],id:'timer-draft',duration:12,status:'DRAFT',timerSession:{detailsComplete:false}};
+ assert.equal(summarizeMonth([...entries,draft],'2026-01').totalHours,72);
+ entries.push(draft);
+ try {mock();const res=response();await handler(request(),res);assert.equal(res.code,400);assert.equal(res.body.code,'COMPLETE_ACTIVITY_DETAILS');}
+ finally {entries.pop();}
+});
+
+test('a timer completion flag cannot bypass a missing activity description',async()=>{
+ const incomplete={...entries[0],id:'timer-blank-description',duration:4,status:'PENDING',notes:' ',timerSession:{detailsComplete:true}};
+ assert.equal(summarizeMonth([...entries,incomplete],'2026-01').totalHours,72);
+ entries.push(incomplete);
+ try {mock();const res=response();await handler(request(),res);assert.equal(res.code,400);assert.equal(res.body.code,'COMPLETE_ACTIVITY_DETAILS');}
+ finally {entries.pop();}
+});

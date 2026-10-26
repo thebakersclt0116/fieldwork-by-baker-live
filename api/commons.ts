@@ -6,6 +6,8 @@ export default async function handler(req:any,res:any){
  res.setHeader('Cache-Control','private, no-store');
  try{
   const token=getBearerToken(req);if(!token)throw new CloudError('AUTH_REQUIRED',401);const user=await verifyCloudUser(token);
+  const profiles:any=await cloudRequest('/rest/v1/profiles?select=role&id=eq.'+user.id,token);
+  if(!Array.isArray(profiles)||profiles[0]?.role!=='owner')throw new CloudError('PRODUCT_ARCHIVED',403);
   if(req.method==='GET'){
    const before=req.query?.before;if(before!==undefined&&(typeof before!=='string'||before.length>40||!Number.isFinite(Date.parse(before))))throw new CloudError('INVALID_CURSOR',400);
    const posts:any=await cloudRequest('/rest/v1/rpc/commons_feed',token,{method:'POST',body:JSON.stringify({p_before:before||null})});if(!Array.isArray(posts))throw new CloudError('COMMUNITY_UNAVAILABLE');

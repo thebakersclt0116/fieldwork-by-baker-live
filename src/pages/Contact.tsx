@@ -22,7 +22,7 @@ export default function Contact() {
 
   const send = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!name.trim() || !/^\\S+@\\S+\\.\\S+$/.test(email.trim()) || message.trim().length < 5) {
+    if (!name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || message.trim().length < 5) {
       setStatus('Enter your name, a valid email, and a short message.');
       return;
     }
@@ -34,7 +34,7 @@ export default function Contact() {
       'Topic: ' + topic,
       '',
       message.trim(),
-    ].join('\\n');
+    ].join('\n');
     setStatus('Opening an email draft to ' + recipient + '.');
     window.location.href = 'mailto:' + recipient + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
   };

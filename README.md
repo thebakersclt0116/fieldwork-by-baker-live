@@ -317,18 +317,9 @@ cp .env.example .env
 
 ---
 
-## Owner Login
+## Administrator Access
 
-Use these credentials for full admin access:
-
-- **Email**: `Justin@bakerholdings.co`
-- **Password**: `Thebakers0116@`
-
-Owner features:
-- Admin dashboard tab with platform stats
-- User management controls
-- Subscription/revenue overview
-- Owner badge throughout UI
+Administrator access must be provisioned through the managed account system. Never document passwords or other sign-in secrets in this repository. Legacy beta credentials must be retired and any exposed credentials rotated before public launch.
 
 ---
 

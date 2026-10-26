@@ -21,8 +21,8 @@ const plans: Array<{
     price: '$16.99',
     cadence: '/month',
     badge: 'Individual membership',
-    description: 'The connected BCBA workspace for candidates who want more than a basic tracker.',
-    features: ['Fieldwork tracking', 'Baker Brain', 'Full Exam Lab + weak-area plans', 'Ripley/CSV migration', 'Form-ready exports', 'Resource Vault'],
+    description: 'A focused workspace for hours, monthly verification forms, and exam preparation.',
+    features: ['My Hours with start/stop timer', 'Monthly Verification Forms', 'Exam Prep + weak-area practice', 'Import and export fieldwork records', 'Suggestions and feedback'],
   },
   {
     id: 'professional_monthly',
@@ -30,7 +30,7 @@ const plans: Array<{
     price: '$34.99',
     cadence: '/month',
     badge: 'Supervisor workflow',
-    description: 'Everything in Individual plus active supervisor collaboration.',
+    description: 'Everything in Individual plus supervisor collaboration for your hours.',
     features: ['Everything in Individual', 'Signed supervisor review links', 'Supervisor notes + messages', 'Revision + re-approval workflow', 'Multiple supervisors + organizations'],
   },
   {
@@ -71,7 +71,7 @@ export default function Upgrade() {
     if (!billingEnabled) { setError('Paid checkout is paused while the account and billing backend is connected. No payment has been created.'); return; }
     const token = getStoredAccessToken();
     if (!token) {
-      window.location.href = '/login';
+      window.location.assign('/login');
       return;
     }
     setLoadingPlan(plan);
@@ -92,7 +92,7 @@ export default function Upgrade() {
         }
         throw new Error(payload.error || 'Could not open Stripe Checkout.');
       }
-      window.location.href = payload.url;
+      window.location.assign(payload.url);
     } catch (checkoutError) {
       setError(checkoutError instanceof Error ? checkoutError.message : 'Could not open Stripe Checkout.');
       setLoadingPlan(null);
@@ -139,7 +139,7 @@ export default function Upgrade() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
           <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><FileDown size={18} className="text-[#E85D70] mb-2" /><strong className="block text-[#332C28] mb-1">Free demo</strong>Preview the workspace using fictional records.</div>
-          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><Upload size={18} className="text-[#D4A574] mb-2" /><strong className="block text-[#332C28] mb-1">Individual</strong>AI, Exam Lab, migration, exports, and the candidate workspace.</div>
+          <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><Upload size={18} className="text-[#D4A574] mb-2" /><strong className="block text-[#332C28] mb-1">Individual</strong>Hours, monthly forms, exam preparation, and fieldwork imports and exports.</div>
           
           <div className="rounded-2xl bg-white border border-[#F2EDEA] p-4 text-sm text-[#6B5D54]"><UserCheck size={18} className="text-[#5FA37E] mb-2" /><strong className="block text-[#332C28] mb-1">Professional</strong>Secure supervisor review, notes, and messages.</div>
         </div>

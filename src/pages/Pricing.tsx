@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ArrowRight, Brain, Check, FlaskConical, Sparkles, UserCheck } from 'lucide-react';
+import { ArrowRight, Check, Clock, FileCheck2, FlaskConical, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const tiers = [
@@ -8,8 +8,8 @@ const tiers = [
     price: '$16.99',
     cadence: '/month',
     highlight: true,
-    description: 'For BCBA candidates who want fieldwork, AI, exam prep, and migration in one connected workspace.',
-    features: ['Fieldwork tracking + decimal time conversion', 'Baker Brain BCBA AI', 'Full Exam Lab + weak-area plans', 'Ripley/CSV migration tools', 'Form-ready exports', 'Resource Vault'],
+    description: 'For BCBA candidates who want a simple place to track hours, prepare monthly forms, and study.',
+    features: ['My Hours with start/stop timer', 'Monthly Verification Forms', 'Exam Prep + weak-area practice', 'Import and export fieldwork records', 'Suggestions and feedback'],
     note: 'Cancel anytime. Membership begins after payment.',
   },
   {
@@ -17,7 +17,7 @@ const tiers = [
     price: '$34.99',
     cadence: '/month',
     highlight: false,
-    description: 'For candidates who want the full platform plus active supervisor collaboration.',
+    description: 'For candidates who also need active supervisor collaboration for their hours.',
     features: ['Everything in Individual', 'Secure supervisor review links', 'Supervisor notes + messages', 'Revision and re-approval workflow', 'Multiple supervisors + organizations', 'Priority support'],
     note: 'Professional Annual is available in checkout at $349/year — about $29.08/month.',
   },
@@ -32,7 +32,7 @@ export default function Pricing() {
         <div className="mx-auto max-w-4xl">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] px-3 py-1.5 text-xs font-semibold text-[#E85D70] dark:bg-[#E85D70]/10"><Sparkles size={14} /> Explore the demo. Choose the membership that fits.</div>
           <h1 className="mb-5 font-serif text-5xl font-semibold leading-tight text-[#332C28] dark:text-white lg:text-6xl">A workspace worth investing in.</h1>
-          <p className="mx-auto mb-7 max-w-2xl text-lg text-[#6B5D54] dark:text-[#CFC4BE]">No stripped-down forever-free tier and no one-time export pass. Your membership includes: fieldwork, Baker Brain, Exam Lab, migration, resources, and supervisor workflows.</p>
+          <p className="mx-auto mb-7 max-w-2xl text-lg text-[#6B5D54] dark:text-[#CFC4BE]">Focus on My Hours, Monthly Verification Forms, Exam Prep, and Suggestions. Professional adds supervisor review and feedback for your hours.</p>
           <Link to="/demo" className="mr-4 inline-flex rounded-xl border border-[#e2dad5] px-6 py-3 font-semibold">Explore free demo</Link><Link to={trialHref} className="btn-primary inline-flex rounded-xl px-6 py-3">Create account <ArrowRight size={16} /></Link>
         </div>
       </section>
@@ -55,15 +55,15 @@ export default function Pricing() {
 
       <section className="px-4 pb-16">
         <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
-          <Value icon={Brain} title="Baker Brain" text="BCBA-focused AI that can use your weak areas, fieldwork context, and platform progress." />
-          <Value icon={FlaskConical} title="Exam Lab" text="A full 185-question simulation plus a personalized weak-area repair plan." />
-          <Value icon={UserCheck} title="Supervisor workflow" text="Professional adds review links, notes, revisions, and re-approval when verified hours change." />
+          <Value icon={Clock} title="My Hours" text="Start and stop your timer, add activity details, and keep your fieldwork records together." />
+          <Value icon={FlaskConical} title="Exam Prep" text="Practice questions and full simulations help you review weaker areas." />
+          <Value icon={FileCheck2} title="Monthly Verification Forms" text="Prepare your monthly forms from saved hours and review the details before sharing." />
         </div>
       </section>
     </div>
   );
 }
 
-function Value({ icon: Icon, title, text }: { icon: typeof Brain; title: string; text: string }) {
+function Value({ icon: Icon, title, text }: { icon: typeof Clock; title: string; text: string }) {
   return <div className="rounded-2xl border border-[#F2EDEA] bg-white p-5 dark:border-white/10 dark:bg-[#211D1A]"><Icon size={20} className="mb-3 text-[#E85D70]" /><h3 className="mb-1 font-semibold text-[#332C28] dark:text-white">{title}</h3><p className="text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]">{text}</p></div>;
 }

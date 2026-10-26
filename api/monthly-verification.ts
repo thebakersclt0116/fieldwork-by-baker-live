@@ -39,6 +39,7 @@ export default async function handler(req: any, res: any) {
       (body.structure === 'organization' || entry.supervisorName === identity.supervisorName) &&
       (body.requirements === '2027' && body.structure === 'organization' || entry.fieldworkType === body.fieldworkType));
     if (!entries.length) throw new CloudError('NO_MONTHLY_ENTRIES',400);
+    if (entries.some(entry => entry.status === 'DRAFT' || (entry.timerSession && (entry.timerSession.detailsComplete !== true || typeof entry.notes !== 'string' || !entry.notes.trim())))) throw new CloudError('COMPLETE_ACTIVITY_DETAILS',400);
     if (entries.some(entry => entry.status === 'REJECTED')) throw new CloudError('REVIEW_REJECTED_ENTRIES',400);
     if (entries.some(entry => !Number.isFinite(entry.duration) || entry.duration < 0 || typeof entry.supervisionMinutes !== 'number' || !Number.isFinite(entry.supervisionMinutes) || entry.supervisionMinutes < 0 || entry.supervisionMinutes > entry.duration*60+0.01 || (entry.observationMinutes !== undefined && (!Number.isFinite(entry.observationMinutes) || entry.observationMinutes < 0 || entry.observationMinutes > entry.supervisionMinutes)))) throw new CloudError('REVIEW_HOUR_ALLOCATION',400);
     const totalMinutes = Math.round(entries.reduce((sum,entry) => sum+entry.duration*60,0));

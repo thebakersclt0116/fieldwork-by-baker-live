@@ -1,5 +1,7 @@
+import { currentManagedToken } from '@/lib/managedSession';
+import FeatureEngagement from '@/components/dashboard/FeatureEngagement';
 import MobileAppAnnouncement from '@/components/MobileAppAnnouncement';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import {
@@ -15,7 +17,6 @@ import {
   X,
   Crown,
   LogOut,
-  Shield,
   Star,
 } from 'lucide-react';
 import { Link } from 'react-router';
@@ -53,82 +54,49 @@ const pageVariants = {
 /*  OWNER ADMIN TAB                                                    */
 /* ------------------------------------------------------------------ */
 
+type OwnerReport = { checkedAt: string; metrics: Record<string, number | Record<string, number>>; directory: { page: number; pageSize: number; total: number; users: Array<{ name: string; email: string; registeredAt: string; verified: boolean; lastSignInAt: string | null; subscriptions: Array<{ plan: string; status: string; canceling: boolean }> }> } };
 function OwnerAdminTab() {
-  return (
-    <div className="space-y-6">
-      {/* Platform Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Users', value: '1,247', change: '+12% this month', color: 'rose' },
-          { label: 'Active Subscriptions', value: '892', change: '+8% this month', color: 'green' },
-          { label: 'Enterprise Clients', value: '34', change: '+3 this month', color: 'gold' },
-          { label: 'Monthly Revenue', value: '$18,420', change: '+15% this month', color: 'blue' },
-        ].map((stat) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 border border-[#F2EDEA] shadow-sm"
-          >
-            <p className="text-xs text-[#A8998E] font-medium uppercase tracking-wider mb-2">{stat.label}</p>
-            <p className="text-2xl font-bold text-[#332C28] mb-1">{stat.value}</p>
-            <p className="text-xs text-[#7EB89A] font-medium">{stat.change}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 border border-[#F2EDEA] shadow-sm"
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <Shield size={18} className="text-[#D4A574]" />
-            <h3 className="font-semibold text-[#332C28]">Platform Administration</h3>
-          </div>
-          <div className="space-y-2">
-            {['Manage Users', 'View Subscriptions', 'Enterprise Clients', 'System Settings', 'Export All Data'].map((action) => (
-              <button
-                key={action}
-                className="w-full text-left px-4 py-3 rounded-xl text-sm text-[#6B5D54] hover:bg-[#FFF5F7] hover:text-[#E85D70] transition-colors border border-transparent hover:border-[#FFC1CC]"
-              >
-                {action}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 border border-[#F2EDEA] shadow-sm"
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <Crown size={18} className="text-[#D4A574]" />
-            <h3 className="font-semibold text-[#332C28]">Owner Controls</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="p-4 rounded-xl bg-[#FBF3EB]/50 border border-[#D4A574]/20">
-              <p className="text-sm font-medium text-[#6B5D54] mb-1">Subscription Tiers</p>
-              <p className="text-xs text-[#A8998E]">Individual ($12), Professional ($24), Enterprise (Custom)</p>
-            </div>
-            <div className="p-4 rounded-xl bg-[#FFF5F7]/50 border border-[#FFC1CC]/30">
-              <p className="text-sm font-medium text-[#6B5D54] mb-1">Payment Methods</p>
-              <p className="text-xs text-[#A8998E]">Apple Pay, Credit/Debit, Google Pay — Stripe processing</p>
-            </div>
-            <div className="p-4 rounded-xl bg-[#E8F5EE]/50 border border-[#7EB89A]/20">
-              <p className="text-sm font-medium text-[#6B5D54] mb-1">Compliance Status</p>
-              <p className="text-xs text-[#A8998E]">BACB 2027 Compliant, HIPAA Ready, SOC 2 Pending</p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
+  const { user } = useAuth();
+  const [report, setReport] = useState<OwnerReport | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [clock, setClock] = useState(() => Date.now());
+  const [page, setPage] = useState(1), [status, setStatus] = useState('all');
+  const requestSequence = useRef(0);
+  const load = useCallback(async () => {
+    const sequence = ++requestSequence.current;
+    setBusy(true); setError('');
+    try {
+      const token = await currentManagedToken();
+      const response = await fetch('/api/owner-metrics?page=' + page + '&status=' + status, { cache: 'no-store', signal: AbortSignal.timeout(60000), headers: { Authorization: 'Bearer ' + token } });
+      const data = await response.json();
+      if (!response.ok || data.version !== 'owner-metrics-v1') throw new Error(data.code === 'OWNER_REQUIRED' ? 'Only the verified cloud owner can view these metrics.' : 'Metrics unavailable. Sign in with your cloud owner account and retry. Unavailable counts are not zero.');
+      if (sequence !== requestSequence.current) return;
+      setReport(data); setClock(Date.now());
+    } catch (failure) { if (sequence === requestSequence.current) setError(failure instanceof Error ? failure.message : 'Metrics unavailable.'); }
+    finally { if (sequence === requestSequence.current) setBusy(false); }
+  }, [page, status]);
+  const invalidate = useCallback(() => { requestSequence.current++; }, []);
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => { if (user?.authProvider === 'supabase') void load(); }, 0);
+    const timer = window.setInterval(() => setClock(Date.now()), 30000);
+    return () => { window.clearInterval(timer); window.clearTimeout(initialLoad); invalidate(); };
+  }, [user?.email, user?.authProvider, load, invalidate]);
+  const stale = report && (Boolean(error) || clock - Date.parse(report.checkedAt) > 300000);
+  const labels: Record<string, string> = { registered: 'Registered accounts', verified: 'Verified accounts', free: 'Free verified accounts', legacyTrial: 'Legacy access trials', trial: 'Stripe trial accounts', activePaid: 'Active paid accounts', activeSubscriptions: 'Active paid subscriptions', pastDue: 'Past-due / unpaid paying accounts', canceled: 'Canceled paying accounts', uniquePayers: 'Unique historical payers', scheduledCancellation: 'Active accounts canceling later', otherBilling: 'Other paying billing states' };
+  const money = (values: Record<string, number>) => Object.entries(values).map(([currency, cents]) => new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100)).join(' · ') || '0 (no qualifying payments)';
+  return <section className="space-y-5">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-serif text-2xl">Owner dashboard</h2><p className="text-sm">Live Supabase accounts and Stripe billing · business and account overview</p></div><button type="button" disabled={busy || user?.authProvider !== 'supabase'} onClick={() => void load()} className="rounded-xl bg-[#E85D70] px-4 py-3 text-white disabled:opacity-50">{busy ? 'Loading…' : 'Refresh metrics'}</button></div>
+    {user?.authProvider !== 'supabase' && <p role="alert">Your current session is legacy/local and cannot read private owner reports. <Link to="/login?mode=cloud-owner&amp;return=%2Fdashboard" className="underline">Sign in to your cloud owner account</Link>.</p>}
+    {busy && <p role="status">Reading current account and billing data…</p>}
+    {error && <p role="alert" className="rounded-xl border border-red-400 p-4">{error}</p>}
+    {report && <><p role="status" className={stale ? 'text-amber-700' : 'text-sm'}>{stale ? 'Stale snapshot — refresh required. ' : 'Snapshot checked '} {new Date(report.checkedAt).toLocaleString()}. Refresh manually; snapshots become stale after five minutes.</p>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(labels).map(([key, label]) => <div key={key} className="rounded-2xl border border-[#F2EDEA] bg-white p-5 text-[#332C28]"><p className="text-sm">{label}</p><p className="mt-2 text-2xl font-bold">{String(report.metrics[key])}</p></div>)}{[['mrr', 'Current MRR'], ['collected', 'Collected invoice revenue · all time']].map(([key, label]) => <div key={key} className="rounded-2xl border border-[#F2EDEA] bg-white p-5 text-[#332C28]"><p>{label}</p><p className="mt-2 text-xl font-bold">{money(report.metrics[key] as Record<string, number>)}</p></div>)}</div>
+    <p className="text-sm">{String(report.metrics.qaAccountsExcluded)} QA accounts excluded · {String(report.metrics.unlinkedBillingAccounts)} paying billing accounts without a matching registered account. Account billing states can overlap when one account has multiple subscriptions.</p></>}
+    {report && <section className="rounded-2xl border bg-white p-5 text-[#332C28]"><h3 className="text-xl font-semibold">User directory and subscriptions</h3><label className="my-3 block">Subscription status <select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }} className="ml-2 border p-2">{['all', 'active', 'canceled', 'trialing', 'past_due', 'unpaid'].map(value => <option key={value}>{value}</option>)}</select></label><p className="mb-3 text-sm">Catalog billing status is separate from proof of payment. Last sign-in is authentication activity, not feature usage.</p><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{['Account', 'Registered', 'Last sign-in', 'Plan / status'].map(label => <th key={label} className="p-2">{label}</th>)}</tr></thead><tbody>{report.directory.users.map(account => <tr key={account.email} className="border-t"><td className="p-2">{account.name || 'No name provided'}<br/>{account.email}<br/>{account.verified ? 'Verified' : 'Unverified'}</td><td className="p-2">{new Date(account.registeredAt).toLocaleDateString()}</td><td className="p-2">{account.lastSignInAt ? new Date(account.lastSignInAt).toLocaleString() : 'Unavailable'}</td><td className="p-2">{account.subscriptions.length ? account.subscriptions.map((sub, index) => <div key={index}>{sub.plan} · {sub.status}{sub.canceling ? ' · scheduled cancellation' : ''}</div>) : 'No catalog subscription'}</td></tr>)}</tbody></table></div><div className="mt-4 flex items-center gap-3"><button disabled={busy || page <= 1} onClick={() => setPage(value => value - 1)}>Previous</button><span>Page {report.directory.page} · {report.directory.total} accounts</span><button disabled={busy || page * 50 >= report.directory.total} onClick={() => setPage(value => value + 1)}>Next</button></div></section>}
+    <FeatureEngagement />
+    <div className="rounded-2xl border p-5 text-sm leading-6"><h3 className="font-semibold">What the numbers mean</h3><p>Registered includes unverified signups; verified counts cloud profiles. Free means no qualifying billing history or current trial, and includes manual/owner access that does not prove payment. Paid accounts require an active catalog subscription with a positive paid invoice in its history; a credited latest invoice does not erase an earlier payment. Unique payers includes canceled customers; subscriptions count separately.</p><p>MRR normalizes current recurring prices and supported discounts to months (annual ÷ 12), excludes trials and past-due subscriptions, and keeps currencies separate. Collected revenue is positive paid invoice amount, all time, including tax, before refunds; it excludes out-of-band payments. Neither is profit or a bank settlement figure. QA/test records and genuinely free subscriptions are excluded from paid metrics. Legacy access trials are shown separately from Stripe trials.</p><Link to="/admin/funnel" className="underline">View first-time acquisition funnel</Link></div>
+  </section>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -148,7 +116,7 @@ export default function Dashboard() {
   const initials = user?.initials || 'G';
 
   const dashboardTabs = isOwner
-    ? [...tabs, { id: 'admin', label: 'Admin', icon: <Crown size={18} /> }]
+    ? [{ id: 'admin', label: 'Business overview', icon: <Crown size={18} /> }]
     : tabs;
 
   useEffect(() => {
@@ -177,6 +145,8 @@ export default function Dashboard() {
         return <OverviewTab onTabChange={setActiveTab} />;
     }
   };
+
+  if (isOwner) return <main className="min-h-screen bg-[#FFFCF9] px-4 py-8 text-[#332C28]"><div className="mx-auto max-w-7xl"><header className="mb-6 flex justify-between"><Link to="/">Fieldwork by Baker</Link><button onClick={logout}>Sign out</button></header><OwnerAdminTab key={(user?.authProvider || '') + (user?.email || '')} /></div></main>;
 
   return (
     <div className="min-h-[100dvh] bg-[#FFFCF9]">

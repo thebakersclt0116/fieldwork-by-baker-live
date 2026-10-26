@@ -38,6 +38,13 @@ test('first confirmed nonzero payment produces a stable deduplication ID and exa
   assert.equal(event.event_id, firstPaymentEvent(invoice, metadata, [], now).event_id);
   assert.equal(JSON.stringify(event).includes(invoice.id), false);
 });
+test('Dahlia paid invoice without the removed paid boolean remains eligible', () => {
+  const { paid: _legacy, ...modern } = invoice;
+  const event = firstPaymentEvent(modern, metadata, [modern], now);
+  assert.equal(event?.event_name, 'Purchase'); assert.equal(event?.custom_data.value, 16.99);
+  assert.equal(event?.event_id, firstPaymentEvent(invoice, metadata, [invoice], now)?.event_id);
+  for (const patch of [{status:'open'}, {amount_paid:0}, {paid:false}]) assert.equal(firstPaymentEvent({...modern,...patch}, metadata, [], now), null);
+});
 test('zero tests, test-mode payments, renewals, unpaid invoices and returning members never count', () => {
   for (const changes of [{ amount_paid: 0 }, { livemode: false }, { billing_reason: 'subscription_cycle' }, { status: 'open' }, { paid: false }, { currency: 'eur' }, { amount_paid: -1 }]) assert.equal(firstPaymentEvent({ ...invoice, ...changes }, metadata, [], now), null);
   assert.equal(firstPaymentEvent(invoice, metadata, [{ ...invoice, id: 'in_Previous' }], now), null);

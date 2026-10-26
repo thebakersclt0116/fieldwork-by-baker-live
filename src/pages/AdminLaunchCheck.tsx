@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { Brain, CheckCircle2, CreditCard, Loader2, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import { getStoredAccessToken, useAuth } from '@/hooks/useAuth';
@@ -17,22 +17,31 @@ export default function AdminLaunchCheck() {
   const [checks, setChecks] = useState<Check[]>([]);
   const [running, setRunning] = useState(false);
 
-  const runChecks = async () => {
+  const runChecks = useCallback(async () => {
     const token = getStoredAccessToken();
     if (!token) return;
     setRunning(true);
     const next: Check[] = [];
 
     try {
-      const response = await fetch('/api/health', { cache: 'no-store' });
+      const response = await fetch('/api/health', { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+      if (!response.ok) throw new Error('Production configuration checks could not be loaded.');
       const health = await response.json() as {
         aiGatewayAuthAvailable?: boolean;
         secureSessionSigningAvailable?: boolean;
         stripeCheckoutConfigured?: boolean;
         stripeMode?: string;
+        storageMode?: string;
+        cloudStorageConfigured?: boolean;
+        liveBillingEnabled?: boolean;
+        emailDeliveryConfigured?: boolean;
       };
-      next.push({ key: 'storage', label: 'Durable cloud records', state: 'fail', detail: 'The current entry and original-document stores are browser-local. Cloud accounts, document storage and verified backups must be connected before public paid launch.' });
-      next.push({ key: 'billing-lifecycle', label: 'Recurring subscription lifecycle', state: 'fail', detail: 'A live key alone is not sufficient. Durable customer identity, renewal/cancellation webhooks, and entitlement reconciliation must be connected before accepting live subscriptions.' });
+      const cloudConfigured = health.cloudStorageConfigured === true && health.storageMode === 'account-cloud';
+      next.push({ key: 'storage', label: 'Cloud records configuration', state: cloudConfigured ? 'pass' : 'fail', detail: cloudConfigured ? 'The health endpoint reports account cloud storage configuration. This check does not save or retrieve a record, restore a backup, or verify persistence on a second device.' : 'The health endpoint did not report configured account cloud storage. Verify the production cloud configuration before accepting paid members.' });
+      const liveBillingConfigured = health.liveBillingEnabled === true && health.stripeCheckoutConfigured === true && health.stripeMode === 'live';
+      next.push({ key: 'billing-lifecycle', label: 'Live billing configuration', state: liveBillingConfigured ? 'pass' : 'fail', detail: liveBillingConfigured ? 'The health endpoint reports live billing enabled. This check does not complete checkout or verify payment, renewal, cancellation, or webhook delivery.' : 'Live billing is not fully configured according to the health endpoint. Review the billing enablement and Stripe key mode.' });
+      next.push({ key: 'email', label: 'Email delivery configuration', state: health.emailDeliveryConfigured ? 'pass' : 'fail', detail: health.emailDeliveryConfigured ? 'The email provider and sending address are configured. Inbox delivery has not been tested by this check.' : 'The email provider or sending address is not configured.' });
+      next.push({ key: 'live-verification', label: 'Campaign launch verification', state: 'warn', detail: 'Configuration flags do not establish campaign readiness. Verify signup and email delivery, completed payment and membership access, renewal and cancellation, records on a second device, and traffic capacity before scaling advertising.' });
       next.push({
         key: 'gateway',
         label: 'AI Gateway',
@@ -89,11 +98,7 @@ export default function AdminLaunchCheck() {
 
     setChecks(next);
     setRunning(false);
-  };
-
-  useEffect(() => {
-    if (isOwner) void runChecks();
-  }, [isOwner]);
+  }, []);
 
   if (!isOwner) return <Navigate to="/dashboard" replace />;
 
@@ -106,14 +111,14 @@ export default function AdminLaunchCheck() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-2 text-sm font-bold text-[#E85D70]"><ShieldCheck size={17} /> Owner launch diagnostics</div>
-            <h1 className="mt-2 font-serif text-4xl font-semibold text-[#332C28] dark:text-white">Is the production core actually live?</h1>
-            <p className="mt-2 max-w-2xl text-[#6B5D54] dark:text-[#CFC4BE]">This page performs a real authenticated Baker Brain request and checks production payment/session configuration. It does not create a charge.</p>
+            <h1 className="mt-2 font-serif text-4xl font-semibold text-[#332C28] dark:text-white">Production configuration and diagnostics</h1>
+            <p className="mt-2 max-w-2xl text-[#6B5D54] dark:text-[#CFC4BE]">This page checks reported production configuration and sends one authenticated Baker Brain request. Payment completion, email delivery, cloud persistence, and campaign traffic capacity need separate verification.</p>
           </div>
-          <button onClick={() => void runChecks()} disabled={running} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-[#E85D70]">{running ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} Run again</button>
+          <button onClick={() => void runChecks()} disabled={running} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-[#E85D70]">{running ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} {checks.length ? 'Run again' : 'Run checks'}</button>
         </div>
 
         <div className="mt-7 rounded-[28px] border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]">
-          {running && checks.length === 0 ? <div className="flex min-h-40 items-center justify-center gap-3 text-sm text-[#A8998E]"><Loader2 size={18} className="animate-spin text-[#E85D70]" /> Running production checks…</div> : (
+          {running && checks.length === 0 ? <div className="flex min-h-40 items-center justify-center gap-3 text-sm text-[#A8998E]"><Loader2 size={18} className="animate-spin text-[#E85D70]" /> Running production checks…</div> : checks.length === 0 ? <p className="text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Choose Run checks to inspect current configuration and request a live AI response.</p> : (
             <div className="space-y-3">
               {checks.map((check) => <CheckRow key={check.key} check={check} />)}
             </div>
@@ -122,13 +127,13 @@ export default function AdminLaunchCheck() {
 
         {checks.length > 0 && (
           <div className={'mt-5 rounded-[24px] border p-5 ' + (failures ? 'border-[#F0D5DA] bg-[#FFF7F8]' : warnings ? 'border-[#F1D8B9] bg-[#FFF9F2]' : 'border-[#CFE7D9] bg-[#F4FBF7]')}>
-            <div className="font-semibold text-[#332C28]">{failures ? 'Launch blockers detected' : warnings ? 'Core works, but configuration warning remains' : 'Core launch checks passed'}</div>
-            <p className="mt-1 text-sm text-[#6B5D54]">{failures ? failures + ' required check(s) failed.' : warnings ? warnings + ' configuration warning(s) remain.' : 'AI, signed sessions, and live Stripe configuration all reported green.'}</p>
+            <div className="font-semibold text-[#332C28]">{failures ? 'Diagnostic checks need attention' : warnings ? 'Configuration checks passed; launch verification remains' : 'Diagnostic checks passed'}</div>
+            <p className="mt-1 text-sm text-[#6B5D54]">{failures ? failures + ' configuration or response check(s) failed.' : warnings ? warnings + ' verification item(s) remain. Review the scope of each check before increasing advertising.' : 'Reported configuration and the AI response passed their checks. This result does not certify campaign readiness.'}</p>
           </div>
         )}
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <Link to="/baker-brain" className="flex items-center gap-3 rounded-2xl border border-[#F2EDEA] bg-white p-4 text-sm font-semibold text-[#5F5149] dark:border-white/10 dark:bg-[#211D1A] dark:text-white"><Brain size={18} className="text-[#E85D70]" /> Open Baker Brain as a user</Link>
+          <Link to="/baker-brain" className="flex items-center gap-3 rounded-2xl border border-[#F2EDEA] bg-white p-4 text-sm font-semibold text-[#5F5149] dark:border-white/10 dark:bg-[#211D1A] dark:text-white"><Brain size={18} className="text-[#E85D70]" /> Preview archived Baker Brain</Link>
           <Link to="/upgrade" className="flex items-center gap-3 rounded-2xl border border-[#F2EDEA] bg-white p-4 text-sm font-semibold text-[#5F5149] dark:border-white/10 dark:bg-[#211D1A] dark:text-white"><CreditCard size={18} className="text-[#D4A574]" /> Inspect billing screen</Link>
         </div>
       </div>

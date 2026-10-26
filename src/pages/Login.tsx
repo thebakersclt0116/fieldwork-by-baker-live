@@ -16,6 +16,7 @@ export default function Login() {
   const { login } = useAuth();
   const params = new URLSearchParams(location.search);
   const returnTo = safeReturnPath(params.get('return'));
+  const managedOnly = params.get('mode') === 'cloud-owner';
   const sessionRefresh = params.get('reason') === 'session-refresh';
   const fromVerification = params.get('verified') === '1';
   useEffect(()=>{
@@ -40,10 +41,10 @@ export default function Login() {
     }
 
     setIsLoggingIn(true);
-    const success = await login(email, password);
+    const success = await login(email, password, { managedOnly });
     setIsLoggingIn(false);
     if (!success) {
-      setError('We could not sign you in with those details. Check your email and password, then try again.');
+      setError(managedOnly ? 'Cloud sign-in failed. Check your managed account credentials and email verification. This page does not fall back to legacy access; legacy sign-in cannot authorize owner reports.' : 'We could not sign you in with those details. Check your email and password, then try again.');
       return;
     }
 
@@ -72,7 +73,7 @@ export default function Login() {
               Your BCBA journey, connected
             </h1>
             <p className="text-[#6B5D54] leading-relaxed max-w-md">
-              Sign in to track fieldwork, study with Baker Brain, prepare in Exam Lab, and collaborate with your supervisor.
+              Sign in to track your hours, prepare monthly verification forms, study in Exam Prep, and share suggestions.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-[#7B6B62] mt-10">
@@ -87,8 +88,8 @@ export default function Login() {
               <Crown size={17} />
               <span className="text-xs uppercase tracking-[0.18em] font-semibold">Secure account access</span>
             </div>
-            <h2 className="font-serif text-3xl font-semibold text-[#332C28] mb-2">Welcome back</h2>
-            <p className="text-sm text-[#A8998E] mb-6">Sign in to your Fieldwork by Baker account.</p>
+            <h2 className="font-serif text-3xl font-semibold text-[#332C28] mb-2">{managedOnly ? 'Cloud owner sign-in' : 'Welcome back'}</h2>
+            <p className="text-sm text-[#A8998E] mb-6">{managedOnly ? 'Use your verified cloud account. Owner reports require its server-managed owner role; this sign-in cannot grant that role.' : 'Sign in to your Fieldwork by Baker account.'}</p>
 
             {fromVerification && <div role="status" className="mb-4 rounded-xl border border-[#CFE7D9] p-3 text-sm">Continue after email verification. Sign in below to choose your membership. No payment has been taken.</div>}
             {sessionRefresh && (

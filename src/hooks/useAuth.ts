@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { accountFunnelInput } from '@/lib/acquisitionFunnel';
-import { managedAccountsEnabled, MANAGED_SESSION_KEY, accountRequest, saveManagedTokens, renewManagedSession } from '@/lib/managedSession';
+import { managedAccountsEnabled, MANAGED_SESSION_KEY, accountRequest, saveManagedTokens, renewManagedSession, managedDisplayName } from '@/lib/managedSession';
 
 export type SubscriptionTier = 'individual' | 'professional' | 'enterprise' | 'none';
 export type BillingCycle = 'monthly' | 'annual';
@@ -107,15 +107,17 @@ export function useAuth() {
     setIsLoading(false);
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string, options: { managedOnly?: boolean } = {}): Promise<boolean> => {
     try {
       const managedLogin=async()=>{
         const {response,payload}=await accountRequest({action:'login',email,password,...accountFunnelInput()});
-        if (!response.ok || !payload.token || !payload.refreshToken || !payload.user?.name || !payload.user.email) return false;
-        const nextUser: AuthUser={...payload.user,authProvider:'supabase',initials:getInitials(payload.user.name)};
+        if (!response.ok || !payload.token || !payload.refreshToken || !payload.user?.email) return false;
+        const name = managedDisplayName(payload.user);
+        const nextUser: AuthUser={...payload.user,name,authProvider:'supabase',initials:getInitials(name)};
         saveManagedTokens(payload);storeSession(nextUser,payload.token);setUser(nextUser);return true;
       };
       if (await managedLogin()) return true;
+      if (options.managedOnly) return false;
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

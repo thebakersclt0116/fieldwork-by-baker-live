@@ -1,20 +1,23 @@
 import ProfilePhotoSettings from '@/components/ProfilePhotoSettings';
-import CommunitySettings from '@/components/CommunitySettings';
-import {Link} from 'react-router';
+import {Link, useLocation} from 'react-router';
 import {useAuth} from '@/hooks/useAuth';
 import {currentManagedToken} from '@/lib/managedSession';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getTimeFormat, setTimeFormat, type TimeFormat } from '@/lib/timeDisplay';
 
 export default function AccountSettings() {
   const {user}=useAuth();
+  const location = useLocation();
+  useEffect(() => { if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'start' }); }, [location.hash]);
   const [billingMessage,setBillingMessage]=useState('');
   const [billingBusy,setBillingBusy]=useState(false);
   const openBilling=async()=>{setBillingBusy(true);setBillingMessage('');try{const token=await currentManagedToken();const response=await fetch('/api/billing-portal',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(25000)});const result=await response.json();if(!response.ok||!result.url)throw new Error(result.error||'Your billing page could not open.');window.location.assign(result.url);}catch(error){setBillingMessage(error instanceof Error?error.message:'Your billing page could not open.');}finally{setBillingBusy(false);}};
   const [format, setFormat] = useState<TimeFormat>(getTimeFormat);
   const [message, setMessage] = useState('');
   return <div className="min-h-screen bg-[#FFFCF9] px-4 py-8 text-[#332C28] dark:bg-[#171412] dark:text-white"><div className="mx-auto max-w-2xl">
-    <h1 className="font-serif text-4xl">Account settings</h1>
+    <h1 className="font-serif text-4xl">My Settings</h1>
+    <p className="mt-4 text-sm">Optional usage measurement starts off and is separate from ad measurement. You can change it in the Usage privacy panel.</p>
+    <section id="account" className="mt-6 scroll-mt-36 rounded-2xl border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><h2 className="text-lg font-semibold">My Account</h2><dl className="mt-4 space-y-3 text-sm"><div><dt className="text-[#7B6B62] dark:text-[#CFC4BE]">Name</dt><dd className="mt-1 font-semibold">{user?.name}</dd></div><div><dt className="text-[#7B6B62] dark:text-[#CFC4BE]">Email</dt><dd className="mt-1 break-all font-semibold">{user?.email}</dd></div></dl></section>
     <section className="mt-6 rounded-2xl border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]">
       <fieldset><legend className="text-lg font-semibold">Time format</legend><p className="mt-2 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Choose how times appear when reviewing and logging fieldwork.</p>
         <label className="mt-5 flex items-center gap-3"><input type="radio" name="time-format" value="12" checked={format === '12'} onChange={() => setFormat('12')}/>12-hour · 2:30 PM (default)</label>
@@ -24,8 +27,8 @@ export default function AccountSettings() {
       {message && <p role="status" className="mt-3 text-sm">{message}</p>}
       <p className="mt-4 text-xs text-[#6B5D54] dark:text-[#CFC4BE]">This preference is saved for your account in this browser. Original source records and exported source data retain their exact values.</p>
     </section>
-    {user?.authProvider==='supabase'&&<><ProfilePhotoSettings/><CommunitySettings/></>}
-    {user?.authProvider==='supabase'&&<section className="mt-6 rounded-2xl border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><h2 className="text-lg font-semibold">Subscription & billing</h2><p className="mt-2 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Manage your plan, payment method, invoices, and cancellation through Stripe.</p><div className="mt-4 flex flex-wrap gap-3"><button disabled={billingBusy} onClick={openBilling} className="rounded-xl bg-[#332C28] px-5 py-3 font-semibold text-white disabled:opacity-40">{billingBusy?'Opening billing…':'Manage subscription'}</button><Link to="/upgrade" className="rounded-xl border px-5 py-3 font-semibold">View plans</Link></div>{billingMessage&&<p role="status" className="mt-3 text-sm">{billingMessage}</p>}</section>}
+    {user?.authProvider==='supabase'&&<ProfilePhotoSettings/>}
+    {user?.authProvider==='supabase'&&<section id="membership" className="mt-6 scroll-mt-36 rounded-2xl border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]"><h2 className="text-lg font-semibold">Subscription & billing</h2><p className="mt-2 text-sm text-[#6B5D54] dark:text-[#CFC4BE]">Manage your plan, payment method, invoices, and cancellation through Stripe.</p><div className="mt-4 flex flex-wrap gap-3"><button data-usage-feature="settings" data-usage-action="billing_portal_request" disabled={billingBusy} onClick={openBilling} className="rounded-xl bg-[#332C28] px-5 py-3 font-semibold text-white disabled:opacity-40">{billingBusy?'Opening billing…':'Manage subscription'}</button><Link to="/upgrade" className="rounded-xl border px-5 py-3 font-semibold">View plans</Link></div>{billingMessage&&<p role="status" className="mt-3 text-sm">{billingMessage}</p>}</section>}
   </div></div>;
 }
 

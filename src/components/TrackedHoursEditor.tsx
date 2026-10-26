@@ -1,6 +1,6 @@
 import TimeInput from '@/components/TimeInput';
 import { formatTime } from '@/lib/timeDisplay';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import { AlertTriangle, CheckCircle2, Edit3, Mail, Pencil, Save, X } from 'lucide-react';
 import type { ActivityCategory, ActivityType, HourEntry, ObservationMode, SupervisionFormat, WorkPresence } from '@/types';
@@ -77,9 +77,9 @@ function safeClone(entry: HourEntry): HourEntry {
   return JSON.parse(JSON.stringify(entry)) as HourEntry;
 }
 
-export default function TrackedHoursEditor() {
+export default function TrackedHoursEditor({ inline = false }: { inline?: boolean } = {}) {
   const location = useLocation();
-  const { user, isAuthenticated, isOwner } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const email = getCurrentUserEmail() || user?.email || '';
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<HourEntry[]>([]);
@@ -91,17 +91,9 @@ export default function TrackedHoursEditor() {
   const [message, setMessage] = useState('');
   const [manualReviewUrl, setManualReviewUrl] = useState('');
 
-  const visible = location.pathname === '/dashboard' && isAuthenticated && !isOwner && Boolean(email);
+  const visible = location.pathname === '/dashboard' && isAuthenticated && Boolean(email);
 
   const refresh = () => setEntries(loadEntries(email));
-
-  useEffect(() => {
-    if (open && visible) refresh();
-  }, [open, visible, email]);
-
-  useEffect(() => {
-    if (!visible) setOpen(false);
-  }, [visible]);
 
   const approvalSensitive = Boolean(original && (original.status === 'VERIFIED' || original.requiresReapproval));
   const computedDuration = useMemo(() => {
@@ -173,6 +165,10 @@ export default function TrackedHoursEditor() {
     }
     if (!normalized.supervisorName) {
       setMessage('Responsible supervisor is required.');
+      return;
+    }
+    if (normalized.timerSession && !normalized.notes) {
+      setMessage('Include an activity description for these timer hours.');
       return;
     }
     if (!hasSubstantiveChanges(original, normalized)) {
@@ -309,7 +305,7 @@ export default function TrackedHoursEditor() {
       <button
         type="button"
         onClick={() => { setOpen(true); refresh(); }}
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#332C28] px-4 py-3 text-sm font-semibold text-white shadow-xl hover:-translate-y-0.5 transition-transform"
+        className={inline ? 'inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] px-4 py-2.5 text-sm font-semibold text-[#6B5D54] dark:border-white/15 dark:text-white' : 'fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#332C28] px-4 py-3 text-sm font-semibold text-white shadow-xl hover:-translate-y-0.5 transition-transform'}
       >
         <Pencil size={16} /> Edit tracked hours
       </button>

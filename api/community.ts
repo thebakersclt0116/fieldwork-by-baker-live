@@ -5,6 +5,8 @@ export default async function handler(req:any,res:any){
  res.setHeader('Cache-Control','private, no-store');
  try{
   const token=getBearerToken(req);if(!token)throw new CloudError('AUTH_REQUIRED',401);const user=await verifyCloudUser(token);
+  const profiles:any=await cloudRequest('/rest/v1/profiles?select=role&id=eq.'+user.id,token);
+  if(!Array.isArray(profiles)||profiles[0]?.role!=='owner')throw new CloudError('PRODUCT_ARCHIVED',403);
   if(req.method==='GET'){
    const preferences:any=await cloudRequest(`/rest/v1/community_profiles?owner_id=eq.${user.id}&select=country,show_country,share_presence`,token);
    const members:any=await cloudRequest('/rest/v1/rpc/community_members',token,{method:'POST',body:'{}'});

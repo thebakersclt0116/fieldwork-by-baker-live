@@ -41,7 +41,7 @@ export function contextFromSubscription(metadata: any): FunnelContext | null {
   return normalizeFunnelContext({ version: metadata?.baker_funnel_version, flowId: metadata?.baker_funnel_flow, variant: metadata?.baker_funnel_variant, campaign: metadata?.baker_funnel_campaign, qa: metadata?.baker_funnel_qa === 'true' });
 }
 export function eligibleFirstMembership(invoice: any, subscription: any, priorInvoices: any[]): boolean {
-  if (invoice?.livemode !== true || subscription?.livemode !== true || invoice.status !== 'paid' || invoice.paid !== true || invoice.billing_reason !== 'subscription_create' || !Number.isSafeInteger(invoice.amount_paid) || invoice.amount_paid <= 0 || invoice.currency !== 'usd') return false;
+  if (invoice?.livemode !== true || subscription?.livemode !== true || invoice.status !== 'paid' || invoice.paid === false || invoice.billing_reason !== 'subscription_create' || !Number.isSafeInteger(invoice.amount_paid) || invoice.amount_paid <= 0 || invoice.currency !== 'usd') return false;
   if (invoice.customer !== subscription.customer || subscription.metadata?.baker_mode !== 'live') return false;
   const invoiceSub = invoice.subscription || invoice.parent?.subscription_details?.subscription;
   if ((typeof invoiceSub === 'string' ? invoiceSub : invoiceSub?.id) !== subscription.id) return false;

@@ -150,6 +150,7 @@ export default async function handler(req: any, res: any) {
   const mode = String(req.body?.mode || 'fieldwork-entry');
   if (mode === 'bcba-brain') {
     if (session.role === 'supervisor') return send(res, 403, { error: 'Use the signed supervisor co-pilot for this invitation.', code: 'SUPERVISOR_SCOPE_REQUIRED' });
+    if (session.role !== 'owner') return send(res, 403, { error: 'Baker Brain is archived for a future release.', code: 'PRODUCT_ARCHIVED' });
     const message = String(req.body?.message || '').trim();
     if (message.length < 2) return send(res, 400, { error: 'Ask Baker Brain a BCBA question.' });
     if (message.length > 12000) return send(res, 400, { error: 'That message is too long for one Baker Brain turn.' });
