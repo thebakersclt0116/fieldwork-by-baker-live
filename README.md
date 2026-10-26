@@ -317,9 +317,11 @@ cp .env.example .env
 
 ---
 
-## Owner access
+## Administrator Access
 
-Sign in with the managed cloud owner account. Owner reports require a verified Supabase identity and server-managed `profiles.role = 'owner'`. No shared password is documented here.
+Administrator access must be provisioned through the managed account system. Never document passwords or other sign-in secrets in this repository. Legacy beta credentials must be retired and any exposed credentials rotated before public launch.
+
+---
 
 ## Demo Mode
 

@@ -10,7 +10,7 @@ export function monthLabel(month: string): string {
 }
 
 export function summarizeMonth(entries: HourEntry[], month: string) {
-  const sessions = entries.filter(entry => entry.date.slice(0, 7) === month);
+  const sessions = entries.filter(entry => entry.date.slice(0, 7) === month && entry.status !== 'DRAFT' && entry.timerSession?.detailsComplete !== false && (!entry.timerSession || Boolean(entry.notes?.trim())));
   const totalHours = sessions.reduce((sum, entry) => sum + entry.duration, 0);
   const supervisedHours = sessions.reduce((sum, entry) => sum + (entry.supervisionMinutes || 0) / 60, 0);
   const individualHours = sessions.reduce((sum, entry) => sum + (entry.individualSupervisionMinutes ?? (entry.supervisionFormat === 'INDIVIDUAL' ? entry.supervisionMinutes || 0 : 0)) / 60, 0);

@@ -81,6 +81,12 @@ export interface HourEntry {
   lastApprovedAt?: string;
   lastApprovalRevision?: number;
   revisionHistory?: HourEntryRevision[];
+  timerSession?: {
+    id: string;
+    startedAt: string;
+    stoppedAt: string;
+    detailsComplete: boolean;
+  };
 }
 
 export interface User {

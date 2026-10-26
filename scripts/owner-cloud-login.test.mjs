@@ -24,9 +24,9 @@ test('cloud-only owner flow never falls back when managed credentials fail',asyn
  setup();const paths=[];globalThis.fetch=async(url)=>{paths.push(url);return Response.json({code:'AUTH_REQUIRED'},{status:401});};
  assert.equal(await useAuth().login('owner@example.invalid','synthetic-password',{managedOnly:true}),false);assert.deepEqual(paths,['/api/account']);
 });
-test('normal legacy fallback remains available and cannot manufacture a managed session',async()=>{
- const values=setup();const paths=[];globalThis.fetch=async(url)=>{paths.push(url);return url==='/api/account'?Response.json({},{status:401}):Response.json({token:'synthetic-legacy',user:{name:'Synthetic Owner',email:'owner@example.invalid',role:'owner'}});};
- assert.equal(await useAuth().login('owner@example.invalid','synthetic-password'),true);assert.deepEqual(paths,['/api/account','/api/auth']);assert.equal(JSON.parse(values.get('authUser')).authProvider,undefined);assert.equal(values.has('bakerManagedSession'),false);
+test('ordinary legacy member fallback remains available and cannot manufacture a managed session',async()=>{
+ const values=setup();const paths=[];globalThis.fetch=async(url)=>{paths.push(url);return url==='/api/account'?Response.json({},{status:401}):Response.json({token:'synthetic-legacy',user:{name:'Synthetic Member',email:'member@example.invalid',role:'professional'}});};
+ assert.equal(await useAuth().login('member@example.invalid','synthetic-password'),true);assert.deepEqual(paths,['/api/account','/api/auth']);const saved=JSON.parse(values.get('authUser'));assert.equal(saved.authProvider,undefined);assert.equal(saved.role,'professional');assert.equal(values.has('bakerManagedSession'),false);
 });
 test('managed sign-in never elevates a nonowner based on email or owner-flow selection',async()=>{
  const values=setup();globalThis.fetch=async()=>Response.json({token:'synthetic-access',refreshToken:'synthetic-refresh',expiresAt:9999999999,user:{name:'',email:'justin@bakerholdings.co',role:'free'}});

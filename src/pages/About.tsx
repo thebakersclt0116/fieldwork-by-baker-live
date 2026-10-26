@@ -19,8 +19,8 @@ const principles = [
   },
   {
     icon: Sparkles,
-    title: 'One connected BCBA workspace',
-    description: 'Fieldwork, exam preparation, Baker Brain, the BCBA Roadmap, resources, and community tools are designed to share context instead of living in disconnected apps.',
+    title: 'A simpler fieldwork workspace',
+    description: 'My Hours, Monthly Verification Forms, Exam Prep, and Suggestions keep the everyday work easy to find.',
   },
 ];
 
@@ -37,7 +37,7 @@ export default function About() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/signup" className="inline-flex items-center gap-2 rounded-2xl bg-[#E85D70] px-6 py-3.5 text-sm font-bold text-white">Start my BCBA journey <ArrowRight size={16} /></Link>
-              <Link to="/roadmap" className="rounded-2xl border border-[#E2DAD5] bg-white px-6 py-3.5 text-sm font-bold text-[#5F5149] dark:border-white/10 dark:bg-white/5 dark:text-[#F3ECE7]">Explore the roadmap</Link>
+              <Link to="/demo" className="rounded-2xl border border-[#E2DAD5] bg-white px-6 py-3.5 text-sm font-bold text-[#5F5149] dark:border-white/10 dark:bg-white/5 dark:text-[#F3ECE7]">Explore the demo</Link>
             </div>
           </div>
         </div>

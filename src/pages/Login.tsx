@@ -73,7 +73,7 @@ export default function Login() {
               Your BCBA journey, connected
             </h1>
             <p className="text-[#6B5D54] leading-relaxed max-w-md">
-              Sign in to track fieldwork, study with Baker Brain, prepare in Exam Lab, and collaborate with your supervisor.
+              Sign in to track your hours, prepare monthly verification forms, study in Exam Prep, and share suggestions.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-[#7B6B62] mt-10">

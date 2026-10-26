@@ -244,7 +244,8 @@ function projectedCompletionDate(entries: HourEntry[], remainingEquivalentHours:
   return date.toISOString().slice(0, 10);
 }
 
-export function evaluateCompliance(entries: HourEntry[]): ComplianceSummary {
+export function evaluateCompliance(allEntries: HourEntry[]): ComplianceSummary {
+  const entries = allEntries.filter(entry => entry.status !== 'DRAFT' && entry.timerSession?.detailsComplete !== false && (!entry.timerSession || Boolean(entry.notes?.trim())));
   const actualHours = entries.reduce((sum, entry) => sum + entry.duration, 0);
   const supervisedHours = entries
     .filter((entry) => entry.fieldworkType === 'SUPERVISED')
