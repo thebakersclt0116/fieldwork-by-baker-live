@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { withAcquisitionQuery } from '@/lib/acquisitionFunnel';
 import { ArrowRight, Bug, Building2, Lightbulb, Mail, MessageSquare } from 'lucide-react';
 
 const recipients = {
@@ -14,6 +15,8 @@ const recipients = {
 type Topic = keyof typeof recipients;
 
 export default function Contact() {
+  const { search } = useLocation();
+  const publicLink = (path: string) => withAcquisitionQuery(path, search);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [topic, setTopic] = useState<Topic>('General Question');
@@ -73,7 +76,7 @@ export default function Contact() {
         </div>
 
         <div className="mt-10 text-center">
-          <Link to="/faq" className="text-sm font-semibold text-[#E85D70] hover:underline">Check the FAQ first →</Link>
+          <Link to={publicLink('/faq')} className="text-sm font-semibold text-[#E85D70] hover:underline">Check the FAQ first →</Link>
         </div>
       </div>
     </div>

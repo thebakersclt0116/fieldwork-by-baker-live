@@ -4,15 +4,13 @@ import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } fro
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import {managedAccountsEnabled} from '@/lib/managedSession';
-
-function safeReturnPath(value: string | null): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/dashboard';
-  return value;
-}
+import { accountEntryPath, safeReturnPath } from '@/lib/returnPath';
+import { withAcquisitionQuery } from '@/lib/acquisitionFunnel';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const publicLink = (path: string) => withAcquisitionQuery(path, location.search);
   const { login } = useAuth();
   const params = new URLSearchParams(location.search);
   const returnTo = safeReturnPath(params.get('return'));
@@ -62,7 +60,7 @@ export default function Login() {
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 bg-white rounded-3xl border border-[#F2EDEA] overflow-hidden shadow-[0_24px_80px_rgba(51,44,40,0.08)]">
         <div className="p-8 lg:p-12 bg-gradient-to-br from-[#FFF5F7] via-[#FFFCF9] to-[#FBF3EB] hidden lg:flex flex-col justify-between min-h-[420px]">
           <div>
-            <Link to="/" className="inline-flex items-baseline gap-1 mb-12">
+            <Link to={publicLink('/')} className="inline-flex items-baseline gap-1 mb-12">
               <span className="font-serif text-2xl font-bold text-[#332C28]">Fieldwork</span>
               <span className="text-sm font-medium text-[#E85D70]">by Baker</span>
             </Link>
@@ -160,7 +158,7 @@ export default function Login() {
               {managedAccountsEnabled?'Invited supervisors sign in with their verified email, then return to their private review link.':'Supervisors use the private invite link issued by the supervisee or platform owner.'}
             </p>
             <p className="mt-3 text-sm text-center text-[#7B6B62]">
-              New to Baker? <Link to="/signup" className="font-semibold text-[#E85D70] hover:underline">Create your account</Link>
+              New to Baker? <Link to={publicLink(accountEntryPath('/signup', safeReturnPath(params.get('return'), '/upgrade')))} className="font-semibold text-[#E85D70] hover:underline">Create your account</Link>
             </p>
           </div>
         </div>

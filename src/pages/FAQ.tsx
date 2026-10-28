@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, Search, ShieldCheck } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { withAcquisitionQuery } from '@/lib/acquisitionFunnel';
 
 const faqs = [
   { category: 'Getting started', q: 'What is Fieldwork by Baker?', a: 'Fieldwork by Baker is a focused workspace for My Hours, Monthly Verification Forms, Exam Prep, and Suggestions, with supervisor review available on Professional. It is not affiliated with or endorsed by the Behavior Analyst Certification Board.' },
@@ -20,6 +21,8 @@ const faqs = [
 ];
 
 export default function FAQ() {
+  const { search } = useLocation();
+  const publicLink = (path: string) => withAcquisitionQuery(path, search);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<number | null>(0);
   const filtered = useMemo(() => {
@@ -59,7 +62,7 @@ export default function FAQ() {
         <div className="mt-10 rounded-[28px] bg-[#332C28] p-7 text-center text-white dark:bg-[#211D1A] dark:ring-1 dark:ring-white/10">
           <h2 className="font-serif text-2xl font-semibold">Still need help?</h2>
           <p className="mt-2 text-sm text-white/60">Send a real support, bug, feedback, or sales request from the Contact page.</p>
-          <Link to="/contact" className="mt-5 inline-block rounded-xl bg-[#E85D70] px-5 py-3 text-sm font-bold text-white">Contact Fieldwork by Baker</Link>
+          <Link to={publicLink('/contact')} className="mt-5 inline-block rounded-xl bg-[#E85D70] px-5 py-3 text-sm font-bold text-white">Contact Fieldwork by Baker</Link>
         </div>
       </div>
     </div>

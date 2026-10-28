@@ -3,16 +3,42 @@ export const ACQUISITION_CAMPAIGN = '120251729153710531';
 export type AcquisitionContext = { version: 'funnel-v1'; flowId: string; campaign: string; variant: 'home' | 'signup' | 'direct'; qa: boolean };
 const CONTEXT_KEY = 'baker-acquisition-journey-v1';
 const ASSIGNMENT_KEY = 'baker-signup-destination-test-v1';
-const validId = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9-]{36}$/i.test(value);
+const FORWARDED_QUERY_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'fbclid', 'bf_campaign', 'bf_experiment', 'bf_variant', 'bf_qa'] as const;
+const validId = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
 function privacySignal() { return (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true; }
-export function acquisitionContext(): AcquisitionContext {
+// Keep inbound acquisition fields in local links. This does not read/write storage or send measurement.
+export function withAcquisitionQuery(destination: string, sourceSearch: string): string {
+  if (!destination.startsWith('/') || destination.startsWith('//') || destination.includes('\\')) return destination;
+  const target = new URL(destination, 'https://fieldwork.invalid');
+  if (target.origin !== 'https://fieldwork.invalid' || target.pathname.startsWith('//')) return destination;
+  const source = new URLSearchParams(sourceSearch);
+  for (const key of FORWARDED_QUERY_KEYS) {
+    const value = source.get(key);
+    if (value && value.length <= 1024 && !target.searchParams.has(key)) target.searchParams.set(key, value);
+  }
+  return target.pathname + target.search + target.hash;
+}
+export function acquisitionContext(allowAttribution = true): AcquisitionContext {
   const query = new URLSearchParams(window.location.search);
+  const variant = query.get('bf_variant');
+  const attributed = allowAttribution && query.get('bf_campaign') === ACQUISITION_CAMPAIGN && query.get('bf_experiment') === 'signup-v1' && (variant === 'home' || variant === 'signup');
+  let qa = query.get('bf_qa') === '1';
   try {
     const stored = JSON.parse(sessionStorage.getItem(CONTEXT_KEY) || 'null');
-    if (stored?.version === 'funnel-v1' && validId(stored.flowId) && ['home', 'signup', 'direct'].includes(stored.variant)) return stored;
+    qa = qa || stored?.qa === true;
+    const knownJourney = stored?.campaign === 'direct' && stored.variant === 'direct' || stored?.campaign === ACQUISITION_CAMPAIGN && ['home', 'signup'].includes(stored.variant);
+    if (stored?.version === 'funnel-v1' && validId(stored.flowId) && typeof stored.qa === 'boolean' && knownJourney) {
+      // An explicitly tagged ad can replace an earlier organic journey. Internal navigation
+      // reuses an attributed journey, retaining its arm and event IDs instead of recounting it.
+      if (!attributed || stored.campaign === ACQUISITION_CAMPAIGN) {
+        if (qa === stored.qa) return stored;
+        const context = { ...stored, qa } as AcquisitionContext;
+        sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(context));
+        return context;
+      }
+    }
   } catch { /* Functional routing also works without browser storage. */ }
-  const attributed = query.get('bf_campaign') === ACQUISITION_CAMPAIGN && query.get('bf_experiment') === 'signup-v1';
-  const context: AcquisitionContext = { version: 'funnel-v1', flowId: crypto.randomUUID(), campaign: attributed ? ACQUISITION_CAMPAIGN : 'direct', variant: attributed && query.get('bf_variant') === 'home' ? 'home' : attributed && query.get('bf_variant') === 'signup' ? 'signup' : 'direct', qa: query.get('bf_qa') === '1' };
+  const context: AcquisitionContext = { version: 'funnel-v1', flowId: crypto.randomUUID(), campaign: attributed ? ACQUISITION_CAMPAIGN : 'direct', variant: attributed ? variant : 'direct', qa };
   try { sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(context)); } catch { /* Never block navigation or signup. */ }
   return context;
 }
@@ -22,9 +48,8 @@ export function acquisitionDestination(): string {
     const previous = sessionStorage.getItem(ASSIGNMENT_KEY);
     variant = previous === 'home' || previous === 'signup' ? previous : crypto.getRandomValues(new Uint8Array(1))[0] < 128 ? 'home' : 'signup';
     sessionStorage.setItem(ASSIGNMENT_KEY, variant);
-    // Start an experiment journey without copying workspace records or auth credentials.
-    const old = JSON.parse(sessionStorage.getItem(CONTEXT_KEY) || 'null');
-    if (old?.campaign !== ACQUISITION_CAMPAIGN) sessionStorage.removeItem(CONTEXT_KEY);
+    // Acquisition context is resolved after consent or account creation. The tagged
+    // destination can replace an organic journey without clearing its QA protection.
   } catch { /* The signup experience is the safe fallback. */ }
   const query = new URLSearchParams();
   const source = new URLSearchParams(window.location.search);
@@ -36,8 +61,8 @@ export function acquisitionDestination(): string {
   return (variant === 'home' ? '/' : '/signup') + '?' + query;
 }
 export function accountFunnelInput() {
-  const context = acquisitionContext();
   const allowed = !privacySignal() && readAdChoice()?.allowed === true;
+  const context = acquisitionContext(allowed);
   // An optional advertising choice is not a condition of account creation.
   return { funnel: allowed ? context : { ...context, campaign: 'direct', variant: 'direct' as const }, adMeasurement: allowed ? checkoutAdMeasurement() : undefined };
 }

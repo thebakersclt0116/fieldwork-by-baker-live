@@ -1,4 +1,5 @@
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { withAcquisitionQuery } from '@/lib/acquisitionFunnel';
 import { ArrowRight, Check, Clock, FileCheck2, FlaskConical, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -25,7 +26,9 @@ const tiers = [
 
 export default function Pricing() {
   const { isAuthenticated } = useAuth();
-  const trialHref = isAuthenticated ? '/upgrade' : '/signup?return=/dashboard';
+  const { search } = useLocation();
+  const publicLink = (path: string) => withAcquisitionQuery(path, search);
+  const membershipHref = publicLink(isAuthenticated ? '/upgrade' : '/signup');
   return (
     <div className="min-h-[100dvh] bg-[#FFFCF9] dark:bg-[#171412]">
       <section className="px-4 pb-12 pt-16 text-center">
@@ -33,7 +36,7 @@ export default function Pricing() {
           <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#FFF5F7] px-3 py-1.5 text-xs font-semibold text-[#E85D70] dark:bg-[#E85D70]/10"><Sparkles size={14} /> Explore the demo. Choose the membership that fits.</div>
           <h1 className="mb-5 font-serif text-5xl font-semibold leading-tight text-[#332C28] dark:text-white lg:text-6xl">A workspace worth investing in.</h1>
           <p className="mx-auto mb-7 max-w-2xl text-lg text-[#6B5D54] dark:text-[#CFC4BE]">Focus on My Hours, Monthly Verification Forms, Exam Prep, and Suggestions. Professional adds supervisor review and feedback for your hours.</p>
-          <Link to="/demo" className="mr-4 inline-flex rounded-xl border border-[#e2dad5] px-6 py-3 font-semibold">Explore free demo</Link><Link to={trialHref} className="btn-primary inline-flex rounded-xl px-6 py-3">Create account <ArrowRight size={16} /></Link>
+          <Link to={publicLink('/demo')} className="mr-4 inline-flex rounded-xl border border-[#e2dad5] px-6 py-3 font-semibold">Explore free demo</Link><Link to={membershipHref} className="btn-primary inline-flex rounded-xl px-6 py-3">Create account <ArrowRight size={16} /></Link>
         </div>
       </section>
 
@@ -47,7 +50,7 @@ export default function Pricing() {
               <p className="mb-5 text-sm leading-relaxed text-[#6B5D54] dark:text-[#CFC4BE]">{tier.description}</p>
               <ul className="mb-5 flex-1 space-y-2">{tier.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-[#4D423C] dark:text-[#E7DED9]"><Check size={15} className="mt-0.5 shrink-0 text-[#5FA37E]" />{feature}</li>)}</ul>
               <p className="mb-5 text-xs text-[#A8998E]">{tier.note}</p>
-              <Link to={trialHref} className={`w-full rounded-xl py-3 text-center text-sm font-semibold ${tier.highlight ? 'bg-[#E85D70] text-white' : 'pricing-professional-cta bg-[#332C28] text-white'}`}>{isAuthenticated ? `Choose ${tier.name}` : 'Create account'}</Link>
+              <Link to={membershipHref} className={`w-full rounded-xl py-3 text-center text-sm font-semibold ${tier.highlight ? 'bg-[#E85D70] text-white' : 'pricing-professional-cta bg-[#332C28] text-white'}`}>{isAuthenticated ? `Choose ${tier.name}` : 'Create account'}</Link>
             </div>
           ))}
         </div>

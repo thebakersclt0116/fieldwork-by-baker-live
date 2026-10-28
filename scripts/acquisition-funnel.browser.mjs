@@ -11,7 +11,7 @@ test('mobile form is before the sales cards and never presents a nonexistent fre
  await page.setViewportSize({width:390,height:844});await page.goto(signup);
  await page.getByRole('button',{name:'Decline optional measurement'}).click();
  const first=page.getByLabel('First name',{exact:true});await expect(first).toBeVisible();
- const form=await first.boundingBox(),pitch=await page.getByRole('heading',{name:'A detailed monthly PDF becomes individual entries.'}).boundingBox();
+ const form=await first.boundingBox(),pitch=await page.getByRole('heading',{name:'Your fieldwork and exam prep, together.'}).boundingBox();
  expect(form.y).toBeLessThan(844);expect(form.y).toBeLessThan(pitch.y);
  await expect(page.getByText('Create account → verify email → choose membership. No card required on this form.')).toBeVisible();
  expect((await page.locator('body').innerText()).toLowerCase()).not.toContain('3-day');
@@ -40,7 +40,7 @@ test('server-confirmed signup opens email instructions, clears password, and res
  await page.getByLabel('First name',{exact:true}).fill('Synthetic');await page.getByLabel('Last name',{exact:true}).fill('Candidate');await page.getByLabel('Email',{exact:true}).fill('synthetic@example.com');await page.getByLabel('Password',{exact:true}).fill('not-a-real-password-123');await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Create account',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Check your email to continue.'})).toBeVisible();await expect(page.getByText('No payment has been taken.',{exact:false})).toBeVisible();
  expect(requests[0].action).toBe('signup');expect(requests[0].funnel.campaign).toBe('direct');expect(requests[0].adMeasurement).toBeUndefined();expect(requests[0].funnel.qa).toBe(true);
- const link=page.getByRole('link',{name:'I verified my email — sign in'});await expect(link).toHaveAttribute('href','/login?return=%2Fupgrade');
+ const link=page.getByRole('link',{name:'I verified my email — sign in'});const target=new URL(await link.getAttribute('href'),'https://fieldwork.invalid');expect(target.pathname).toBe('/login');expect(target.searchParams.get('return')).toBe('/upgrade');expect(target.searchParams.get('bf_campaign')).toBe(campaign);expect(target.searchParams.get('bf_qa')).toBe('1');
  await page.getByRole('button',{name:'Resend verification email'}).click();await expect(page.getByText('Please wait one minute before requesting another email.')).toBeVisible();expect(requests).toHaveLength(1);
  await page.getByRole('button',{name:'Correct your email'}).click();await expect(page.getByLabel('Password',{exact:true})).toHaveValue('');
 });
@@ -59,4 +59,26 @@ for(const variant of ['home','signup'])test('destination experiment keeps '+vari
 test('public pages never load a Meta tracking script or send fieldwork requests',async({page})=>{
  const external=[];page.on('request',r=>{if(/facebook\.com|facebook\.net|\/api\/(?:workspace|archive|supervisor)/.test(r.url()))external.push(r.url());});
  await page.goto(signup);await page.getByRole('button',{name:'Allow ad measurement'}).click();await page.waitForTimeout(300);expect(external).toHaveLength(0);
+});
+test('home attribution survives pricing and fictional demo before signup consent without premature storage or events',async({page})=>{
+ const events=[];await page.route('**/api/funnel',r=>{events.push(r.request().postDataJSON());return r.fulfill({json:{recorded:true,qa:true,metaAccepted:false}});});
+ await page.goto('/?bf_campaign='+campaign+'&bf_experiment=signup-v1&bf_variant=home&bf_qa=1&fbclid=FictionalClick12345&private=do-not-forward');
+ await page.getByRole('link',{name:'See memberships'}).click();
+ await page.getByRole('link',{name:'Explore free demo',exact:true}).last().click();
+ await expect(page.getByText('FREE DEMO · FICTIONAL RECORDS')).toBeVisible();
+ await page.getByRole('link',{name:'Create account',exact:true}).last().click();
+ await page.getByRole('link',{name:'Privacy details',exact:true}).click();
+ await page.getByRole('link',{name:'FAQ',exact:true}).click();
+ await page.getByRole('link',{name:'Contact Fieldwork by Baker',exact:true}).click();
+ await page.getByRole('link',{name:'Create account',exact:true}).last().click();
+ const target=new URL(page.url());expect(target.pathname).toBe('/signup');expect(target.searchParams.get('bf_variant')).toBe('home');expect(target.searchParams.get('fbclid')).toBe('FictionalClick12345');expect(target.searchParams.has('private')).toBe(false);
+ expect(await page.evaluate(()=>sessionStorage.getItem('baker-acquisition-journey-v1'))).toBeNull();expect(await page.evaluate(()=>localStorage.getItem('baker-ad-measurement-v1'))).toBeNull();expect(events).toHaveLength(0);
+ await page.getByRole('button',{name:'Allow ad measurement'}).click();await expect.poll(()=>events.length).toBe(1);expect(events[0].context.variant).toBe('home');expect(events[0].context.campaign).toBe(campaign);expect(events[0].adMeasurement.fbc).toMatch(/\.FictionalClick12345$/);
+ await page.reload();await page.waitForTimeout(300);expect(events).toHaveLength(1);
+});
+test('tagged direct signup replaces an earlier organic journey once',async({page})=>{
+ await page.addInitScript(()=>sessionStorage.setItem('baker-acquisition-journey-v1',JSON.stringify({version:'funnel-v1',flowId:'11111111-1111-4111-8111-111111111111',campaign:'direct',variant:'direct',qa:false})));
+ const events=[];await page.route('**/api/funnel',r=>{events.push(r.request().postDataJSON());return r.fulfill({json:{recorded:true,qa:true,metaAccepted:false}});});
+ await page.goto(signup+'&fbclid=FictionalClick12345');await page.getByRole('button',{name:'Allow ad measurement'}).click();await expect.poll(()=>events.length).toBe(1);expect(events[0].context.variant).toBe('signup');expect(events[0].context.campaign).toBe(campaign);expect(events[0].context.flowId).not.toBe('11111111-1111-4111-8111-111111111111');expect(events[0].context.qa).toBe(true);
+ await page.getByRole('link',{name:'Explore the free demo'}).click();await page.getByRole('link',{name:'Create account',exact:true}).last().click();await page.waitForTimeout(300);expect(events).toHaveLength(1);
 });
