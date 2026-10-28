@@ -3,16 +3,24 @@ on:
   push:
     branches: [baker-measured-signup-funnel-20261013, main]
     paths: ['src/**','api/**','server/**','scripts/*funnel*','scripts/acquisition*','package.json','.github/workflows/acquisition-funnel-check.yml']
+  pull_request:
+    branches: [main]
+    paths:
+      - src/components/AdMeasurementChoice.tsx
+      - src/components/Layout.tsx
+      - scripts/acquisition-funnel.browser.mjs
+      - .github/workflows/acquisition-funnel-check.yml
   workflow_dispatch:
-permissions: { contents: write }
+permissions: { contents: read }
 concurrency:
   group: acquisition-funnel-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   verify:
+    if: github.ref != 'refs/heads/baker-measured-signup-funnel-20261013'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    steps:
+    steps: &acceptance_steps
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
@@ -62,3 +70,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: acquisition-funnel-evidence, path: funnel-evidence, retention-days: 7 }
+  legacy-verify:
+    if: github.ref == 'refs/heads/baker-measured-signup-funnel-20261013'
+    permissions: { contents: write }
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps: *acceptance_steps
