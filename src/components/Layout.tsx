@@ -25,7 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const toggleDark = useCallback(() => setIsDark((prev) => !prev), []);
 
   return (
-    <div className={`min-h-[100dvh] flex flex-col ${isDark ? 'dark' : ''}`}>
+    <div className={`min-h-[100dvh] flex flex-col ${isDark ? 'dark' : ''}`} style={{ paddingBottom: 'var(--baker-ad-choice-space, 0px)' }}>
       <PlatformNavbar isDark={isDark} onToggleDark={toggleDark} />
       <main className="flex-1 pt-[172px] sm:pt-[124px] lg:pt-20" key={location.pathname}>
         {window.location.hostname === 'fieldwork-by-baker-testing.vercel.app' && <aside role="note" className="m-3 rounded-xl border border-amber-400/50 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-900/20 dark:text-amber-100"><strong>Temporary recovery address.</strong> Your usual domain’s locally saved hours are not visible on this separate address. Do not clear browser data or re-import real hours here to compensate. This address is useful for diagnostics; return to <a className="underline" href="https://www.fieldworkbybaker.com">your usual Fieldwork site</a> once its domain is restored.</aside>}
