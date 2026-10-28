@@ -43,6 +43,39 @@ function clockText(seconds: number) {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+export function ExamAnswerReview({ answers, submitted }: { answers: Record<string, number>; submitted: boolean }) {
+  if (!submitted) return null;
+  return (
+    <section aria-labelledby="exam-answer-review" className="rounded-[30px] border border-[#F2EDEA] bg-white p-6 dark:border-white/10 dark:bg-[#211D1A]">
+      <h2 id="exam-answer-review" className="font-serif text-2xl font-semibold text-[#332C28] dark:text-white">Answer review and explanations</h2>
+      <p className="mt-2 text-sm leading-6 text-[#7B6B62] dark:text-[#CFC4BE]">Review your answers after submitting. Experimental practice items are identified here and are excluded from your score.</p>
+      <details className="mt-4">
+        <summary className="cursor-pointer font-semibold text-[#C9445A] dark:text-[#FF9AAA]">Review all {fullBCBAExam.length} practice questions</summary>
+        <ol className="mt-4 space-y-3">
+          {fullBCBAExam.map((question, index) => {
+            const chosen = answers[question.id];
+            const answered = Number.isInteger(chosen) && chosen >= 0 && chosen < question.options.length;
+            const status = !answered ? 'Not answered' : chosen === question.answer ? 'Correct' : 'Incorrect';
+            return (
+              <li key={question.id}>
+                <details className="rounded-2xl border border-[#E7E0DC] p-4 dark:border-white/10">
+                  <summary className="cursor-pointer text-sm font-semibold text-[#4D423C] dark:text-white">Question {index + 1} · {status}{!question.scored && ' · Experimental (unscored)'}</summary>
+                  <p className="mt-4 text-sm font-semibold leading-6 text-[#4D423C] dark:text-white">{question.prompt}</p>
+                  <dl className="mt-3 space-y-2 text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]">
+                    <div><dt className="font-semibold">Your answer</dt><dd>{answered ? `${String.fromCharCode(65 + chosen)}. ${question.options[chosen]}` : 'Not answered'}</dd></div>
+                    <div><dt className="font-semibold">Correct answer</dt><dd>{String.fromCharCode(65 + question.answer)}. {question.options[question.answer]}</dd></div>
+                  </dl>
+                  <p className="mt-3 text-sm leading-6 text-[#6B5D54] dark:text-[#CFC4BE]"><strong>Explanation: </strong>{question.explanation}</p>
+                </details>
+              </li>
+            );
+          })}
+        </ol>
+      </details>
+    </section>
+  );
+}
+
 export default function ExamLab() {
   const [session, setSession] = useState<Session | null>(() => loadSession());
   const [submitted, setSubmitted] = useState(false);
@@ -150,6 +183,8 @@ export default function ExamLab() {
           </section>
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{result.byArea.map((area) => <div key={area.areaId} className={`rounded-[24px] border p-5 ${area.percent < 70 ? 'border-[#F0D5DA] bg-[#FFF7F8]' : area.percent < 85 ? 'border-[#F1D8B9] bg-[#FFF9F2]' : 'border-[#CFE7D9] bg-[#F4FBF7]'} dark:border-white/10 dark:bg-[#211D1A]`}><div className="flex items-center justify-between gap-3"><div className="text-xs font-bold uppercase tracking-[.15em] text-[#A8998E]">Area {area.areaId}</div><div className="font-mono text-2xl font-bold text-[#332C28] dark:text-white">{area.percent}%</div></div><h3 className="mt-2 font-serif text-lg font-semibold text-[#332C28] dark:text-white">{area.area}</h3><div className="mt-2 text-xs text-[#7B6B62] dark:text-[#CFC4BE]">{area.correct}/{area.total} correct</div>{area.weakConcepts.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{area.weakConcepts.slice(0, 4).map((concept) => <span key={concept} className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#6B5D54] shadow-sm dark:bg-white/10 dark:text-[#E7DED9]">{concept}</span>)}</div>}</div>)}</section>
+
+          <ExamAnswerReview answers={answers} submitted={submitted} />
 
           <section className="rounded-[32px] border border-[#F0D5DA] bg-gradient-to-br from-[#FFF5F7] via-white to-[#FFF9F2] p-7 dark:border-[#E85D70]/20 dark:from-[#291C20] dark:via-[#211D1A] dark:to-[#241E19]">
             <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">

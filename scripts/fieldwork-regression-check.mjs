@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { transform } from 'esbuild';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -214,7 +215,10 @@ for (const required of [
   '185 original multiple-choice practice questions',
   'Build my weak-area plan',
   'Personalized seven-day repair cycle',
-  'Teach this to me in Baker Brain',
+  'BCBA_EXAM_MINUTES * 60',
+  'Answer review and explanations',
+  'question.explanation',
+  '<ExamAnswerReview answers={answers} submitted={submitted}',
 ]) {
   assert(examLab.includes(required), `Exam Lab full-simulation feature missing: ${required}`);
 }
@@ -235,19 +239,34 @@ for (const rule of [
 }
 
 const platformNav = read('src/components/PlatformNavbar.tsx');
-for (const label of ['My Path', 'BCBA Roadmap', 'Baker Commons', 'Baker Brain', 'Exam Lab', 'Resource Vault']) {
-  assert(platformNav.includes(label), `Core BCBA navigation missing: ${label}`);
-}
+const launchModule = await transform(read('src/lib/launchFeatures.ts'), { loader: 'ts', format: 'esm' });
+const launchFeatures = await import(`data:text/javascript;base64,${Buffer.from(launchModule.code).toString('base64')}`);
+const expectedNavigation = [
+  { label: 'My Hours', path: '/dashboard' },
+  { label: 'Monthly Verification Forms', path: '/export' },
+  { label: 'Exam Prep', path: '/exam-lab' },
+  { label: 'Suggestions', path: '/suggestions' },
+];
+assert(JSON.stringify(launchFeatures.MEMBER_NAV_ITEMS) === JSON.stringify(expectedNavigation), 'Focused member navigation must contain the four current tools');
+assert(platformNav.includes('isAuthenticated ? MEMBER_NAV_ITEMS : PUBLIC_NAV_ITEMS'), 'Member navigation is not using the focused launch tools');
 
 const platformHome = read('src/pages/PlatformHome.tsx');
-assert(platformHome.includes('Your entire BCBA journey—'), 'Connected-platform hero copy missing');
-assert(platformHome.includes('one connected platform.'), 'Connected-platform hero promise missing');
-assert(platformHome.includes('Start My BCBA Journey'), 'Primary BCBA journey CTA missing');
+assert(platformHome.includes('Track your fieldwork hours.'), 'Hours-tracking offer missing');
+assert(platformHome.includes('Practice for your BCBA exam.'), 'BCBA practice offer missing');
+assert(platformHome.includes('$16.99/month'), 'Individual membership price missing');
+assert(platformHome.includes('Create account'), 'Primary signup CTA missing');
+assert(platformHome.includes('The free demo uses fictional fieldwork records.'), 'Free-demo limitation missing');
 
 const app = read('src/App.tsx');
 for (const route of ['/my-path', '/roadmap', '/commons', '/baker-brain', '/exam-lab', '/resources']) {
   assert(app.includes(`path="${route}"`), `Core BCBA route missing: ${route}`);
 }
+for (const route of ['/my-path', '/roadmap', '/commons', '/baker-brain', '/resources']) {
+  assert(launchFeatures.isArchivedProductPath(route), `Preserved product must remain archived: ${route}`);
+  const routeLine = app.split('\n').find(line => line.includes(`path="${route}"`));
+  assert(routeLine?.includes('<AdminFeatureRoute>'), `Archived route lacks its administrator guard: ${route}`);
+}
+assert(app.split('\n').find(line => line.includes('path="/exam-lab"'))?.includes('<PaidFeatureRoute>'), 'Exam simulation lacks its paid membership guard');
 
 for (const file of [
   'src/pages/MyPathV2.tsx',
@@ -268,4 +287,4 @@ assert(darkCss.includes('.dark body'), 'Dark mode does not style the document bo
 assert(darkCss.includes('.dark input'), 'Dark mode does not style form controls');
 assert(darkCss.includes('.dark .bg-white'), 'Dark mode does not cover legacy white cards');
 
-console.log('Fieldwork regression checks passed: Emily workflow, Ripley-style decimal quick logging, editable tracked hours, supervisor reapproval protection, full 185-question Exam Lab, personalized weak-area plans, immersive BCBA-only Baker Brain, Resource Vault handoff, dark mode, and core BCBA navigation are all present.');
+console.log('Fieldwork regression checks passed: hours workflows, full 185-question/four-hour Exam Lab with submitted explanations and weak-area plans, focused member navigation, clear signup pricing/demo copy, paid exam access, archived product guards, preserved learning sources and dark mode are present.');
