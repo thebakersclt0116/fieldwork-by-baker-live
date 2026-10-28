@@ -9,6 +9,7 @@
     }
   ],
   "compilerOptions": {
+    "target": "ES2022",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

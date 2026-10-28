@@ -84,12 +84,12 @@ async function extractPdf(fileData: string): Promise<{ plain: string; layout: st
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('PDF_TIMEOUT')), TIMEOUT_MS); });
     const extraction = Promise.all([extractText(pdf, { mergePages: true }), extractTextItems(pdf)]).then(([plainResult, itemResult]) => ({
-      plain: (typeof plainResult.text === 'string' ? plainResult.text : plainResult.text.join('\n\n')).replace(/\u0000/g, '').trim(),
+      plain: plainResult.text.replace(/\u0000/g, '').trim(),
       layout: layoutText(itemResult.items as any[][]).replace(/\u0000/g, '').trim(),
     }));
     return await Promise.race([extraction, timeout]).finally(() => { if (timer) clearTimeout(timer); });
   } finally {
-    try { await pdf.destroy(); } catch { /* cleanup only */ }
+    try { await pdf.loadingTask.destroy(); } catch { /* cleanup only */ }
   }
 }
 
