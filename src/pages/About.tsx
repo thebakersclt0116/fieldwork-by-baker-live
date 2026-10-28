@@ -1,4 +1,5 @@
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { withAcquisitionQuery } from '@/lib/acquisitionFunnel';
 import { ArrowRight, Heart, ShieldCheck, Sparkles, Users } from 'lucide-react';
 
 const principles = [
@@ -25,6 +26,8 @@ const principles = [
 ];
 
 export default function About() {
+  const { search } = useLocation();
+  const publicLink = (path: string) => withAcquisitionQuery(path, search);
   return (
     <div className="min-h-[100dvh] bg-[#FFFCF9] text-[#332C28] dark:bg-[#171412] dark:text-white">
       <section className="px-4 py-20 sm:py-28">
@@ -36,8 +39,8 @@ export default function About() {
               Fieldwork by Baker is an independent platform built by Baker &amp; Co. Holdings and refined through hands-on feedback from people actively navigating BCBA fieldwork, supervision, studying, and documentation.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/signup" className="inline-flex items-center gap-2 rounded-2xl bg-[#E85D70] px-6 py-3.5 text-sm font-bold text-white">Start my BCBA journey <ArrowRight size={16} /></Link>
-              <Link to="/demo" className="rounded-2xl border border-[#E2DAD5] bg-white px-6 py-3.5 text-sm font-bold text-[#5F5149] dark:border-white/10 dark:bg-white/5 dark:text-[#F3ECE7]">Explore the demo</Link>
+              <Link to={publicLink('/signup')} className="inline-flex items-center gap-2 rounded-2xl bg-[#E85D70] px-6 py-3.5 text-sm font-bold text-white">Start my BCBA journey <ArrowRight size={16} /></Link>
+              <Link to={publicLink('/demo')} className="rounded-2xl border border-[#E2DAD5] bg-white px-6 py-3.5 text-sm font-bold text-[#5F5149] dark:border-white/10 dark:bg-white/5 dark:text-[#F3ECE7]">Explore the demo</Link>
             </div>
           </div>
         </div>
@@ -73,7 +76,7 @@ export default function About() {
         <div className="mx-auto max-w-2xl">
           <h2 className="font-serif text-3xl font-semibold">Help shape what comes next.</h2>
           <p className="mt-3 text-[#6B5D54] dark:text-[#CFC4BE]">The platform is in active beta. Real candidate and supervisor feedback is being used to harden the workflows before broader release.</p>
-          <Link to="/contact" className="mt-6 inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] bg-white px-5 py-3 text-sm font-bold text-[#5F5149] dark:border-white/10 dark:bg-white/5 dark:text-white">Send feedback <ArrowRight size={15} /></Link>
+          <Link to={publicLink('/contact')} className="mt-6 inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] bg-white px-5 py-3 text-sm font-bold text-[#5F5149] dark:border-white/10 dark:bg-white/5 dark:text-white">Send feedback <ArrowRight size={15} /></Link>
         </div>
       </section>
     </div>

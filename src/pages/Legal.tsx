@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router';
+import { withAcquisitionQuery } from '@/lib/acquisitionFunnel';
 import { Cookie, FileText, LockKeyhole, ShieldCheck } from 'lucide-react';
 
 type LegalKey = 'privacy' | 'terms' | 'cookies' | 'security';
@@ -77,6 +78,7 @@ function keyFromPath(pathname: string): LegalKey {
 
 export default function Legal() {
   const location = useLocation();
+  const publicLink = (path: string) => withAcquisitionQuery(path, location.search);
   const key = keyFromPath(location.pathname);
   const page = pages[key];
   const Icon = page.icon;
@@ -99,8 +101,8 @@ export default function Legal() {
           Last updated October 8, 2026. This page describes the current live service.
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="/contact" className="rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-bold text-white dark:bg-[#E85D70]">Contact Baker</Link>
-          <Link to="/faq" className="rounded-xl border border-[#E2DAD5] px-4 py-2.5 text-sm font-semibold text-[#6B5D54] dark:border-white/10 dark:text-[#CFC4BE]">FAQ</Link>
+          <Link to={publicLink('/contact')} className="rounded-xl bg-[#332C28] px-4 py-2.5 text-sm font-bold text-white dark:bg-[#E85D70]">Contact Baker</Link>
+          <Link to={publicLink('/faq')} className="rounded-xl border border-[#E2DAD5] px-4 py-2.5 text-sm font-semibold text-[#6B5D54] dark:border-white/10 dark:text-[#CFC4BE]">FAQ</Link>
         </div>
       </div>
     </div>

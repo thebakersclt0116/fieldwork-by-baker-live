@@ -1,10 +1,13 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { Navigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
 import { cloudState, subscribeCloud, initializeCloud, exportCloudDraft, useCloudCopy } from '@/lib/cloudWorkspace';
+import { accountEntryPath } from '@/lib/returnPath';
+import { withAcquisitionQuery } from '@/lib/acquisitionFunnel';
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoading, hasAppAccess, user } = useAuth();
+  const location = useLocation();
   const status=useSyncExternalStore(subscribeCloud,cloudState);
   const [loadedEmail,setLoadedEmail]=useState('');
   useEffect(()=>{
@@ -27,7 +30,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!hasAppAccess) return <Navigate to="/login" replace />;
+  if (!hasAppAccess) return <Navigate to={withAcquisitionQuery(accountEntryPath('/login', location.pathname + location.search), location.search)} replace />;
   if(user?.authProvider==='supabase'){
     if(status==='blocked')return <div role="alert" className="p-6"><h1 className="text-xl font-semibold">Your changes need review</h1><p className="my-3">Cloud saving did not finish, or another device changed these records. Your local draft has been retained. Export it before resolving the conflict.</p><button onClick={exportCloudDraft} className="rounded border p-3">Download local backup</button><button onClick={()=>{void useCloudCopy().then(()=>setLoadedEmail(user.email)).catch(()=>{});}} className="ml-3 rounded border p-3">Use cloud records and keep a local recovery copy</button></div>;
     if(loadedEmail!==user.email)return <div role="status" className="p-6">Loading your saved records…</div>;
