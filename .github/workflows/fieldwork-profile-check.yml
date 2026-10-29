@@ -1,0 +1,70 @@
+name: Fieldwork profile acceptance
+on:
+  push:
+    branches: [baker-required-fieldwork-profile-20261028, main]
+    paths: ['src/**', 'shared/**', 'api/**', 'scripts/fieldwork-profile*', 'scripts/apply-required-fieldwork-profile.py', '.github/workflows/fieldwork-profile-check.yml']
+  pull_request:
+    branches: [main]
+    paths: ['src/**', 'shared/**', 'api/**', 'scripts/fieldwork-profile*', '.github/workflows/fieldwork-profile-check.yml']
+permissions:
+  contents: read
+concurrency:
+  group: fieldwork-profile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply reviewed integration once on the feature branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/baker-required-fieldwork-profile-20261028'
+        run: |
+          if test -f scripts/apply-required-fieldwork-profile.py; then
+            python3 scripts/apply-required-fieldwork-profile.py
+            git diff --check
+            git config user.name 'Baker Profile Acceptance'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add src/App.tsx src/pages/AccountSettings.tsx src/pages/ExportCenter.tsx src/pages/MyPathV2.tsx src/types/index.ts src/lib/fieldworkTimer.ts src/lib/fieldworkStore.ts src/components/dashboard/LogHoursTab.tsx api/workspace.ts api/health.ts
+            git rm scripts/apply-required-fieldwork-profile.py
+            git commit -m 'Require saved fieldwork setup and bind hours/forms to the selected application requirements'
+            git push origin HEAD:baker-required-fieldwork-profile-20261028
+          fi
+          echo "Tested source: $(git rev-parse HEAD)"
+      - run: npm ci --registry=https://registry.npmjs.org/
+      - name: Existing unit suite and profile, timer, account-boundary regressions
+        run: node --experimental-strip-types --test scripts/*.test.mjs
+      - name: Compile production frontend and every API route
+        env:
+          VITE_MANAGED_ACCOUNTS: 'true'
+        run: |
+          npm run build
+          mkdir -p /tmp/profile-api-check
+          for route in api/*.ts; do
+            case "$route" in api/_*) continue ;; esac
+            ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/profile-api-check/$(basename "$route" .ts).mjs"
+          done
+      - name: Install browser acceptance tooling
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.61.1
+          npx playwright install chromium
+      - name: Profile setup, dropdowns, requirements and timer user journeys
+        run: npx playwright test --config=scripts/fieldwork-profile.playwright.mjs
+      - name: Safe synthetic evidence
+        if: always()
+        run: |
+          mkdir -p profile-evidence
+          git rev-parse HEAD > profile-evidence/tested-commit.txt
+          sha256sum shared/fieldwork-profile.ts src/lib/fieldworkProfile.ts src/pages/FieldworkProfile.tsx src/components/dashboard/LogHoursTab.tsx api/workspace.ts > profile-evidence/source-hashes.txt
+          zip -q profile-evidence/review-source.zip shared/fieldwork-profile.ts src/lib/fieldworkProfile.ts src/hooks/useFieldworkProfile.ts src/components/FieldworkProfileGate.tsx src/components/FieldworkRequirements.tsx src/pages/FieldworkProfile.tsx src/App.tsx src/pages/AccountSettings.tsx src/pages/ExportCenter.tsx src/pages/MyPathV2.tsx src/types/index.ts src/lib/fieldworkTimer.ts src/lib/fieldworkStore.ts src/components/dashboard/LogHoursTab.tsx api/workspace.ts api/health.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fieldwork-profile-evidence
+          path: profile-evidence
+          retention-days: 7

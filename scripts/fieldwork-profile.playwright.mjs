@@ -1,0 +1,2 @@
+import { defineConfig } from '@playwright/test';
+export default defineConfig({testDir:'.',testMatch:'fieldwork-profile.browser.mjs',workers:1,retries:0,timeout:60000,reporter:[['list'],['json',{outputFile:'profile-evidence/browser-report.json'}]],use:{baseURL:'http://127.0.0.1:4173',trace:'off',screenshot:'off'},webServer:{command:'npm run preview -- --host 127.0.0.1 --port 4173',url:'http://127.0.0.1:4173',reuseExistingServer:false}});
