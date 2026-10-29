@@ -1,11 +1,17 @@
 import type { ActivityCategory, FieldworkType, HourEntry, ObservationMode, SupervisionFormat, WorkPresence } from '../types/index.ts';
 import { getCurrentUserEmail, loadEntries, newId, saveEntries } from './fieldworkStore.ts';
 
-export interface RunningTimer { id: string; startedAt: number }
+export interface RunningTimer { id: string; startedAt: number; fieldworkType?: FieldworkType; requirementsSelection?: 'BEFORE_2027' | 'FROM_2027' | 'BOTH' }
 export interface StoppedTimer { id: string; startedAt: number; stoppedAt: number; entries: HourEntry[] }
 export interface TimerJournal { version: 1; running: RunningTimer | null; stopped: StoppedTimer[] }
 export interface TimerDetails {
   notes: string;
+  organizationId?: string;
+  supervisorId?: string;
+  supervisorEmail?: string;
+  requirementsSelection?: 'BEFORE_2027' | 'FROM_2027' | 'BOTH';
+  fieldworkProfileUpdatedAt?: string;
+  clientObservationCount?: number;
   category: Exclude<ActivityCategory, 'UNKNOWN'>;
   fieldworkType: FieldworkType;
   organization: string;
@@ -16,7 +22,7 @@ export interface TimerDetails {
   observationMinutes: number;
   supervisionFormat: SupervisionFormat;
   observationMode: ObservationMode;
-  supervisionByEntry?: Record<string, { supervisionMinutes: number; observationMinutes: number }>;
+  supervisionByEntry?: Record<string, { supervisionMinutes: number; observationMinutes: number; clientObservationCount?: number }>;
 }
 
 const PREFIX = 'fieldworkByBaker:timer:v1:';
@@ -39,11 +45,11 @@ export function readTimerJournal(email: string): TimerJournal {
 function writeJournal(email: string, journal: TimerJournal) {
   localStorage.setItem(accountKey(email), JSON.stringify(journal));
 }
-export function startTimerSession(email: string, now = Date.now()): RunningTimer {
+export function startTimerSession(email: string, now = Date.now(), plan?: { fieldworkType: FieldworkType; requirementsSelection: 'BEFORE_2027' | 'FROM_2027' | 'BOTH' }): RunningTimer {
   if (!Number.isFinite(now)) throw new Error('A valid start time is required.');
   const journal = readTimerJournal(email);
   if (journal.running) return journal.running;
-  const running = { id: newId('session'), startedAt: now };
+  const running: RunningTimer = { id: newId('session'), startedAt: now, ...(plan || {}) };
   writeJournal(email, { ...journal, running });
   return running;
 }
@@ -68,7 +74,7 @@ export function entriesForTimer(email: string, timer: RunningTimer, stoppedAt: n
     entries.push({
       id: `timer_${timer.id}_${entries.length}`, userId: email, date: localDate(start),
       startTime: localTime(start), endTime: localTime(end), duration: (end - start) / 3_600_000,
-      fieldworkType: 'SUPERVISED', activityType: 'UNRESTRICTED_OTHER', activityCategory: 'UNKNOWN',
+      fieldworkType: timer.fieldworkType || 'SUPERVISED', requirementsSelection: timer.requirementsSelection, activityType: 'UNRESTRICTED_OTHER', activityCategory: 'UNKNOWN',
       supervisorId: 'not_specified', supervisorName: 'Not specified', setting: '',
       status: 'DRAFT', createdAt: timestamp, updatedAt: timestamp,
       timerSession: { id: timer.id, startedAt: new Date(start).toISOString(), stoppedAt: new Date(end).toISOString(), detailsComplete: false },
@@ -104,12 +110,13 @@ export function restoreTimerEntries(email: string): HourEntry[] {
 export function supervisionForDetails(details: TimerDetails, entryId: string, duration: number) {
   if (details.presence === 'INDEPENDENT') return { supervisionMinutes: 0, observationMinutes: 0, individualSupervisionMinutes: 0, supervisionFormat: undefined, observationMode: undefined };
   const minutes = details.supervisionByEntry?.[entryId] || details;
+  if (minutes.clientObservationCount !== undefined && (!Number.isInteger(minutes.clientObservationCount) || minutes.clientObservationCount < 0 || (minutes.observationMinutes > 0 && minutes.clientObservationCount < 1))) throw new Error('Record the number of client observations; positive minutes need at least one observation.');
   if (!Number.isFinite(minutes.supervisionMinutes) || !Number.isFinite(minutes.observationMinutes) || minutes.supervisionMinutes <= 0 || minutes.observationMinutes < 0 || minutes.supervisionMinutes > duration * 60 + 0.000001 || minutes.observationMinutes > minutes.supervisionMinutes) {
     throw new Error('For each supervised entry, enter positive supervision minutes within its recorded time. Observation minutes cannot exceed supervision minutes.');
   }
   if (!['INDIVIDUAL', 'GROUP'].includes(details.supervisionFormat)) throw new Error('Choose the supervision format.');
   return {
-    supervisionMinutes: minutes.supervisionMinutes, observationMinutes: minutes.observationMinutes,
+    supervisionMinutes: minutes.supervisionMinutes, observationMinutes: minutes.observationMinutes, clientObservationCount: minutes.clientObservationCount,
     individualSupervisionMinutes: details.supervisionFormat === 'INDIVIDUAL' ? minutes.supervisionMinutes : 0,
     supervisionFormat: details.supervisionFormat, observationMode: minutes.observationMinutes > 0 ? details.observationMode : undefined,
   };
@@ -128,7 +135,8 @@ export function completeTimerDetails(email: string, sessionId: string, details: 
   if (sourceEntries.size > 1 && details.presence === 'SUPERVISED' && [...sourceEntries.keys()].some(id => !details.supervisionByEntry?.[id])) throw new Error('Enter supervision and observation minutes separately for each recorded date.');
   const snapshots = [...sourceEntries.values()].map(entry => ({
     ...entry, notes: details.notes.trim(), organizationName: details.organization.trim(), supervisorName: details.supervisor.trim(),
-    supervisorId: `manual_${details.supervisor.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+    supervisorId: details.supervisorId || `manual_${details.supervisor.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+    supervisorEmail: details.supervisorEmail, organizationId: details.organizationId, requirementsSelection: details.requirementsSelection, fieldworkProfileUpdatedAt: details.fieldworkProfileUpdatedAt,
     setting: details.setting.trim(), fieldworkType: details.fieldworkType, activityCategory: details.category,
     activityType: details.category === 'RESTRICTED' ? 'RESTRICTED_DIRECT' as const : 'UNRESTRICTED_OTHER' as const,
     workPresence: details.presence, status: 'PENDING' as const, updatedAt: new Date().toISOString(),

@@ -1,4 +1,6 @@
 import './ExportCenter.css';
+import { useFieldworkProfile } from '@/hooks/useFieldworkProfile';
+import { TRANSITION_SOURCE } from '@/lib/fieldworkProfile';
 import { currentManagedToken } from '@/lib/managedSession';
 import { monthLabel } from '@/lib/monthlyProgress';
 import { useMemo, useRef, useState } from 'react';
@@ -74,6 +76,7 @@ function downloadText(filename: string, content: string, type = 'text/csv;charse
 
 export default function ExportCenter() {
   const { canExportOfficialForms, activeTrial } = useAuth();
+  const profile = useFieldworkProfile();
   const email = getCurrentUserEmail() || '';
   const allEntries = useMemo(() => loadEntries(email), [email]);
   const entries = useMemo(() => allEntries.filter(entry => entry.status !== 'DRAFT' && entry.timerSession?.detailsComplete !== false && (!entry.timerSession || Boolean(entry.notes?.trim()))), [allEntries]);
@@ -88,8 +91,8 @@ export default function ExportCenter() {
   const [month, setMonth] = useState(rows.at(-1)?.month || '');
   const [organization, setOrganization] = useState(entries[0]?.organizationName || '');
   const [structure, setStructure] = useState<'individual'|'organization'>('organization');
-  const [requirements, setRequirements] = useState<'2022'|'2027'>('2027');
-  const [fieldworkType, setFieldworkType] = useState<'SUPERVISED'|'CONCENTRATED'>('SUPERVISED');
+  const [requirements, setRequirements] = useState<'2022'|'2027'>(() => profile?.applicationTiming === 'BEFORE_2027' || profile?.applicationTiming === 'BOTH' ? '2022' : '2027');
+  const [fieldworkType, setFieldworkType] = useState<'SUPERVISED'|'CONCENTRATED'>(profile?.fieldworkType || 'SUPERVISED');
   const [responsibleSupervisor, setResponsibleSupervisor] = useState(entries[0]?.supervisorName || '');
   const [supervisorEmail, setSupervisorEmail] = useState('');
   const [confirmSharing, setConfirmSharing] = useState(false);
@@ -175,6 +178,7 @@ export default function ExportCenter() {
           <button onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] bg-white px-4 py-2.5 text-sm text-[#6B5D54]"><Printer size={16} /> Print review</button>
         </div>
 
+        {profile && <p role="note" className="mb-5 rounded-xl border border-[#E2DAD5] p-4 text-sm leading-6 dark:border-white/15">Your profile uses {profile.applicationTiming === 'BOTH' ? 'both 2022 and 2027 requirements. Prepare and retain both versions separately with your supervisor; one form does not replace the other.' : profile.applicationTiming === 'BEFORE_2027' ? '2022 requirements for an application submitted, with requirements met, before January 1, 2027.' : '2027 requirements for an application submitted on or after January 1, 2027.'} The selector below remains available for historical documents; changing it does not change your profile or entries. <a href={TRANSITION_SOURCE} target="_blank" rel="noreferrer" className="underline">BACB transition guidance</a>.</p>}
         {incompleteCount > 0 && <p role="status" className="mb-6 rounded-xl border border-[#E8C39F] bg-[#FFF8F3] p-4 text-sm text-[#8A5D36]">{incompleteCount} entr{incompleteCount === 1 ? 'y needs' : 'ies need'} details and {incompleteCount === 1 ? 'is' : 'are'} excluded from these totals. <Link to="/dashboard" className="font-semibold underline">Complete descriptions in My Hours</Link> before preparing your form.</p>}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,.72fr)_minmax(0,1.28fr)] gap-6">
           <aside className="min-w-0 space-y-6">
@@ -239,7 +243,7 @@ export default function ExportCenter() {
               </div>
             </section>
 
-            <div className="rounded-2xl bg-[#FFF8F3] border border-[#F0D5BC] p-5 text-sm text-[#7B5737]">BACB&apos;s current 2027 forms require complete information, signatures, and retention. Baker&apos;s worksheet helps prepare values, but the supervisor and trainee remain responsible for reviewing and signing the official form.</div>
+            <div className="rounded-2xl bg-[#FFF8F3] border border-[#F0D5BC] p-5 text-sm text-[#7B5737]">Use the forms corresponding to your applicable requirements, with complete information, signatures, and retention. Baker&apos;s worksheet helps prepare values, but the supervisor and trainee remain responsible for reviewing and signing the official form.</div>
           </main>
         </div>
       </div>

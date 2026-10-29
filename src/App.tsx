@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import FieldworkProfileGate from './components/FieldworkProfileGate';
+const FieldworkProfile = lazy(() => import('./pages/FieldworkProfile'));
 import PaidFeatureRoute from './components/PaidFeatureRoute';
 import AdminFeatureRoute from './components/AdminFeatureRoute';
 import PlatformHome from './pages/PlatformHome';
@@ -100,6 +102,7 @@ export default function App() {
         <Route path="/reset-password" element={<AccountRecovery />} />
 
         <Route path="/suggestions" element={<ProtectedRoute><Suggestions /></ProtectedRoute>} />
+        <Route path="/fieldwork-profile" element={<ProtectedRoute><FieldworkProfile /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><MeasuredTab feature="settings"><AccountSettings /></MeasuredTab></ProtectedRoute>} />
         <Route path="/my-path" element={<ProtectedRoute><AdminFeatureRoute><MyPathV2 /></AdminFeatureRoute></ProtectedRoute>} />
         <Route path="/roadmap" element={<ProtectedRoute><AdminFeatureRoute><BCBARoadmap /></AdminFeatureRoute></ProtectedRoute>} />
@@ -108,12 +111,12 @@ export default function App() {
         <Route path="/exam-lab" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="exam_lab"><ExamLab /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/resources" element={<ProtectedRoute><AdminFeatureRoute><ResourceVault /></AdminFeatureRoute></ProtectedRoute>} />
 
-        <Route path="/dashboard" element={<ProtectedRoute><MeasuredTab feature="fieldwork"><AccountDashboard /></MeasuredTab></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><FieldworkProfileGate><MeasuredTab feature="fieldwork"><AccountDashboard /></MeasuredTab></FieldworkProfileGate></ProtectedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
-        <Route path="/export" element={<ProtectedRoute><MeasuredTab feature="exports"><ExportCenter /></MeasuredTab></ProtectedRoute>} />
-        <Route path="/import" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="imports"><DetailedMigration /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
-        <Route path="/import/ripley" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="imports"><DetailedMigration /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
+        <Route path="/export" element={<ProtectedRoute><FieldworkProfileGate><MeasuredTab feature="exports"><ExportCenter /></MeasuredTab></FieldworkProfileGate></ProtectedRoute>} />
+        <Route path="/import" element={<ProtectedRoute><FieldworkProfileGate><PaidFeatureRoute><MeasuredTab feature="imports"><DetailedMigration /></MeasuredTab></PaidFeatureRoute></FieldworkProfileGate></ProtectedRoute>} />
+        <Route path="/import/ripley" element={<ProtectedRoute><FieldworkProfileGate><PaidFeatureRoute><MeasuredTab feature="imports"><DetailedMigration /></MeasuredTab></PaidFeatureRoute></FieldworkProfileGate></ProtectedRoute>} />
         <Route path="/audit-history" element={<ProtectedRoute><MeasuredTab feature="audit_history"><DetailedMigration /></MeasuredTab></ProtectedRoute>} />
         <Route path="/import-monthly" element={<Navigate to="/import" replace />} />
         <Route path="/baker-ai" element={<ProtectedRoute><AdminFeatureRoute><BakerAI /></AdminFeatureRoute></ProtectedRoute>} />

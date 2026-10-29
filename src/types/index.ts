@@ -57,6 +57,10 @@ export interface HourEntry {
   supervisorName: string;
   supervisorEmail?: string;
   organizationName?: string;
+  organizationId?: string;
+  requirementsSelection?: 'BEFORE_2027' | 'FROM_2027' | 'BOTH';
+  fieldworkProfileUpdatedAt?: string;
+  clientObservationCount?: number;
   workPresence?: WorkPresence;
   supervisionFormat?: SupervisionFormat;
   observationMode?: ObservationMode;

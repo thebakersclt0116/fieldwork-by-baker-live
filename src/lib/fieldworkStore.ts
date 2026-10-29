@@ -1,5 +1,6 @@
 import type { ActivityType, EntryStatus, FieldworkType, HourEntry } from '@/types';
 import { managedEmail, cloudKey, queueEntries, queueLearning } from './cloudWorkspace.ts';
+import { loadFieldworkSetup } from './fieldworkProfile.ts';
 
 export const EMILY_EMAIL = 'ayalaemily52@gmail.com';
 const PREFIX = 'fieldworkByBaker:v1';
@@ -92,9 +93,12 @@ export function loadSupervisors(email = getCurrentUserEmail() || ''): StoredSupe
   if (!email) return [];
   try {
     const raw = localStorage.getItem(storageKey(email, 'supervisors'));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as StoredSupervisor[]) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    const legacy = Array.isArray(parsed) ? parsed as StoredSupervisor[] : [];
+    // Profile choices are available in review selectors; saving them alone never creates an invitation.
+    const setup = getCurrentUserEmail() === normalizeEmail(email) ? loadFieldworkSetup() : null;
+    const saved = setup?.supervisors.filter(s => s.active).map(s => ({id:s.id,name:s.name,email:s.email || undefined,bacbNumber:s.bacbNumber || undefined})) || [];
+    return [...saved,...legacy.filter(s => !saved.some(current => current.id === s.id || (current.name === s.name && current.email === s.email)))];
   } catch {
     return [];
   }

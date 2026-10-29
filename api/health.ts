@@ -46,6 +46,7 @@ export default async function handler(req: any, res: any) {
     recoveryVersion: 'launch-recovery-v1',
     deployedCommit: process.env.VERCEL_GIT_COMMIT_SHA || null,
     detailedMigrationVersion: 'entry-audit-v1',
+    fieldworkProfileVersion: 'application-date-v1',
     acquisitionFunnelVersion: 'funnel-v1',
     timestamp: new Date().toISOString(),
   });

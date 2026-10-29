@@ -33,7 +33,7 @@ export default function MyPathV2() {
   const [profile, setProfile] = useState<PathProfile>(() => loadProfile());
   const [editing, setEditing] = useState(false);
 
-  const save = () => { accountStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); setEditing(false); };
+  const save = () => { const latest = JSON.parse(accountStorage.getItem(PROFILE_KEY) || '{}'); accountStorage.setItem(PROFILE_KEY, JSON.stringify({ ...latest, ...profile, ...(latest.fieldworkSetup ? { fieldworkSetup: latest.fieldworkSetup } : {}) })); setEditing(false); };
   const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
   const currentMonth = summarizeMonth(entries, currentMonthKey());
   const latestMonth = compliance.months.find(month => month.month === currentMonthKey());
