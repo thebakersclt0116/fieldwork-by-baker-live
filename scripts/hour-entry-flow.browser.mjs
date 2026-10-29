@@ -11,12 +11,13 @@ const failures=[], results=[], browserErrors=[];
 page.on('pageerror',e=>browserErrors.push(e.message));
 await context.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin!==BASE)return route.abort();if(u.pathname.startsWith('/api/')) return route.fulfill({json:u.pathname.includes('config')?{enabled:false}: {},status:200});await route.continue();});
 await page.addInitScript(({EMAIL})=>{if(!localStorage.getItem('flow-test-seeded')){localStorage.clear();localStorage.setItem('authUser',JSON.stringify({name:'Fictional Candidate',email:EMAIL,role:'professional',subscription:'professional',initials:'FC'}));localStorage.setItem('bakerSessionToken','fictional-local-browser-test');localStorage.setItem('theme','light');localStorage.setItem('flow-test-seeded','1');}},{EMAIL});
+page.setDefaultTimeout(10000);
 await page.clock.install({time:new Date('2026-10-28T09:00:00-04:00')});
 const expectEnabled=async (locator,expected=true)=>assert.equal(await locator.isEnabled(),expected,`${await locator.getAttribute('aria-label')||'field'} enabled=${expected}`);
 const entries=()=>page.evaluate(EMAIL=>JSON.parse(localStorage.getItem(`fieldworkByBaker:v1:${EMAIL}:entries`)||'[]'),EMAIL);
 const stage=(form,title)=>form.getByRole('group',{name:new RegExp(title)});
 const time=async(form,label,hour,minute='00',meridiem='AM')=>{await form.getByRole('combobox',{name:`${label} hour`,exact:true}).selectOption(hour);await form.getByRole('combobox',{name:`${label} minute`,exact:true}).selectOption(minute);await form.getByRole('combobox',{name:`${label} AM or PM`,exact:true}).selectOption(meridiem);};
-const openManual=async()=>{await page.getByRole('button',{name:'Add hours manually',exact:true}).click();return page.getByRole('form',{name:'Fieldwork hour entry'});};
+const openManual=async()=>{await page.getByRole('button',{name:'Add hours manually',exact:true}).click();const form=page.getByRole('form',{name:'Fieldwork hour entry'});await form.waitFor();console.log('FORM CONTROLS',JSON.stringify(await form.locator('input,select,textarea').evaluateAll(nodes=>nodes.map(n=>({tag:n.tagName,label:n.getAttribute('aria-label'),labels:[...(n.labels||[])].map(l=>l.textContent).map(s=>s.slice(0,120)),disabled:n.matches(':disabled')})))));return form;};
 const setContext=async form=>{await form.getByLabel('Supervisor',{exact:true}).fill('Fictional Supervisor');await form.getByLabel('Organization',{exact:true}).fill('Fictional Organization');await form.getByLabel('Date',{exact:true}).fill('2026-10-27');await time(form,'Start time','9');await time(form,'End time','10','15');};
 const test=async(name,fn)=>{try{await fn();results.push(name);console.log('PASS',name);}catch(e){failures.push({name,error:e.stack});console.error('FAIL',name,e.message);await page.screenshot({path:`${OUT}/hour-entry-failure-${failures.length}.png`,fullPage:true}).catch(()=>{});}};
 try {
