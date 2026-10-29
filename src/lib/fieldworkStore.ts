@@ -54,6 +54,7 @@ export function saveEntries(entries: HourEntry[], email = getCurrentUserEmail() 
 }
 
 function migrationIdentity(entry: HourEntry): string {
+  if (entry.allocationSession) return `allocation:${entry.allocationSession.sourceEntryId}:${entry.id}`;
   if ('migration' in entry && entry.migration) return `source:${entry.id}`;
   return JSON.stringify([entry.date, entry.startTime, entry.endTime, entry.duration, entry.activityType, entry.activityCategory, entry.supervisorName, entry.organizationName || '', entry.setting, entry.notes || '', entry.workPresence, entry.supervisionFormat, entry.supervisionMinutes, entry.observationMinutes, entry.individualSupervisionMinutes]);
 }
@@ -181,3 +182,4 @@ export function inferStatus(value: string): EntryStatus {
   if (normalized.includes('draft')) return 'DRAFT';
   return 'PENDING';
 }
+

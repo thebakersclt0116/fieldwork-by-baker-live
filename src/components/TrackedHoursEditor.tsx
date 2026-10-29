@@ -149,6 +149,9 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
       activityType: activityTypeFor(draft),
     };
 
+    if (original.allocationSession && (draft.startTime !== original.startTime || draft.endTime !== original.endTime || draft.duration !== original.duration || draft.date !== original.date)) {
+      setMessage('These hours are one linked allocation. Reconcile the complete session before changing its date, times, or allotted hours.'); return;
+    }
     const timeChanged = draft.startTime !== original.startTime || draft.endTime !== original.endTime;
     if (timeChanged && (!draft.startTime || !draft.endTime || hoursBetween(draft.startTime, draft.endTime) <= 0)) { setMessage('Enter a valid same-day start and end time, or restore the source time range.'); return; }
     for (const [label, minutes] of [['Supervision', normalized.supervisionMinutes], ['Observation', normalized.observationMinutes], ['Individual supervision', normalized.individualSupervisionMinutes]] as const) {
@@ -364,11 +367,12 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
                       </div>
                     </div>
 
+                    {draft.allocationSession && <p className="rounded-xl border border-[#E2DAD5] bg-[#FAF8F6] p-3 text-sm text-[#6B5D54] dark:border-white/15 dark:bg-white/5 dark:text-[#CFC4BE]">This is a category allocation from the session on {draft.allocationSession.date}, {formatTime(draft.allocationSession.startTime)}–{formatTime(draft.allocationSession.endTime)} ({draft.allocationSession.duration.toFixed(2)} hours total). Its date, clock times, and allotted hours stay linked to the original session.</p>}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <Field label="Date"><input type="date" value={draft.date} onChange={(e) => updateDraft('date', e.target.value)} className="field-input" /></Field>
-                      <Field label="Start time"><TimeInput label="Start time" value={draft.startTime || ''} onChange={(value) => updateDraft('startTime', value)} className="field-input" /></Field>
-                      <Field label="End time"><TimeInput label="End time" value={draft.endTime || ''} onChange={(value) => updateDraft('endTime', value)} className="field-input" /></Field>
-                      <Field label="Hours"><input type="number" min="0.01" step="0.01" value={computedDuration} onChange={(e) => updateDraft('duration', Number(e.target.value))} disabled={draft.startTime !== '00:00' && draft.endTime !== '00:00' && hoursBetween(draft.startTime, draft.endTime) > 0} className="field-input disabled:opacity-60" /><span className="mt-1 block text-[10px] text-[#A8998E]">Valid start/end times automatically control the decimal.</span></Field>
+                      <Field label="Date"><input disabled={Boolean(draft.allocationSession)} type="date" value={draft.date} onChange={(e) => updateDraft('date', e.target.value)} className="field-input" /></Field>
+                      <fieldset disabled={Boolean(draft.allocationSession)}><Field label="Start time"><TimeInput label="Start time" value={draft.startTime || ''} onChange={(value) => updateDraft('startTime', value)} className="field-input" /></Field></fieldset>
+                      <fieldset disabled={Boolean(draft.allocationSession)}><Field label="End time"><TimeInput label="End time" value={draft.endTime || ''} onChange={(value) => updateDraft('endTime', value)} className="field-input" /></Field></fieldset>
+                      <Field label="Hours"><input type="number" min="0.01" step="0.01" value={computedDuration} onChange={(e) => updateDraft('duration', Number(e.target.value))} disabled={Boolean(draft.allocationSession) || draft.startTime !== '00:00' && draft.endTime !== '00:00' && hoursBetween(draft.startTime, draft.endTime) > 0} className="field-input disabled:opacity-60" /><span className="mt-1 block text-[10px] text-[#A8998E]">Valid start/end times automatically control the decimal.</span></Field>
                       <Field label="Organization"><input value={draft.organizationName || ''} onChange={(e) => updateDraft('organizationName', e.target.value)} className="field-input" placeholder="Melmark Carolinas" /></Field>
                       <Field label="Responsible supervisor"><input value={draft.supervisorName || ''} onChange={(e) => updateDraft('supervisorName', e.target.value)} className="field-input" placeholder="Carrie" /></Field>
                       <Field label="Category"><select value={draft.activityCategory} onChange={(e) => updateDraft('activityCategory', e.target.value as ActivityCategory)} className="field-input bg-white"><option value="UNRESTRICTED">Unrestricted</option><option value="RESTRICTED">Restricted</option><option value="UNKNOWN">Unknown / not in source</option></select></Field>
@@ -428,3 +432,4 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-xs font-medium text-[#7B6B62]">{label}<div className="mt-1.5">{children}</div></label>;
 }
+

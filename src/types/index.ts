@@ -87,6 +87,14 @@ export interface HourEntry {
     stoppedAt: string;
     detailsComplete: boolean;
   };
+  allocationSession?: {
+    id: string;
+    sourceEntryId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    duration: number;
+  };
 }
 
 export interface User {
@@ -232,3 +240,4 @@ export interface FeatureShowcaseItem {
   icon: string;
   image: string;
 }
+
