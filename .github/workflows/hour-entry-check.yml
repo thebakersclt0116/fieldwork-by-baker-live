@@ -1,0 +1,41 @@
+name: Hour Entry Browser Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, guided-hour-entry]
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --registry=https://registry.npmjs.org/
+      - name: Install isolated browser test runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/fieldwork-browser" --no-package-lock --ignore-scripts --registry=https://registry.npmjs.org/ playwright@1.62.1
+          node "$RUNNER_TEMP/fieldwork-browser/node_modules/playwright/cli.js" install --with-deps chromium --only-shell
+      - name: Run staged entry and timer browser scenarios
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 4185 > "$RUNNER_TEMP/fieldwork-hour-entry-dev.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4185/ > /dev/null; then break; fi
+            sleep 1
+          done
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/fieldwork-browser/node_modules/playwright/index.mjs" BAKER_EVIDENCE_DIR=hour-entry-evidence node scripts/hour-entry-flow.browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hour-entry-browser-evidence
+          path: hour-entry-evidence
+          if-no-files-found: ignore

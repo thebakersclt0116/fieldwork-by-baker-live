@@ -40,7 +40,7 @@ export default function SupervisorReview({ entry, email, enabled }: { entry: Hou
       if (!current || current.status === 'DRAFT' || timerNeedsDetails(current)) throw new Error('This entry is unavailable or still needs activity details.');
       const narrative = [
         current.organizationName ? `Organization: ${current.organizationName}` : '',
-        `Time: ${formatTime(current.startTime)}–${formatTime(current.endTime)}`,
+        current.allocationSession ? `Original session: ${formatTime(current.allocationSession.startTime)}–${formatTime(current.allocationSession.endTime)} (${current.allocationSession.duration.toFixed(2)} hours). This category allocation: ${current.duration.toFixed(2)} hours.` : `Time: ${formatTime(current.startTime)}–${formatTime(current.endTime)}`,
         `Category: ${current.activityCategory}`,
         current.workPresence ? `Activity type: ${current.workPresence}` : '',
         `Supervision: ${current.supervisionMinutes || 0} minutes`,
@@ -85,3 +85,4 @@ export default function SupervisorReview({ entry, email, enabled }: { entry: Hou
     </DialogContent></Dialog>
   </>;
 }
+

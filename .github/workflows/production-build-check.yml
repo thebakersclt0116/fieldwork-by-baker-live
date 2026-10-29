@@ -26,6 +26,8 @@ jobs:
         run: node scripts/fieldwork-regression-check.mjs
       - name: Launch security and precision checks
         run: node --experimental-strip-types --test scripts/launch-hardening.test.mjs scripts/cloud-boundary.test.mjs scripts/cloud-saving.test.mjs scripts/managed-session.test.mjs scripts/exam-answer-review.test.mjs
+      - name: Hour entry allocations and timer recovery
+        run: node --experimental-strip-types --test scripts/fieldwork-timer.test.mjs scripts/hour-entry-flow.test.mjs scripts/hour-entry-timer.test.mjs scripts/monthly-verification.test.mjs
       - name: Build production frontend
         run: npm run build
       - name: Bundle production API routes
@@ -38,3 +40,4 @@ jobs:
             name="$(basename "$route" .ts)"
             ./node_modules/.bin/esbuild "$route" --bundle --platform=node --format=esm --target=node22 --outfile="/tmp/baker-api-check/$name.mjs"
           done
+
