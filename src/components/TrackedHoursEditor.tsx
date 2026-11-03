@@ -77,11 +77,26 @@ function safeClone(entry: HourEntry): HourEntry {
   return JSON.parse(JSON.stringify(entry)) as HourEntry;
 }
 
-export default function TrackedHoursEditor({ inline = false }: { inline?: boolean } = {}) {
+interface TrackedHoursEditorProps {
+  inline?: boolean;
+  entryId?: string;
+}
+
+export default function TrackedHoursEditor({ inline = false, entryId }: TrackedHoursEditorProps = {}) {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
-  const email = getCurrentUserEmail() || user?.email || '';
+  const email = (getCurrentUserEmail() || user?.email || '').trim().toLowerCase();
+  const hoursRoute = location.pathname === '/dashboard' || /^\/dashboard\/\d{4}-(0[1-9]|1[0-2])$/.test(location.pathname);
+  if (!hoursRoute || !isAuthenticated || !email) return null;
+
+  // A different account or row gets fresh editor state, never the previous draft.
+  return <AccountTrackedHoursEditor key={`${email}:${entryId || 'all'}`} inline={inline} entryId={entryId} email={email} />;
+}
+
+function AccountTrackedHoursEditor({ inline, entryId, email }: TrackedHoursEditorProps & { email: string }) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [openError, setOpenError] = useState('');
   const [entries, setEntries] = useState<HourEntry[]>([]);
   const [original, setOriginal] = useState<HourEntry | null>(null);
   const [draft, setDraft] = useState<HourEntry | null>(null);
@@ -90,10 +105,6 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [manualReviewUrl, setManualReviewUrl] = useState('');
-
-  const visible = location.pathname === '/dashboard' && isAuthenticated && Boolean(email);
-
-  const refresh = () => setEntries(loadEntries(email));
 
   const approvalSensitive = Boolean(original && (original.status === 'VERIFIED' || original.requiresReapproval));
   const computedDuration = useMemo(() => {
@@ -104,8 +115,6 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
     }
     return Math.max(0, Number(draft.duration) || 0);
   }, [draft, original]);
-
-  if (!visible) return null;
 
   const beginEdit = (entry: HourEntry) => {
     const next = safeClone(entry);
@@ -128,12 +137,44 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
     setManualReviewUrl('');
   };
 
+  const closeEditor = () => {
+    setOpen(false);
+    cancelEdit();
+  };
+
+  const openEditor = () => {
+    setOpenError('');
+    if (getCurrentUserEmail() !== email) {
+      closeEditor();
+      setOpenError('Your account changed. Refresh the month before editing.');
+      return;
+    }
+    const current = loadEntries(email);
+    setEntries(current);
+    if (entryId) {
+      const entry = current.find(item => item.id === entryId);
+      if (!entry) {
+        closeEditor();
+        setOpenError('This entry is no longer available. Refresh the month and try again.');
+        return;
+      }
+      beginEdit(entry);
+    } else {
+      cancelEdit();
+    }
+    setOpen(true);
+  };
+
   const updateDraft = <K extends keyof HourEntry>(key: K, value: HourEntry[K]) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
   };
 
   const saveEdit = async () => {
     if (!draft || !original) return;
+    if (getCurrentUserEmail() !== email) {
+      setMessage('Your account changed. Reopen the entry before saving.');
+      return;
+    }
     const normalized: HourEntry = {
       ...draft,
       duration: computedDuration,
@@ -307,25 +348,26 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
     <>
       <button
         type="button"
-        onClick={() => { setOpen(true); refresh(); }}
-        className={inline ? 'inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] px-4 py-2.5 text-sm font-semibold text-[#6B5D54] dark:border-white/15 dark:text-white' : 'fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#332C28] px-4 py-3 text-sm font-semibold text-white shadow-xl hover:-translate-y-0.5 transition-transform'}
+        onClick={openEditor}
+        className={entryId ? 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#4C5D46] px-4 py-2 text-sm font-semibold text-[#4C5D46] transition-colors hover:border-[#6B513E] hover:bg-[#F5F1E8] hover:text-[#6B513E] dark:border-[#B6BCA4] dark:text-[#D8C9B3] dark:hover:bg-white/5' : inline ? 'inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] px-4 py-2.5 text-sm font-semibold text-[#6B5D54] dark:border-white/15 dark:text-white' : 'fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#332C28] px-4 py-3 text-sm font-semibold text-white shadow-xl hover:-translate-y-0.5 transition-transform'}
       >
-        <Pencil size={16} /> Edit tracked hours
+        <Pencil size={16} aria-hidden="true" /> {entryId ? 'Edit' : 'Edit tracked hours'}
       </button>
+      {openError && <span role="alert" className="block text-sm text-[#6B513E] dark:text-[#D8C9B3]">{openError}</span>}
 
       {open && (
         <div className="fixed inset-0 z-[90] bg-black/45 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto">
-          <div className="mx-auto max-w-6xl rounded-3xl border border-[#E2DAD5] bg-[#FFFCF9] shadow-2xl overflow-hidden">
+          <div role="dialog" aria-modal="true" aria-label={entryId ? 'Edit fieldwork entry' : 'Edit fieldwork entries'} className={`mx-auto ${entryId ? 'max-w-4xl' : 'max-w-6xl'} rounded-3xl border border-[#E2DAD5] bg-[#FFFCF9] shadow-2xl overflow-hidden`}>
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#F2EDEA] bg-white/95 px-5 py-4 backdrop-blur">
               <div>
                 <div className="text-xs uppercase tracking-[0.16em] text-[#A8998E]">Tracked hours</div>
-                <h2 className="font-serif text-2xl font-semibold text-[#332C28]">Edit fieldwork entries</h2>
+                <h2 className="font-serif text-2xl font-semibold text-[#332C28]">{entryId ? 'Edit fieldwork entry' : 'Edit fieldwork entries'}</h2>
               </div>
-              <button onClick={() => { setOpen(false); cancelEdit(); }} className="rounded-xl border border-[#E2DAD5] bg-white p-2 text-[#6B5D54]" aria-label="Close editor"><X size={18} /></button>
+              <button type="button" disabled={saving} onClick={closeEditor} className="rounded-xl border border-[#E2DAD5] bg-white p-2 text-[#6B5D54] disabled:opacity-50" aria-label={entryId ? 'Back to month entries' : 'Close editor'}><X size={18} /></button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[.72fr_1.28fr] min-h-[620px]">
-              <aside className="border-b lg:border-b-0 lg:border-r border-[#F2EDEA] bg-white p-4 max-h-[74vh] overflow-y-auto">
+            <div className={entryId ? 'min-w-0' : 'grid grid-cols-1 lg:grid-cols-[.72fr_1.28fr] min-h-[620px]'}>
+              {!entryId && <aside className="border-b lg:border-b-0 lg:border-r border-[#F2EDEA] bg-white p-4 max-h-[74vh] overflow-y-auto">
                 <p className="text-xs text-[#A8998E] mb-3">Pending entries can be corrected without notifying anyone. Editing an approved entry resets it to Pending and requires supervisor re-approval.</p>
                 <div className="space-y-2">
                   {entries.length === 0 && <div className="rounded-xl bg-[#FAF8F6] p-4 text-sm text-[#A8998E]">No tracked entries yet.</div>}
@@ -344,9 +386,9 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
                     </button>
                   ))}
                 </div>
-              </aside>
+              </aside>}
 
-              <main className="p-5 sm:p-6 max-h-[74vh] overflow-y-auto">
+              <div className="p-5 sm:p-6 max-h-[74vh] overflow-y-auto" onChange={() => setMessage('')}>
                 {!draft || !original ? (
                   <div className="h-full min-h-[420px] flex items-center justify-center text-center">
                     <div className="max-w-md">
@@ -405,7 +447,7 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
                       </div>
                     )}
 
-                    {message && <div className={`rounded-xl px-4 py-3 text-sm ${message.startsWith('Changes saved') ? 'bg-[#E8F5EE] text-[#4B8C69]' : 'bg-[#FFF5F7] text-[#C9445A]'}`}>{message}</div>}
+                    {message && <div role="status" className={`rounded-xl px-4 py-3 text-sm ${message.startsWith('Changes saved') ? 'bg-[#E8F5EE] text-[#4B8C69]' : 'bg-[#FFF5F7] text-[#C9445A]'}`}>{message}</div>}
                     {manualReviewUrl && mailto && (
                       <div className="rounded-2xl border border-[#F2D4B8] bg-[#FFF8F3] p-4">
                         <div className="text-sm font-semibold text-[#8A5D36]">Supervisor notification needs manual delivery</div>
@@ -415,12 +457,12 @@ export default function TrackedHoursEditor({ inline = false }: { inline?: boolea
                     )}
 
                     <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 border-t border-[#F2EDEA] pt-4">
-                      <button onClick={cancelEdit} className="rounded-xl border border-[#E2DAD5] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B5D54]">Cancel</button>
+                      <button type="button" disabled={saving} onClick={entryId ? closeEditor : cancelEdit} className="rounded-xl border border-[#E2DAD5] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B5D54] disabled:opacity-50">{entryId && message.startsWith('Changes saved') ? 'Back to month entries' : 'Cancel'}</button>
                       <button onClick={() => void saveEdit()} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#332C28] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save size={15} /> {saving ? 'Saving…' : approvalSensitive ? 'Save & require re-approval' : 'Save changes'}</button>
                     </div>
                   </div>
                 )}
-              </main>
+              </div>
             </div>
           </div>
         </div>

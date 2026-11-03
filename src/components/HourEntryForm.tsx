@@ -12,8 +12,8 @@ const inputClass = 'mt-1.5 w-full rounded-xl border border-[#DDD2CA] bg-white px
 const labels = { restricted: 'Restricted', unrestricted: 'Unrestricted', individualRestricted: 'Individual restricted', individualUnrestricted: 'Individual unrestricted', groupUnrestricted: 'Group unrestricted' };
 export interface HourEntrySubmission { sources: HourEntry[]; detailsByEntry: Record<string, HourEntryFlowDetails> }
 
-export default function HourEntryForm({ segments = [], supervisors = [], organizations = [], onSave, onLater }: {
-  segments?: HourEntry[]; supervisors?: string[]; organizations?: string[];
+export default function HourEntryForm({ segments = [], supervisors = [], organizations = [], initialDate, onSave, onLater }: {
+  segments?: HourEntry[]; supervisors?: string[]; organizations?: string[]; initialDate?: string;
   onSave: (submission: HourEntrySubmission) => Promise<void>; onLater: () => void;
 }) {
   const id = useId();
@@ -23,7 +23,7 @@ export default function HourEntryForm({ segments = [], supervisors = [], organiz
   const [today] = useState(() => localDate(Date.now()));
   const [supervisor, setSupervisor] = useState(initial?.supervisorName === 'Not specified' ? '' : initial?.supervisorName || '');
   const [organization, setOrganization] = useState(initial?.organizationName || '');
-  const [date, setDate] = useState(initial?.date || today);
+  const [date, setDate] = useState(initial?.date || initialDate || today);
   const [start, setStart] = useState(initial?.startTime || '');
   const [end, setEnd] = useState(initial?.endTime || '');
   const [presence, setPresence] = useState<WorkPresence | ''>('');

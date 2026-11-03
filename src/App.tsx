@@ -109,6 +109,7 @@ export default function App() {
         <Route path="/resources" element={<ProtectedRoute><AdminFeatureRoute><ResourceVault /></AdminFeatureRoute></ProtectedRoute>} />
 
         <Route path="/dashboard" element={<ProtectedRoute><MeasuredTab feature="fieldwork"><AccountDashboard /></MeasuredTab></ProtectedRoute>} />
+        <Route path="/dashboard/:month" element={<ProtectedRoute><PaidFeatureRoute><MeasuredTab feature="fieldwork"><MyHours /></MeasuredTab></PaidFeatureRoute></ProtectedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
         <Route path="/upgrade/success" element={<ProtectedRoute><UpgradeSuccess /></ProtectedRoute>} />
         <Route path="/export" element={<ProtectedRoute><MeasuredTab feature="exports"><ExportCenter /></MeasuredTab></ProtectedRoute>} />
