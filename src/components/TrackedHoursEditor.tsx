@@ -349,7 +349,7 @@ function AccountTrackedHoursEditor({ inline, entryId, email }: TrackedHoursEdito
       <button
         type="button"
         onClick={openEditor}
-        className={entryId ? 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#4C5D46] px-4 py-2 text-sm font-semibold text-[#4C5D46] transition-colors hover:border-[#6B513E] hover:bg-[#F5F1E8] hover:text-[#6B513E] dark:border-[#B6BCA4] dark:text-[#D8C9B3] dark:hover:bg-white/5' : inline ? 'inline-flex items-center gap-2 rounded-xl border border-[#E2DAD5] px-4 py-2.5 text-sm font-semibold text-[#6B5D54] dark:border-white/15 dark:text-white' : 'fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#332C28] px-4 py-3 text-sm font-semibold text-white shadow-xl hover:-translate-y-0.5 transition-transform'}
+        className={entryId ? 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#4C5D46] px-4 py-2 text-sm font-semibold text-[#4C5D46] transition-colors hover:border-[#6B513E] hover:bg-[#F5F1E8] hover:text-[#6B513E] dark:border-[#B6BCA4] dark:text-[#D8C9B3] dark:hover:bg-white/5' : inline ? 'inline-flex items-center gap-2 rounded-xl border border-[#D8C9B3] px-4 py-2.5 text-sm font-semibold text-[#655F50] dark:border-white/15 dark:text-white' : 'fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#333B2F] px-4 py-3 text-sm font-semibold text-white shadow-xl hover:-translate-y-0.5 transition-transform'}
       >
         <Pencil size={16} aria-hidden="true" /> {entryId ? 'Edit' : 'Edit tracked hours'}
       </button>
@@ -357,31 +357,31 @@ function AccountTrackedHoursEditor({ inline, entryId, email }: TrackedHoursEdito
 
       {open && (
         <div className="fixed inset-0 z-[90] bg-black/45 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-label={entryId ? 'Edit fieldwork entry' : 'Edit fieldwork entries'} className={`mx-auto ${entryId ? 'max-w-4xl' : 'max-w-6xl'} rounded-3xl border border-[#E2DAD5] bg-[#FFFCF9] shadow-2xl overflow-hidden`}>
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#F2EDEA] bg-white/95 px-5 py-4 backdrop-blur">
+          <div role="dialog" aria-modal="true" aria-label={entryId ? 'Edit fieldwork entry' : 'Edit fieldwork entries'} className={`mx-auto ${entryId ? 'max-w-4xl' : 'max-w-6xl'} rounded-3xl border border-[#D8C9B3] bg-[#F5F1E8] shadow-2xl overflow-hidden`}>
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#E7E9DE] bg-white/95 px-5 py-4 backdrop-blur">
               <div>
-                <div className="text-xs uppercase tracking-[0.16em] text-[#A8998E]">Tracked hours</div>
-                <h2 className="font-serif text-2xl font-semibold text-[#332C28]">{entryId ? 'Edit fieldwork entry' : 'Edit fieldwork entries'}</h2>
+                <div className="text-xs uppercase tracking-[0.16em] text-[#655F50]">Tracked hours</div>
+                <h2 className="font-serif text-2xl font-semibold text-[#333B2F]">{entryId ? 'Edit fieldwork entry' : 'Edit fieldwork entries'}</h2>
               </div>
-              <button type="button" disabled={saving} onClick={closeEditor} className="rounded-xl border border-[#E2DAD5] bg-white p-2 text-[#6B5D54] disabled:opacity-50" aria-label={entryId ? 'Back to month entries' : 'Close editor'}><X size={18} /></button>
+              <button type="button" disabled={saving} onClick={closeEditor} className="rounded-xl border border-[#D8C9B3] bg-white p-2 text-[#655F50] disabled:opacity-50" aria-label={entryId ? 'Back to month entries' : 'Close editor'}><X size={18} /></button>
             </div>
 
             <div className={entryId ? 'min-w-0' : 'grid grid-cols-1 lg:grid-cols-[.72fr_1.28fr] min-h-[620px]'}>
-              {!entryId && <aside className="border-b lg:border-b-0 lg:border-r border-[#F2EDEA] bg-white p-4 max-h-[74vh] overflow-y-auto">
-                <p className="text-xs text-[#A8998E] mb-3">Pending entries can be corrected without notifying anyone. Editing an approved entry resets it to Pending and requires supervisor re-approval.</p>
+              {!entryId && <aside className="border-b lg:border-b-0 lg:border-r border-[#E7E9DE] bg-white p-4 max-h-[74vh] overflow-y-auto">
+                <p className="text-xs text-[#655F50] mb-3">Pending entries can be corrected without notifying anyone. Editing an approved entry resets it to Pending and requires supervisor re-approval.</p>
                 <div className="space-y-2">
-                  {entries.length === 0 && <div className="rounded-xl bg-[#FAF8F6] p-4 text-sm text-[#A8998E]">No tracked entries yet.</div>}
+                  {entries.length === 0 && <div className="rounded-xl bg-[#FBF8F1] p-4 text-sm text-[#655F50]">No tracked entries yet.</div>}
                   {entries.map((entry) => (
-                    <button key={entry.id} onClick={() => beginEdit(entry)} className={`w-full text-left rounded-2xl border p-4 transition-colors ${draft?.id === entry.id ? 'border-[#E85D70] bg-[#FFF5F7]' : 'border-[#F2EDEA] bg-white hover:border-[#E2DAD5]'}`}>
+                    <button key={entry.id} onClick={() => beginEdit(entry)} className={`w-full text-left rounded-2xl border p-4 transition-colors ${draft?.id === entry.id ? 'border-[#4C5D46] bg-[#F5F1E8]' : 'border-[#E7E9DE] bg-white hover:border-[#D8C9B3]'}`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-[#332C28]">{entry.date}</span>
-                        <span className="font-mono text-sm text-[#E85D70]">{Number(entry.duration || 0).toFixed(2)}h</span>
+                        <span className="font-semibold text-[#333B2F]">{entry.date}</span>
+                        <span className="font-mono text-sm text-[#4C5D46]">{Number(entry.duration || 0).toFixed(2)}h</span>
                       </div>
-                      <div className="mt-1 text-xs text-[#6B5D54]">{entry.organizationName || entry.setting || 'Organization not specified'}</div>
-                      <div className="mt-1 text-xs text-[#A8998E]">{entry.supervisorName || 'Supervisor not specified'} • {entry.activityCategory}</div>
+                      <div className="mt-1 text-xs text-[#655F50]">{entry.organizationName || entry.setting || 'Organization not specified'}</div>
+                      <div className="mt-1 text-xs text-[#655F50]">{entry.supervisorName || 'Supervisor not specified'} • {entry.activityCategory}</div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        <span className="rounded-full bg-[#FAF8F6] px-2 py-1 text-[10px] font-bold text-[#6B5D54]">{entry.status}</span>
-                        {entry.requiresReapproval && <span className="rounded-full bg-[#FFF3E0] px-2 py-1 text-[10px] font-bold text-[#B77722]">RE-APPROVAL REQUIRED</span>}
+                        <span className="rounded-full bg-[#FBF8F1] px-2 py-1 text-[10px] font-bold text-[#655F50]">{entry.status}</span>
+                        {entry.requiresReapproval && <span className="rounded-full bg-[#E7E9DE] px-2 py-1 text-[10px] font-bold text-[#6B513E]">RE-APPROVAL REQUIRED</span>}
                       </div>
                     </button>
                   ))}
@@ -392,29 +392,29 @@ function AccountTrackedHoursEditor({ inline, entryId, email }: TrackedHoursEdito
                 {!draft || !original ? (
                   <div className="h-full min-h-[420px] flex items-center justify-center text-center">
                     <div className="max-w-md">
-                      <Edit3 size={34} className="mx-auto text-[#E85D70] mb-3" />
-                      <h3 className="font-serif text-2xl font-semibold text-[#332C28]">Choose an entry to edit</h3>
-                      <p className="mt-2 text-sm text-[#A8998E]">Every correction keeps a revision trail. Previously approved hours cannot stay verified after their underlying data changes.</p>
+                      <Edit3 size={34} className="mx-auto text-[#4C5D46] mb-3" />
+                      <h3 className="font-serif text-2xl font-semibold text-[#333B2F]">Choose an entry to edit</h3>
+                      <p className="mt-2 text-sm text-[#655F50]">Every correction keeps a revision trail. Previously approved hours cannot stay verified after their underlying data changes.</p>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-5">
-                    <div className={`rounded-2xl p-4 ${approvalSensitive ? 'bg-[#FFF8F3] border border-[#F2D4B8]' : 'bg-[#E8F5EE] border border-[#CFE7D9]'}`}>
+                    <div className={`rounded-2xl p-4 ${approvalSensitive ? 'bg-[#FBF8F1] border border-[#D8C9B3]' : 'bg-[#E7E9DE] border border-[#B6BCA4]'}`}>
                       <div className="flex items-start gap-2">
-                        {approvalSensitive ? <AlertTriangle size={18} className="text-[#B36A2E] mt-0.5" /> : <CheckCircle2 size={18} className="text-[#4B8C69] mt-0.5" />}
+                        {approvalSensitive ? <AlertTriangle size={18} className="text-[#6B513E] mt-0.5" /> : <CheckCircle2 size={18} className="text-[#4C5D46] mt-0.5" />}
                         <div>
-                          <div className={`font-semibold text-sm ${approvalSensitive ? 'text-[#8A5D36]' : 'text-[#4B8C69]'}`}>{approvalSensitive ? 'This entry has approval history' : 'Not approved yet'}</div>
-                          <p className="text-xs mt-1 text-[#6B5D54]">{approvalSensitive ? 'Saving a change will invalidate the prior approval, return the entry to Pending, create a new signed review link, and notify the assigned supervisor when notification delivery is configured.' : 'You can correct this entry now without triggering a supervisor notification.'}</p>
+                          <div className={`font-semibold text-sm ${approvalSensitive ? 'text-[#6B513E]' : 'text-[#4C5D46]'}`}>{approvalSensitive ? 'This entry has approval history' : 'Not approved yet'}</div>
+                          <p className="text-xs mt-1 text-[#655F50]">{approvalSensitive ? 'Saving a change will invalidate the prior approval, return the entry to Pending, create a new signed review link, and notify the assigned supervisor when notification delivery is configured.' : 'You can correct this entry now without triggering a supervisor notification.'}</p>
                         </div>
                       </div>
                     </div>
 
-                    {draft.allocationSession && <p className="rounded-xl border border-[#E2DAD5] bg-[#FAF8F6] p-3 text-sm text-[#6B5D54] dark:border-white/15 dark:bg-white/5 dark:text-[#CFC4BE]">This is a category allocation from the session on {draft.allocationSession.date}, {formatTime(draft.allocationSession.startTime)}–{formatTime(draft.allocationSession.endTime)} ({draft.allocationSession.duration.toFixed(2)} hours total). Its date, clock times, and allotted hours stay linked to the original session.</p>}
+                    {draft.allocationSession && <p className="rounded-xl border border-[#D8C9B3] bg-[#FBF8F1] p-3 text-sm text-[#655F50] dark:border-white/15 dark:bg-white/5 dark:text-[#D8C9B3]">This is a category allocation from the session on {draft.allocationSession.date}, {formatTime(draft.allocationSession.startTime)}–{formatTime(draft.allocationSession.endTime)} ({draft.allocationSession.duration.toFixed(2)} hours total). Its date, clock times, and allotted hours stay linked to the original session.</p>}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <Field label="Date"><input disabled={Boolean(draft.allocationSession)} type="date" value={draft.date} onChange={(e) => updateDraft('date', e.target.value)} className="field-input" /></Field>
                       <fieldset disabled={Boolean(draft.allocationSession)}><Field label="Start time"><TimeInput label="Start time" value={draft.startTime || ''} onChange={(value) => updateDraft('startTime', value)} className="field-input" /></Field></fieldset>
                       <fieldset disabled={Boolean(draft.allocationSession)}><Field label="End time"><TimeInput label="End time" value={draft.endTime || ''} onChange={(value) => updateDraft('endTime', value)} className="field-input" /></Field></fieldset>
-                      <Field label="Hours"><input type="number" min="0.01" step="0.01" value={computedDuration} onChange={(e) => updateDraft('duration', Number(e.target.value))} disabled={Boolean(draft.allocationSession) || draft.startTime !== '00:00' && draft.endTime !== '00:00' && hoursBetween(draft.startTime, draft.endTime) > 0} className="field-input disabled:opacity-60" /><span className="mt-1 block text-[10px] text-[#A8998E]">Valid start/end times automatically control the decimal.</span></Field>
+                      <Field label="Hours"><input type="number" min="0.01" step="0.01" value={computedDuration} onChange={(e) => updateDraft('duration', Number(e.target.value))} disabled={Boolean(draft.allocationSession) || draft.startTime !== '00:00' && draft.endTime !== '00:00' && hoursBetween(draft.startTime, draft.endTime) > 0} className="field-input disabled:opacity-60" /><span className="mt-1 block text-[10px] text-[#655F50]">Valid start/end times automatically control the decimal.</span></Field>
                       <Field label="Organization"><input value={draft.organizationName || ''} onChange={(e) => updateDraft('organizationName', e.target.value)} className="field-input" placeholder="Melmark Carolinas" /></Field>
                       <Field label="Responsible supervisor"><input value={draft.supervisorName || ''} onChange={(e) => updateDraft('supervisorName', e.target.value)} className="field-input" placeholder="Carrie" /></Field>
                       <Field label="Category"><select value={draft.activityCategory} onChange={(e) => updateDraft('activityCategory', e.target.value as ActivityCategory)} className="field-input bg-white"><option value="UNRESTRICTED">Unrestricted</option><option value="RESTRICTED">Restricted</option><option value="UNKNOWN">Unknown / not in source</option></select></Field>
@@ -440,25 +440,25 @@ function AccountTrackedHoursEditor({ inline, entryId, email }: TrackedHoursEdito
                     <Field label="Activity description"><textarea rows={4} value={draft.notes || ''} onChange={(e) => updateDraft('notes', e.target.value)} className="field-input resize-none" /></Field>
 
                     {approvalSensitive && (
-                      <div className="rounded-2xl border-2 border-[#E8C39F] bg-[#FFF8F3] p-4">
+                      <div className="rounded-2xl border-2 border-[#D8C9B3] bg-[#FBF8F1] p-4">
                         <Field label="Why did you change this approved entry? *"><textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="field-input resize-none" placeholder="Example: I entered the wrong end time; the session ended at 10:15 AM, not 10:30 AM." /></Field>
                         <div className="mt-3"><Field label="Supervisor email for re-approval *"><input type="email" value={supervisorEmail} onChange={(e) => setSupervisorEmail(e.target.value)} className="field-input" placeholder="supervisor@email.com" /></Field></div>
-                        <p className="mt-2 text-xs text-[#8A5D36]">The reason is included in the new signed review request so the supervisor can see exactly why the previously approved record changed.</p>
+                        <p className="mt-2 text-xs text-[#6B513E]">The reason is included in the new signed review request so the supervisor can see exactly why the previously approved record changed.</p>
                       </div>
                     )}
 
-                    {message && <div role="status" className={`rounded-xl px-4 py-3 text-sm ${message.startsWith('Changes saved') ? 'bg-[#E8F5EE] text-[#4B8C69]' : 'bg-[#FFF5F7] text-[#C9445A]'}`}>{message}</div>}
+                    {message && <div role="status" className={`rounded-xl px-4 py-3 text-sm ${message.startsWith('Changes saved') ? 'bg-[#E7E9DE] text-[#4C5D46]' : 'bg-[#F5F1E8] text-[#8B3F3F]'}`}>{message}</div>}
                     {manualReviewUrl && mailto && (
-                      <div className="rounded-2xl border border-[#F2D4B8] bg-[#FFF8F3] p-4">
-                        <div className="text-sm font-semibold text-[#8A5D36]">Supervisor notification needs manual delivery</div>
-                        <p className="mt-1 text-xs text-[#A36F45]">The secure re-approval link is ready. Use the email button until automatic notification delivery is configured.</p>
-                        <a href={mailto} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#E85D70] px-4 py-2.5 text-sm font-semibold text-white"><Mail size={15} /> Email supervisor</a>
+                      <div className="rounded-2xl border border-[#D8C9B3] bg-[#FBF8F1] p-4">
+                        <div className="text-sm font-semibold text-[#6B513E]">Supervisor notification needs manual delivery</div>
+                        <p className="mt-1 text-xs text-[#6B513E]">The secure re-approval link is ready. Use the email button until automatic notification delivery is configured.</p>
+                        <a href={mailto} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#4C5D46] px-4 py-2.5 text-sm font-semibold text-white"><Mail size={15} /> Email supervisor</a>
                       </div>
                     )}
 
-                    <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 border-t border-[#F2EDEA] pt-4">
-                      <button type="button" disabled={saving} onClick={entryId ? closeEditor : cancelEdit} className="rounded-xl border border-[#E2DAD5] bg-white px-4 py-2.5 text-sm font-semibold text-[#6B5D54] disabled:opacity-50">{entryId && message.startsWith('Changes saved') ? 'Back to month entries' : 'Cancel'}</button>
-                      <button onClick={() => void saveEdit()} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#332C28] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save size={15} /> {saving ? 'Saving…' : approvalSensitive ? 'Save & require re-approval' : 'Save changes'}</button>
+                    <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 border-t border-[#E7E9DE] pt-4">
+                      <button type="button" disabled={saving} onClick={entryId ? closeEditor : cancelEdit} className="rounded-xl border border-[#D8C9B3] bg-white px-4 py-2.5 text-sm font-semibold text-[#655F50] disabled:opacity-50">{entryId && message.startsWith('Changes saved') ? 'Back to month entries' : 'Cancel'}</button>
+                      <button onClick={() => void saveEdit()} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#333B2F] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save size={15} /> {saving ? 'Saving…' : approvalSensitive ? 'Save & require re-approval' : 'Save changes'}</button>
                     </div>
                   </div>
                 )}
@@ -472,6 +472,6 @@ function AccountTrackedHoursEditor({ inline, entryId, email }: TrackedHoursEdito
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block text-xs font-medium text-[#7B6B62]">{label}<div className="mt-1.5">{children}</div></label>;
+  return <label className="block text-xs font-medium text-[#655F50]">{label}<div className="mt-1.5">{children}</div></label>;
 }
 
