@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowUpRight, CheckCircle2, Clock3, FileText, Play, Plus, Settings2, Square, Upload } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, CheckCircle2, CircleX, Clock3, FileText, Play, Plus, Settings2, Square, Upload, X } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
 import type { HourEntry } from '@/types';
@@ -19,6 +19,7 @@ import type { TimerJournal } from '@/lib/fieldworkTimer';
 import { formatTime } from '@/lib/timeDisplay';
 import { entriesForMonth, loggedHoursLabel, loggedMonths } from '@/lib/loggedMonths';
 import { monthLabel, summarizeMonth } from '@/lib/monthlyProgress';
+import { monthlyRequirements } from '@/lib/monthlyRequirements';
 
 const emptyJournal: TimerJournal = { version: 1, running: null, stopped: [] };
 function timerLabel(seconds: number) {
@@ -46,6 +47,7 @@ function AccountHours({ email, hasSupervisorFeatures, month }: { email: string; 
   const [now, setNow] = useState(Date.now);
   const [selectedSession, setSelectedSession] = useState('');
   const [manualOpen, setManualOpen] = useState(false);
+  const [requirementsOpen, setRequirementsOpen] = useState(true);
   const [timerDetailsOpen, setTimerDetailsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -135,6 +137,7 @@ function AccountHours({ email, hasSupervisorFeatures, month }: { email: string; 
   const months = useMemo(() => loggedMonths(entries), [entries]);
   const sorted = useMemo(() => month ? entriesForMonth(entries, month) : [], [entries, month]);
   const monthSummary = useMemo(() => month ? summarizeMonth(entries, month) : null, [entries, month]);
+  const requirements = useMemo(() => month ? monthlyRequirements(entries, month) : null, [entries, month]);
   const incompleteCount = monthSummary ? sorted.length - monthSummary.sessions.length : 0;
   const seconds = elapsedTimerSeconds(journal.running, now);
   const selectedDateCount = new Set(selected.map(entry => entry.date)).size;
@@ -190,13 +193,13 @@ function AccountHours({ email, hasSupervisorFeatures, month }: { email: string; 
         </div>
         {months.length === 0 ? <div className="rounded-xl border border-[#D8C9B3] bg-[#FBF8F1] px-5 py-10 text-center dark:border-white/15 dark:bg-[#222A20]"><FileText size={28} className="mx-auto text-[#6B513E] dark:text-[#D8C9B3]" /><p className="mt-3 text-sm text-[#655F50] dark:text-[#D8C9B3]">Your months will appear here after you log or import hours.</p></div> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {months.map(group => <Link key={group.month} to={'/dashboard/' + group.month} className="flex min-h-32 items-center justify-between gap-4 rounded-xl bg-[#4C5D46] px-6 py-5 text-[#F5F1E8] transition-colors hover:bg-[#3E4E38] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4C5D46]">
-            <span className="min-w-0"><strong className="block text-2xl font-bold leading-tight">{monthLabel(group.month)}</strong><span className="mt-2 block text-base font-normal">{loggedHoursLabel(group.totalHours)} hours logged</span>{group.incompleteCount > 0 && <span className="mt-2 block text-xs font-normal">{group.incompleteCount} {group.incompleteCount === 1 ? 'entry needs' : 'entries need'} details</span>}</span><ArrowUpRight size={23} className="shrink-0" aria-hidden="true" />
+            <span className="min-w-0"><strong className="block text-2xl font-bold leading-tight">{monthLabel(group.month)}</strong><span className="mt-2 block text-base font-normal">{loggedHoursLabel(group.totalHours)} hours logged</span><MonthStatus status={monthlyRequirements(entries, group.month).status} />{group.incompleteCount > 0 && <span className="mt-2 block text-xs font-normal">{group.incompleteCount} {group.incompleteCount === 1 ? 'entry needs' : 'entries need'} details</span>}</span><ArrowUpRight size={23} className="shrink-0" aria-hidden="true" />
           </Link>)}
         </div>}
       </section>
     </>}
 
-    {month && <section aria-labelledby="month-entries-title" className="overflow-hidden rounded-xl border border-[#D8C9B3] bg-[#FBF8F1] dark:border-white/15 dark:bg-[#222A20]">
+    {month && <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"><section aria-labelledby="month-entries-title" className="overflow-hidden rounded-xl border border-[#D8C9B3] bg-[#FBF8F1] dark:border-white/15 dark:bg-[#222A20]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D8C9B3] p-5 dark:border-white/15">
         <div><h2 id="month-entries-title" className="text-xl font-bold text-[#333B2F] dark:text-[#F5F1E8]">{loggedHoursLabel(monthSummary?.totalHours || 0)} hours logged</h2><p className="mt-1 text-sm text-[#655F50] dark:text-[#D8C9B3]">{sorted.length} {sorted.length === 1 ? 'entry' : 'entries'} in {monthLabel(month)}{incompleteCount > 0 ? ' · ' + incompleteCount + (incompleteCount === 1 ? ' entry needs details' : ' entries need details') : ''}</p></div>
         <button type="button" onClick={() => setManualOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#4C5D46] px-4 py-2.5 text-sm font-semibold text-[#F5F1E8] hover:bg-[#3E4E38]"><Plus size={17} />Add hours manually</button>
@@ -218,7 +221,22 @@ function AccountHours({ email, hasSupervisorFeatures, month }: { email: string; 
           <SupervisorReview key={entry.id + ':' + (entry.revision || 0) + ':' + entry.updatedAt} entry={entry} email={email} enabled={hasSupervisorFeatures} />
         </article>)}
       </div>}
-    </section>}
+    </section>
+      {requirements && <aside className="rounded-xl border border-[#C9CFBD] bg-[#FBF8F1] shadow-sm dark:border-[#58664B] dark:bg-[#222A20] lg:sticky lg:top-5" aria-label="Monthly requirements checklist">
+        <button type="button" onClick={() => setRequirementsOpen(value => !value)} className="flex w-full items-center justify-between gap-2 rounded-t-xl px-4 py-4 text-left font-semibold text-[#333B2F] dark:text-[#F5F1E8]" aria-expanded={requirementsOpen}>
+          <span>Monthly Requirements Checklist</span><span className="text-sm">{requirementsOpen ? 'Hide' : 'Show'}</span>
+        </button>
+        {requirementsOpen && <div className="space-y-4 border-t border-[#C9CFBD] p-4 dark:border-[#58664B]">
+          <div><p className="font-semibold text-[#333B2F] dark:text-[#F5F1E8]">{monthLabel(month)}</p><p className="mt-1 text-xs text-[#655F50] dark:text-[#D8C9B3]">2027 BCBA · {requirements.concentrated ? 'Concentrated supervised fieldwork' : 'Supervised fieldwork'}</p><p className="mt-2 text-sm text-[#655F50] dark:text-[#D8C9B3]">{requirements.totalHours.toFixed(3)} hours logged</p></div>
+          <MonthStatus status={requirements.status} />
+          {requirements.items.map(item => <div key={item.label} className="flex items-start gap-2 border-t border-[#E1E6D8] pt-3 dark:border-[#58664B]">
+            {item.met ? <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-green-700 dark:text-green-400" /> : <CircleX size={19} className="mt-0.5 shrink-0 text-red-700 dark:text-red-400" />}
+            <div className={item.met ? 'text-green-800 dark:text-green-300' : 'text-red-700 dark:text-red-300'}><p className="text-sm font-semibold">{item.label}</p><p className="mt-1 text-xs">{item.detail}</p></div>
+          </div>)}
+          <p className="border-t border-[#C9CFBD] pt-3 text-xs leading-5 text-[#655F50] dark:border-[#58664B] dark:text-[#D8C9B3]">Based on entered hours and the 2027 BCBA monthly numeric criteria. Supervision minimums increase when more hours are logged. Unrestricted hours are evaluated over the full fieldwork period. This checklist does not replace supervisor review or signed BACB verification.</p>
+        </div>}
+      </aside>}
+    </div>}
 
     {message && <div role="status" className="flex gap-2 rounded-xl border border-[#D8C9B3] bg-[#FBF8F1] p-4 text-sm text-[#655F50] dark:border-white/15 dark:bg-[#222A20] dark:text-[#D8C9B3]"><CheckCircle2 size={17} className="mt-0.5 shrink-0" />{message}</div>}
     {managedEmail() && savingState === 'blocked' && <p role="alert" className="rounded-xl bg-[#FFF3E0] p-4 text-sm text-[#8A5D36]">Cloud saving needs review. Your local timer and entry drafts are retained. Use the saving controls to review your backup before continuing.</p>}
@@ -243,4 +261,12 @@ function AccountHours({ email, hasSupervisorFeatures, month }: { email: string; 
     <Dialog open={Boolean(selectedSession)} onOpenChange={open => { if (!open) setSelectedSession(''); }}><DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl bg-[#FBF8F1] sm:max-w-3xl dark:bg-[#222A20]"><DialogHeader><DialogTitle>Add your activity details</DialogTitle><DialogDescription>{loggedHoursLabel(selected.reduce((sum, entry) => sum + entry.duration, 0))} hours recorded{selectedDateCount > 1 ? ' across ' + selectedDateCount + ' dates' : ''}. You can finish later; a reminder will stay in My Hours.</DialogDescription></DialogHeader>{selected.length > 0 && <HourEntryForm key={selectedSession} segments={selected} supervisors={knownSupervisors} organizations={knownOrganizations} onSave={finishDetails} onLater={() => setSelectedSession('')} />}</DialogContent></Dialog>
     <Dialog open={manualOpen} onOpenChange={setManualOpen}><DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl bg-[#FBF8F1] sm:max-w-3xl dark:bg-[#222A20]"><DialogHeader><DialogTitle>Add hours manually</DialogTitle><DialogDescription>Enter a past activity and its description.</DialogDescription></DialogHeader><HourEntryForm initialDate={month && month !== localDate(Date.now()).slice(0, 7) ? `${month}-01` : undefined} supervisors={knownSupervisors} organizations={knownOrganizations} onSave={saveManual} onLater={() => setManualOpen(false)} /></DialogContent></Dialog>
   </div>;
+}
+
+function MonthStatus({ status }: { status: 'Meeting Monthly Requirements' | 'Not Meeting Monthly Requirements' | 'Not Started' }) {
+  const met = status === 'Meeting Monthly Requirements';
+  const notStarted = status === 'Not Started';
+  return <span className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ${met ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-300' : notStarted ? 'bg-white/20 text-inherit dark:bg-white/10' : 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
+    {met ? <CheckCircle2 size={15} /> : notStarted ? <Clock3 size={15} /> : <CircleX size={15} />}{status}
+  </span>;
 }
