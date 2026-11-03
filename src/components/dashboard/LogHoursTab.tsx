@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowUpRight, CheckCircle2, CircleX, Clock3, FileText, Play, Plus, Settings2, Square, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, CheckCircle2, CircleX, Clock3, FileText, Play, Plus, Settings2, Square, Upload } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
 import type { HourEntry } from '@/types';
